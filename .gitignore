@@ -1,0 +1,11 @@
+/build
+/dist
+/hidapi.dll
+/hidapi.lib
+/hidapi.pdb
+/pybluez-master
+/scale.exe
+/scale.spec
+/test.py
+/venv
+/__pycache__

@@ -1,3 +1,4 @@
+#WIBBLE - Wii Balance Board Live Environment
 import hid
 import pygame
 import numpy as np
@@ -118,7 +119,7 @@ def sensitivity_calibration(device, screen):
     last_weight = weight
     counter = 0
     #fill the screen with black
-    maxCounter = 50
+    maxCounter = 20
     while True:
         weight = measure_weight(device)
         if counter == maxCounter:
@@ -148,7 +149,11 @@ def main():
     global weight, SCREEN_WIDTH, SCREEN_HEIGHT
 
     screen = pygame.display.set_mode((int(SCREEN_WIDTH), int(SCREEN_HEIGHT)), pygame.RESIZABLE)
-    pygame.display.set_caption("Wii Balance Board Ball")
+    pygame.display.set_caption("WIBBLE - Wii Balance Board Live Environment")
+    # set icon
+    icon = pygame.image.load("images/logo.png")
+    pygame.display.set_icon(icon)
+    
 
     device = connect_wii_board()
     if device:
@@ -229,7 +234,7 @@ def main():
                     text = font.render(f"{int(perc_right * 100)}%", True, (0, 0, 0))
                     screen.blit(text, (SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100))
                     text = font.render(f"{int(curr_weight)} kg", True, (0, 0, 0))
-                    screen.blit(text, (SCREEN_WIDTH / 2.1, SCREEN_HEIGHT * 0.9))
+                    screen.blit(text, (SCREEN_WIDTH / 2.4, SCREEN_HEIGHT * 0.9))
                     pygame.draw.rect(screen, (0, 0, 0), (min_x + SCREEN_WIDTH // 2, min_y + SCREEN_HEIGHT // 2, max_x - min_x, max_y - min_y), int(SCREEN_WIDTH / 200))
                     
                 pygame.display.flip()

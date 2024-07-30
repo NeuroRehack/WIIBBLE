@@ -1,7 +1,7 @@
 if not exist outputBuild\ mkdir outputBuild\
 if not exist outputBuild\WiiBalanceBoardConnection\ mkdir outputBuild\WiiBalanceBoardConnection\
 call venv\Scripts\activate.bat
-pyinstaller --onefile --noconsole scale.py  --icon=images\\logo.ico --name=WIIBBLE --hidden-import=hid 
+pyinstaller --clean --onefile --noconsole scale.py  --icon=images\\logo.ico --name=WIIBBLE --hidden-import=hid 
 move dist\\WIIBBLE.exe outputBuild\\WIIBBLE.exe
 rmdir /s /q build
 del /f /q WIIBBLE.spec

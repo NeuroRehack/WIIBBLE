@@ -13,7 +13,10 @@ def try_connection():
     
 
     # Start the process
-    process = subprocess.Popen(['outputBuild\\\WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        process = subprocess.Popen(['outputBuild\\WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except:
+        process = subprocess.Popen(['WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     state = None
     
     # Read the output
@@ -71,7 +74,12 @@ def connect_wii_board():
         return None
 
 def read_data(device):
-    return device.read(32)
+    try:
+        data = device.read(32)
+        return data
+    except IOError as e:
+        print(f"Failed to read data: {e}")
+        return None
 
 def parse_data(data):
     corners = {}
@@ -318,7 +326,7 @@ def main():
                                             object_id="#settings_button",
 
                                             )
-    reste_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((150, 0), (150, 50)),
+    reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((150, 0), (150, 50)),
                                             text='RESET SCREEN',
                                             manager=manager,
                                             object_id="#reset_button",
@@ -331,7 +339,6 @@ def main():
     # Connect to the Wii Balance Board
     device = connect_wii_board()
     if device:
-        
         
      
         weight = measure_weight(device)
@@ -346,8 +353,6 @@ def main():
         if weight == -1:
             return 1
         
-        sensitivity = weight
-
         max_x, max_y, min_x, min_y = 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
         run = True
         try:
@@ -365,7 +370,7 @@ def main():
                     elif event.type == pygame_gui.UI_BUTTON_PRESSED:
                         if event.ui_element == button:
                             run = False
-                        if event.ui_element == reste_button:
+                        if event.ui_element == reset_button:
                             clickedLocations = []
                             historical_coords = [(0, 0) for _ in range(100)]
                             max_x, max_y, min_x, min_y = 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -376,8 +381,8 @@ def main():
                         clickedLocations.append((x,y))
                         
                     manager.process_events(event)
-                
                 data = read_data(device)
+             
                 if data:
                     corners = parse_data(data)
                     top_right, bottom_right, top_left, bottom_left = corners.values()

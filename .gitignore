@@ -1,11 +1,13 @@
-/build
-/dist
-/hidapi.dll
-/hidapi.lib
-/hidapi.pdb
-/pybluez-master
-/scale.exe
-/scale.spec
-/test.py
-/venv
-/__pycache__
+\build
+\dist
+\pybluez-master
+\scale.exe
+\scale.spec
+\test.py
+\venv
+\__pycache__
+# for c# project
+\obj
+\bin
+# build files
+\outputBuild

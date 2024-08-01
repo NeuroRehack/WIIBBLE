@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net48</TargetFramework> <!-- Specify .NET Framework 4.8 -->
+    <LangVersion>8.0</LangVersion> <!-- Specify C# language version 8.0 -->
+    <Nullable>enable</Nullable> <!-- Enable nullable reference types -->
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="WiimoteLib">
+      <HintPath>libs\WiimoteLib.dll</HintPath>
+    </Reference>
+</ItemGroup>
+
+</Project>

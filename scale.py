@@ -7,16 +7,17 @@ import pygame_gui
 import subprocess
 import time
 import os
-
+import sys
 def try_connection():
     # find WiiBalanceBoardConnection.exe file
     
-
     # Start the process
     try:
-        process = subprocess.Popen(['outputBuild\\WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        path = resource_path("WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe")
+        process = subprocess.Popen([path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except:
-        process = subprocess.Popen(['WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        path = resource_path("WiiBalanceBoardConnection\\bin\\Debug\\net8.0\\WiiBalanceBoardConnection.exe")
+        process = subprocess.Popen([path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     state = None
     
     # Read the output
@@ -39,6 +40,22 @@ def try_connection():
         time.sleep(0.5)
     
     return state
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores the path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+# Then use resource_path function to access images
+icon_path = resource_path("images/logo.png")
+person_image_path = resource_path("images/logoPerson.png")
+image_paths = [resource_path(f"images/wii{i}.png") for i in range(3)]
+connection_path = resource_path("images/connection.png")
 
 # Constants
 VENDOR_ID = 0x057e  # Nintendo Co., Ltd
@@ -179,9 +196,9 @@ def show_step_off_board(screen,image):
 
 def sensitivity_calibration(device, screen):
     tare_weight = measure_weight(device)
-    filenames = ["images\\wii0.png", "images\\wii1.png", "images\\wii2.png"]
+
   
-    images = [pygame.image.load(filename) for filename in filenames]
+    images = [pygame.image.load(img_path) for img_path in image_paths]
     
     last_weight = tare_weight
     counter = 0
@@ -220,8 +237,8 @@ def sensitivity_calibration(device, screen):
 def wait_for_tare(device, screen):
     tare_weight = measure_weight(device)
   
-    filenames = ["images\\wii2.png", "images\\wii1.png", "images\\wii0.png"]
-    images = [pygame.image.load(filename) for filename in filenames]
+    images = [pygame.image.load(img_path) for img_path in image_paths]
+
 
     
     last_weight = tare_weight
@@ -284,7 +301,7 @@ def try_connection_loop(screen):
         elif state == 1:
             screen.fill((110, 159, 168))
             # load the image
-            image = pygame.image.load("images\connection.png")
+            image = pygame.image.load(connection_path)
             imgsize = image.get_size()
             w, h = imgsize
             # scale the image to the screen size
@@ -314,7 +331,7 @@ def main():
     screen = pygame.display.set_mode((int(SCREEN_WIDTH), int(SCREEN_HEIGHT)), pygame.RESIZABLE)
     pygame.display.set_caption("WIBBLE - Wii Balance Board Live Environment")
     # set icon
-    icon = pygame.image.load("images/logo.png")
+    icon = pygame.image.load(icon_path)
     pygame.display.set_icon(icon)
     
     manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -334,8 +351,11 @@ def main():
                                             )
     clock = pygame.time.Clock()
     
-    try_connection_loop(screen)
-
+    try:
+        try_connection_loop(screen)
+    except:
+        print("Failed to connect")
+        return 1
     # Connect to the Wii Balance Board
     device = connect_wii_board()
     if device:
@@ -347,14 +367,20 @@ def main():
         # status = wait_for_key()
         # if status == -1:
         #     return 1
-        tare(device)
-        
+        try:    
+            tare(device)
+        except:
+            print("Failed to tare")
+            device.close()
+            return 1    
         weight = sensitivity_calibration(device, screen)
         if weight == -1:
             return 1
         
         max_x, max_y, min_x, min_y = 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
         run = True
+        personImage = pygame.image.load(person_image_path)
+
         try:
             while run:
                 time_delta = clock.tick(1000)/1000.0 #
@@ -449,12 +475,11 @@ def main():
                     screen.blit(text, (SCREEN_WIDTH / 2.4, SCREEN_HEIGHT * 0.9))
                     pygame.draw.rect(screen, (0, 0, 0), (min_x + SCREEN_WIDTH // 2, min_y + SCREEN_HEIGHT // 2, max_x - min_x, max_y - min_y), int(SCREEN_WIDTH / 200))
                     
-                    personImage = pygame.image.load("images\logoPerson.png")
                     imgsize = personImage.get_size()
                     w, h = imgsize
-                    personImage = pygame.transform.scale(personImage, (0.1*SCREEN_HEIGHT*w//h, 0.1*SCREEN_HEIGHT))
-                    w,h = personImage.get_size()
-                    screen.blit(personImage, (ball_x-w//2, ball_y-h))
+                    personImageScaled = pygame.transform.scale(personImage, (0.1*SCREEN_HEIGHT*w//h, 0.1*SCREEN_HEIGHT))
+                    w,h = personImageScaled.get_size()
+                    screen.blit(personImageScaled, (ball_x-w//2, ball_y-h))
                     
                 manager.update(time_delta)
                 manager.draw_ui(screen)

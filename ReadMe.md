@@ -7,48 +7,73 @@
 ### Overview
 This project integrates the Wii Balance Board with custom software to measure weight and balance data. It aims to provide a live visualization of weight distribution and balance.
 
-The project consists of two main components: a C# program (`Program.cs`) to enable connection to the Wii Balance Board and a Python script (`scale.py`) to visualize the balance data using Pygame.
 
-### Components
-1. **C# Application (`Program.cs`)**
-   - Connects to the Wii Balance Board using the WiimoteLib.
+## Features
 
-2. **Python Script (`scale.py`)**
-   - Uses the HID library to connect to the Wii Balance Board and read data.
-   - Utilizes Pygame to display visual feedback based on weight distribution and balance.
+- Real-time data visualization of weight distribution
+- Sensitivity calibration with a visual guide
+- Tare functionality for more accurate measurements
+- Easy setup for connecting to the Wii Balance Board via Bluetooth
 
-### Installation and Setup
+## Prerequisites
 
-1. **Prerequisites:**
-   - .NET SDK for building the C# application.
-   - Python 3.x and necessary libraries (`hid`, `pygame`, `numpy`, `pygame_gui`).
+- Wii Balance Board
+- Windows 10/11
+- Bluetooth-enabled computer
+### Requirements for running from source and/or compiling
+- Python 3.8+
+- .NET 8.0
+- .NET Framework 4.8
 
-2. **Building the C# Application:**
-   - Navigate to the `WiiBalanceBoardConnection` directory.
-   - Use the command `dotnet build` to compile the project.
-   - The compiled executable will be found in the `bin` directory.
+## Installation
 
-3. **Running the Python Script:**
-   - Ensure all required Python libraries are installed. You can install them using:
-     ```
-     pip install -r requirements.txt
-     ```
-   - Run the script with:
-     ```
-     python scale.py
-     ```
+1. **Clone the repository, navigate to the directory, and install the required packages:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### Usage
+2. **Build the C# library:**
+   
+      Navigate to the `WiiBalanceBoardLibrary` directory and build the C# library using the following commands:
+   
+      ```bash
+      cd WiiBalanceBoardLibrary
+      dotnet build
+      ```
+### Compiling to an executable
+To compile the python script you can run the `compiler.bat` file, this will create a folder called `outputBuild` with the executable inside.
 
-1. **Connecting the Wii Balance Board:**
-   - Ensure the board is paired with your computer via Bluetooth.
-   - Execute the Python script to visualize the data.
+## Usage
 
-2. **Visual Feedback:**
-   - The Pygame window will display a live view of the weight distribution and balance. 
-   - Follow on-screen instructions for calibration and data visualization.
+1. **Connect the Wii Balance Board:**
 
-### Troubleshooting
+   Ensure that the Wii Balance Board is paired with your computer via Bluetooth. The blue LED should be blinking.
 
-- If the Wii Balance Board is not detected, ensure Bluetooth is enabled and the board is properly paired.
-- Check the console output for error messages and follow suggested fixes.
+2. **Run the application:**
+
+   Start the Python application by running the `main.py` script:
+
+   ```bash
+   python main.py
+   ```
+
+3. **Application Flow:**
+
+   - The application will attempt to connect to the Wii Balance Board.
+   - After connecting, follow the on-screen instructions for sensitivity calibration and tare functions.
+   - Once calibrated, the live environment will display real-time weight distribution.
+
+4. **Tare and Calibration:**
+
+   The application will guide you through the tare and calibration process to ensure accurate weight measurement. Follow the on-screen instructions to step on and off the board as needed.
+
+## Troubleshooting
+
+- **Library Issues:** If the application fails to run due to library issues, try installing the required packages one at a time.
+
+- **Connection Issues:** If the application fails to connect to the Wii Balance Board, ensure that:
+  - Bluetooth is enabled on your computer.
+  - The board is correctly paired and the LED is blinking blue.
+  - The battery level is sufficient.
+  
+- **DLL Loading Issues:** Ensure that the `WiiBalanceBoardLibrary.dll` file is built and located in the correct path as specified in `board_connection.py`.

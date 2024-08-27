@@ -5,7 +5,7 @@ import time
 from System import AppDomain, Activator
 
 # Constants
-DLL_RELATIVE_PATH = r'.\WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
+DLL_RELATIVE_PATH = r'WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
 SLEEP_INTERVAL = 0.1
 
 # Helper Functions

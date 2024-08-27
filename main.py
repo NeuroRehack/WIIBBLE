@@ -8,38 +8,8 @@ import subprocess
 import time
 import os
 import sys
-def try_connection():
-    # find WiiBalanceBoardConnection.exe file
-    
-    # Start the process
-    try:
-        path = resource_path("WiiBalanceBoardConnection\\WiiBalanceBoardConnection.exe")
-        process = subprocess.Popen([path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except:
-        path = resource_path("WiiBalanceBoardConnection\\bin\\Debug\\net8.0\\WiiBalanceBoardConnection.exe")
-        process = subprocess.Popen([path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    state = None
-    
-    # Read the output
-    while True:
-        output = process.stdout.readline()
-        if output == b'' and process.poll() is not None:
-            break
-        
-        if output:
-            output_str = output.strip().decode("utf-8")
-            print(output_str)
-            
-            if "Data successfully read. Exiting..." in output_str:
-                state = 0
-                break
-            elif "Error" in output_str and "No Wiimotes found in HID device list." in output_str:
-                state = 1
-                break
-        
-        time.sleep(0.5)
-    
-    return state
+from board_connection import try_connection
+DLL_RELATIVE_PATH = r'.\WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -295,7 +265,7 @@ def try_connection_loop(screen):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-        state = try_connection()
+        state = try_connection(resource_path(DLL_RELATIVE_PATH))
         if state == 0:
             break
         elif state == 1:

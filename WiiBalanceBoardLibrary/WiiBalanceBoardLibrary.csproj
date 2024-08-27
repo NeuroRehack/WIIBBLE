@@ -11,5 +11,8 @@
       <HintPath>libs\WiimoteLib.dll</HintPath>
     </Reference>
 </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="InTheHand.Net.Bluetooth" Version="4.1.44" />
+  </ItemGroup>
 
 </Project>

@@ -7,12 +7,8 @@
     <Nullable>enable</Nullable> <!-- Enable nullable reference types -->
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="WiimoteLib">
-      <HintPath>libs\WiimoteLib.dll</HintPath>
-    </Reference>
-</ItemGroup>
-  <ItemGroup>
     <PackageReference Include="InTheHand.Net.Bluetooth" Version="4.1.44" />
+    <PackageReference Include="WiimoteLib" Version="1.7.0" />
   </ItemGroup>
 
 </Project>

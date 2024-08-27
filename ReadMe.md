@@ -1,7 +1,13 @@
 # WIIBBLE - Wii Balance Board Live Environment
 
+<div align="center">
+  <img src="./images/logo.png" alt="WIIBBLE Logo" width="400">
+</div>
+
 ### Overview
-This project integrates the Wii Balance Board with custom software to measure weight and balance data. The project consists of two main components: a C# program (`Program.cs`) to enable connection to the Wii Balance Board and a Python script (`scale.py`) to visualize the balance data using Pygame.
+This project integrates the Wii Balance Board with custom software to measure weight and balance data. It aims to provide a live visualization of weight distribution and balance.
+
+The project consists of two main components: a C# program (`Program.cs`) to enable connection to the Wii Balance Board and a Python script (`scale.py`) to visualize the balance data using Pygame.
 
 ### Components
 1. **C# Application (`Program.cs`)**

@@ -9,7 +9,7 @@ import time
 import os
 import sys
 from board_connection import try_connection
-DLL_RELATIVE_PATH = r'.\WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
+DLL_RELATIVE_PATH = r'WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """

@@ -49,7 +49,7 @@ To find out if your bluetooth mac address has "00" in it, open a command prompt 
 ### 😀 Case 1: Bluetooth mac address does not contain "00"
 
 To permanently pair the board to your computer, you will need to follow these steps:
-  - Download WiiBalanceWalker from [here](https://github.com/lshachar/WiiBalanceWalker/releases/tag/v0.5.0). 
+  - Download WiiBalanceWalker v0.5 from [here](https://github.com/lshachar/WiiBalanceWalker/releases). 
   - Open the program and click on `Add\Remove bluetooth Wii device`.
   - Copy the Permanent PIN Code
   - Open windows settings and go to `Bluetooth & devices` -> `Add device` 

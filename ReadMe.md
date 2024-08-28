@@ -87,15 +87,20 @@ To compile the python script you can run the `compiler.bat` file, this will crea
 
 1. **Connect the Wii Balance Board:**
 
-   Ensure that the Wii Balance Board is paired with your computer via Bluetooth. The blue LED should be blinking.
+   Ensure that the Wii Balance Board is paired (see [Board Pairing](#board-pairing)) with your computer via Bluetooth.
+2. **Press the button on the Wii Balance Board:**
 
-2. **Run the application:**
+   The blue LED should be blinking.
 
-   Start the Python application by running the `main.py` script:
+3. **Run the application:**
 
-   ```bash
-   python main.py
-   ```
+   If runing from source: 
+   
+   -  Start the Python application by running the `main.py` script
+
+   If running the executable:
+
+   - Run the executable from the `outputBuild` folder or the location where you downloaded the executable to.
 
 3. **Application Flow:**
 

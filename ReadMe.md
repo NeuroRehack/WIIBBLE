@@ -31,6 +31,7 @@ This project integrates the Wii Balance Board with custom software to measure we
    ```bash
    pip install -r requirements.txt
    ```
+   You may need to install each dependency one at a time. I have noticed some compatibility issues with the `pygame` and `pygame_gui` packages.
 
 2. **Build the C# library:**
    
@@ -62,10 +63,6 @@ To compile the python script you can run the `compiler.bat` file, this will crea
    - The application will attempt to connect to the Wii Balance Board.
    - After connecting, follow the on-screen instructions for sensitivity calibration and tare functions.
    - Once calibrated, the live environment will display real-time weight distribution.
-
-4. **Tare and Calibration:**
-
-   The application will guide you through the tare and calibration process to ensure accurate weight measurement. Follow the on-screen instructions to step on and off the board as needed.
 
 ## Troubleshooting
 

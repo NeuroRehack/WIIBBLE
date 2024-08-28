@@ -71,7 +71,7 @@ The board should now be permanently paired with the computer.
 ### 😭 Case 2: Bluetooth mac address contains "00" <a name="case2"></a>
 You can still pair the board to your computer, but you will have to do it from "`Control Panel\Hardware and Sound\Devices and Printers`" (Windows settings do not allow you to skip the pin). That is annoying on its own, but the board will also need to be removed and paired again every time you switch the Bluetooth adapter or the computer off and on.
 
-## 🔨 Installation from Source <a name="installation"></a>
+## 🔨 Installation from Source <a name="installation-from-source"></a>
 1. **Clone the repository, navigate to the directory, and install the required packages:**
    ```bash
    pip install -r requirements.txt

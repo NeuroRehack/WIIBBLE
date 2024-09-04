@@ -119,7 +119,7 @@ To compile the python script, you can run the `compiler.bat` file. This will cre
 - **Connection Issues:** If the application fails to connect to the Wii Balance Board, ensure that:
   - Bluetooth is enabled on your computer.
   - The board is correctly paired and the LED is blinking blue.
-  - The battery level is sufficient.
+  - The battery level is sufficient, try replacing the batteries.
   
 - **DLL Loading Issues:** Ensure that the `WiiBalanceBoardLibrary.dll` file is built and located in the correct path as specified in `board_connection.py`.
 

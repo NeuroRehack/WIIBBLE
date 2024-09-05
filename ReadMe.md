@@ -1,3 +1,4 @@
+<!-- add shields -->
 
 # WIIBBLE - Wii Balance Board Live Environment
 
@@ -22,6 +23,7 @@ This project integrates the Wii Balance Board with custom software to measure we
     - [💻 Compiling to an executable ](#-compiling-to-an-executable-)
   - [📄 Usage ](#-usage-)
   - [🚑 Troubleshooting ](#-troubleshooting-)
+  - [📝 To-Do:](#-to-do)
   - [🙏 Acknowledgements: ](#-acknowledgements-)
 
 
@@ -123,6 +125,16 @@ To compile the python script, you can run the `compiler.bat` file. This will cre
   
 - **DLL Loading Issues:** Ensure that the `WiiBalanceBoardLibrary.dll` file is built and located in the correct path as specified in `board_connection.py`.
 
+## 📝 To-Do:
+- [ ] Add permanent pin generation to facilitate board pairing.
+- [ ] Add battery level indicator.
+- [ ] Improve button graphics.
+- [ ] Implement a compensation mechanism to better reflect the user's actual weight distribution
+  - at the moment, the application shows the weight distribution directly as measured from the corners sensors. This can be misleading if the user is standing on one leg, as the board platform is a single piece and weight applied to one side will be distributed to the other side. This can be improved by implementing a compensation mechanism to reflect the user's actual weight distribution.
+
 ## 🙏 Acknowledgements: <a name="acknowledgements"></a>
+- This project was developed as part of the **EPIC-Tech study** in collaboration with **The University of Queensland**, **Griffith University**, and **Metro South Princess Alexandra Hospital**.
+- Thanks to the physiotherapists at the [Princess Alexandra Hospital - Geriatric And Rehabilitation Unit](https://www.healthdirect.gov.au/australian-health-services/healthcare-service/woolloongabba-4102-qld/princess-alexandra-hospital-geriatric-and-rehabilitation-unit/geriatric-medicine/efcf3c01-fc12-46fc-2912-691b09238616) for their feedback and guidance.
+
 - [WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) for the Wii Balance Board connection library.
 

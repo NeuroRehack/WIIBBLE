@@ -1,0 +1,146 @@
+import time
+import math
+import random
+
+SCALE_FACTOR = 2.6441910428028423
+
+class MockHIDDevice:
+    """
+    Drop-in replacement for hid.device() simulating Wii Balance Board data.
+
+    Phase model:
+      "tare"           - Board is empty. Returns ~0 kg per sensor so that
+                         wait_for_tare() and tare() record a clean zero baseline.
+                         This is the initial state on open().
+
+      "step_on_stable" - User has just stepped on. Returns stable ~18 kg per
+                         sensor (very low noise) so sensitivity_calibration()
+                         detects stable weight > tare + 20 kg and passes.
+
+      "normal"         - Running mode. Returns scenario-based sway simulation.
+
+    IMPORTANT: trigger_step_on() must be called from main() immediately after
+    tare() completes and before sensitivity_calibration() is called.
+    This mirrors the real user flow: board empty -> tare -> step on -> calibrate.
+
+    Do NOT use read-count based phase transitions -- measure_weight() calls
+    read() 10 times per measurement in a tight loop, so counts burn through
+    instantly and phases change at the wrong time.
+    """
+
+    def __init__(self, scenario="sway"):
+        self.scenario = scenario
+        self._phase = "tare"
+        self._stable_until = None
+        self.start_time = time.time()
+        self._scenario_params = {}
+        self._set_scenario(scenario)
+
+    @classmethod
+    def from_scenario(cls, scenario):
+        return cls(scenario)
+
+    def _set_scenario(self, scenario):
+        if scenario == "still":
+            self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.03, "sway": 0.0}
+        elif scenario == "lean_left":
+            self._scenario_params = {"base": [12.0, 12.0, 24.0, 24.0], "noise": 0.1,  "sway": 0.5}
+        elif scenario == "lean_right":
+            self._scenario_params = {"base": [24.0, 24.0, 12.0, 12.0], "noise": 0.1,  "sway": 0.5}
+        elif scenario == "hands":
+            self._scenario_params = {"base": [1.5,  1.5,  1.5,  1.5],  "noise": 0.03, "sway": 0.05}
+        else:  # "sway" default
+            self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
+
+    def open(self, vendor_id, product_id):
+        print(f"[MOCK] Opened mock HID device (scenario='{self.scenario}')")
+        self._phase = "tare"
+        self._stable_until = None
+        self.start_time = time.time()
+
+    def close(self):
+        print("[MOCK] Closed mock HID device.")
+
+    def trigger_step_on(self):
+        """
+        Call this from main() after tare() completes.
+        Switches to stable weight for 3 seconds then normal running mode.
+        """
+        if self._phase == "tare":
+            print("[MOCK] trigger_step_on() -- switching to step_on_stable phase")
+            self._phase = "step_on_stable"
+            self._stable_until = time.time() + 3.0
+            self.start_time = time.time()
+
+    def read(self, size):
+        kg_vals = self._get_kg_values()
+        data = [0] * size
+        indices = [3, 5, 7, 9]  # top_right, bottom_right, top_left, bottom_left
+        for idx, kg in zip(indices, kg_vals):
+            raw = max(0.0, kg) / SCALE_FACTOR
+            int_part = int(raw)
+            frac_part = int((raw - int_part) * 255)
+            data[idx]     = int_part
+            data[idx + 1] = frac_part
+        total = sum(kg_vals)
+        print(f"[MOCK] phase={self._phase:16s} | sensors={[round(v, 2) for v in kg_vals]} | total={total:.2f} kg")
+        return data
+
+    def _get_kg_values(self):
+        if self._phase == "tare":
+            return [0.0, 0.0, 0.0, 0.0]
+
+        if self._phase == "step_on_stable":
+            if time.time() < self._stable_until:
+                base = self._scenario_params["base"]
+                return [v + random.gauss(0, 0.02) for v in base]
+            else:
+                print("[MOCK] Stable phase complete -- switching to normal mode")
+                self._phase = "normal"
+                self.start_time = time.time()
+
+        return self._simulate_normal()
+
+    def _simulate_normal(self):
+        t = time.time() - self.start_time
+        p = self._scenario_params
+        base  = p["base"]
+        noise = p["noise"]
+        sway  = p["sway"]
+
+        if self.scenario == "still":
+            return [v + random.gauss(0, noise) for v in base]
+
+        elif self.scenario == "lean_left":
+            drift = math.sin(t / 3.0) * 1.5
+            return [
+                base[0] + drift + random.gauss(0, noise),
+                base[1] + drift + random.gauss(0, noise),
+                base[2] - drift + random.gauss(0, noise),
+                base[3] - drift + random.gauss(0, noise),
+            ]
+
+        elif self.scenario == "lean_right":
+            drift = math.sin(t / 3.0) * 1.5
+            return [
+                base[0] - drift + random.gauss(0, noise),
+                base[1] - drift + random.gauss(0, noise),
+                base[2] + drift + random.gauss(0, noise),
+                base[3] + drift + random.gauss(0, noise),
+            ]
+
+        elif self.scenario == "hands":
+            return [v + random.gauss(0, noise) for v in base]
+
+        else:  # sway
+            amp      = sway * 2.5
+            lateral  = math.sin(t / 2.0) * amp
+            fore_aft = math.sin(t / 3.5) * amp * 0.6
+            n        = random.gauss(0, noise)
+            vals = [
+                base[0] + lateral  + fore_aft + n,
+                base[1] + lateral  - fore_aft + n,
+                base[2] - lateral  + fore_aft + n,
+                base[3] - lateral  - fore_aft + n,
+            ]
+            return [max(5.0, min(35.0, v)) for v in vals]

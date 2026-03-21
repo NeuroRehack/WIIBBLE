@@ -4,8 +4,9 @@ import sys
 import time
 from System import AppDomain, Activator
 
-# Constants
-DLL_RELATIVE_PATH = r'WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
+
+# Cross-platform DLL path
+DLL_RELATIVE_PATH = os.path.join('WiiBalanceBoardLibrary', 'bin', 'Debug', 'net48', 'WiiBalanceBoardLibrary.dll')
 SLEEP_INTERVAL = 0.1
 
 # Helper Functions
@@ -73,15 +74,15 @@ def on_balance_board_data_received(sender, event_args):
     except AttributeError:
         print("Battery level information is not available.")
         
-def try_connection(dll_path=None):
-    """ Try to connect to the Wii Balance Board using the WiiBalanceBoardConnection executable. 
-        Returns 0 if the connection was successful and 1 if it failed.
-    """
+def try_connection(dll_path=None, mock_mode=False):
+    """ Try to connect to the Wii Balance Board. Returns 0 if successful, 1 if failed. In mock mode, returns 0 immediately. """
+    if mock_mode:
+        print("[MOCK] Skipping DLL connection in mock mode.")
+        return 0
     try:
         dll_path = get_dll_path() if dll_path is None else dll_path
         assembly = load_dll(dll_path)
         BalanceBoardManager, BalanceBoardDataEventArgs = get_class_types(assembly)
-        
         manager_instance = create_balance_board_manager(BalanceBoardManager)
         connect_balance_board(manager_instance)
         return 0
@@ -89,7 +90,10 @@ def try_connection(dll_path=None):
         print(f"An error occurred: {e}")
         return 1
     finally:
-        disconnect_balance_board(manager_instance)
+        try:
+            disconnect_balance_board(manager_instance)
+        except Exception:
+            pass
 
 # Main Execution Flow
 if __name__ == "__main__":

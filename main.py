@@ -1,15 +1,17 @@
 #WIBBLE - Wii Balance Board Live Environment
+
+import os
+import sys
+import argparse
+import subprocess
 import hid
 import pygame
 import numpy as np
-import time
 import pygame_gui
-import subprocess
-import time
-import os
-import sys
 from board_connection import try_connection
-DLL_RELATIVE_PATH = r'WiiBalanceBoardLibrary\bin\Debug\net48\WiiBalanceBoardLibrary.dll'
+
+# Cross-platform DLL path
+DLL_RELATIVE_PATH = os.path.join('WiiBalanceBoardLibrary', 'bin', 'Debug', 'net48', 'WiiBalanceBoardLibrary.dll')
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -32,6 +34,13 @@ VENDOR_ID = 0x057e  # Nintendo Co., Ltd
 PRODUCT_ID = 0x0306  # Balance Board
 SCALE_FACTOR = 2.6441910428028423
 
+
+# Argument parsing
+parser = argparse.ArgumentParser(description="WIIBBLE - Wii Balance Board Live Environment")
+parser.add_argument("--mock", action="store_true", help="Run in mock mode without physical hardware")
+parser.add_argument("--mock-scenario", type=str, default="sway", help="Mock scenario: still, sway, lean_left, lean_right, hands")
+args = parser.parse_args()
+
 # Initialize pygame and get screen size
 pygame.init()
 info = pygame.display.Info()
@@ -49,16 +58,23 @@ data_struct = {
 historical_coords = [(0, 0) for _ in range(100)]
 weight = 0.1
 
-def connect_wii_board():
-    try:
-        print("Connecting to Wii Balance Board...")
-        device = hid.device()
+def connect_wii_board(use_mock=False, mock_scenario="sway"):
+    if use_mock:
+        print(f"[MOCK] Using MockHIDDevice (scenario: {mock_scenario})")
+        from mock_board import MockHIDDevice
+        device = MockHIDDevice.from_scenario(mock_scenario)
         device.open(VENDOR_ID, PRODUCT_ID)
-        print("Connected successfully!")
         return device
-    except IOError as e:
-        print(f"Failed to connect: {e}")
-        return None
+    else:
+        try:
+            print("Connecting to Wii Balance Board...")
+            device = hid.device()
+            device.open(VENDOR_ID, PRODUCT_ID)
+            print("Connected successfully!")
+            return device
+        except IOError as e:
+            print(f"Failed to connect: {e}")
+            return None
 
 def read_data(device):
     try:
@@ -78,6 +94,9 @@ def parse_data(data):
 
 def tare(device):
     print("Taring...")
+    # Reset tare values before taring
+    for val in data_struct.values():
+        val["tare"] = 0
     i = 0
     while i < 10:
         data = device.read(32)
@@ -124,8 +143,17 @@ def wait_for_key():
                 pygame.quit()
                 return -1
 def display_message(screen, font, message, color, position):
-    text = font.render(message, True, color)
-    screen.blit(text, position)
+    # Support multi-line text rendering
+    lines = message.split('\n')
+    y_offset = 0
+    for line in lines:
+        if line.strip() == '':
+            y_offset += font.get_linesize()
+            continue
+        text = font.render(line, True, color)
+        screen.blit(text, (position[0], position[1] + y_offset))
+        y_offset += font.get_linesize()
+
     
 
 def show_step_on_board(screen,image):
@@ -164,15 +192,19 @@ def show_step_off_board(screen,image):
     pygame.display.flip()
     
 
-def sensitivity_calibration(device, screen):
+def sensitivity_calibration(device, screen, on_start=None):
+    # Measure baseline BEFORE the user steps on (board should be empty here).
+    # on_start callback is called once at the beginning — used in mock mode
+    # to trigger the device into its on-board phase at the right moment.
     tare_weight = measure_weight(device)
 
-  
+    if on_start:
+        on_start()
+
     images = [pygame.image.load(img_path) for img_path in image_paths]
-    
+
     last_weight = tare_weight
     counter = 0
-    #fill the screen with black
     maxCounter = 20
     i=0
     k = 0
@@ -250,13 +282,15 @@ def button_pressed():
     print("Button pressed")
     
     
-def try_connection_loop(screen):
+
+def try_connection_loop(screen, use_mock=False):
+    if use_mock:
+        print("[MOCK] Skipping connection screen in mock mode.")
+        return
     # a function that tries to connect to the balance board
     font = pygame.font.Font(None, 82)
     mid_screen = SCREEN_WIDTH / 2.5
     mid_height = SCREEN_HEIGHT / 2.9
-    
-    
     while True:
         screen.fill((110, 159, 168))
         display_message(screen, font, "Trying to connect", (250, 250, 250), (mid_screen, mid_height))
@@ -288,14 +322,18 @@ def try_connection_loop(screen):
             wait_for_key()
 
         
+
+
 def main():
-    global weight, SCREEN_WIDTH, SCREEN_HEIGHT, data_struct, historical_coords
+    global SCREEN_WIDTH, SCREEN_HEIGHT, weight, data_struct, historical_coords
+    # Reset global state on each run (supports RESTART button)
     data_struct = {
-        "top_right": {"rawIndex": 3, "tare": 0},
+        "top_right":    {"rawIndex": 3, "tare": 0},
         "bottom_right": {"rawIndex": 5, "tare": 0},
-        "top_left": {"rawIndex": 7, "tare": 0},
-        "bottom_left": {"rawIndex": 9, "tare": 0}
+        "top_left":     {"rawIndex": 7, "tare": 0},
+        "bottom_left":  {"rawIndex": 9, "tare": 0}
     }
+    historical_coords = [(0, 0) for _ in range(100)]
     clickedLocations = []
 
     screen = pygame.display.set_mode((int(SCREEN_WIDTH), int(SCREEN_HEIGHT)), pygame.RESIZABLE)
@@ -322,28 +360,28 @@ def main():
     clock = pygame.time.Clock()
     
     try:
-        try_connection_loop(screen)
-    except:
-        print("Failed to connect")
+        try_connection_loop(screen, use_mock=args.mock)
+    except Exception as e:
+        print(f"Failed to connect: {e}")
         return 1
     # Connect to the Wii Balance Board
-    device = connect_wii_board()
+    device = connect_wii_board(use_mock=args.mock, mock_scenario=args.mock_scenario)
     if device:
-        
-     
         weight = measure_weight(device)
         wait_for_tare(device, screen)
-        # print(f"Weight: {weight}")
-        # status = wait_for_key()
-        # if status == -1:
-        #     return 1
         try:    
             tare(device)
-        except:
-            print("Failed to tare")
+        except Exception as e:
+            print(f"Failed to tare: {e}")
             device.close()
             return 1    
-        weight = sensitivity_calibration(device, screen)
+        # Pass trigger_step_on as a callback into sensitivity_calibration().
+        # It is called AFTER the baseline (tare_weight) is measured inside
+        # that function, so the baseline is captured while the board is still
+        # empty, then the mock switches to body weight — exactly mimicking
+        # the real user stepping on in response to the "Step ON" prompt.
+        on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
+        weight = sensitivity_calibration(device, screen, on_start=on_start)
         if weight == -1:
             return 1
         
@@ -353,7 +391,7 @@ def main():
 
         try:
             while run:
-                time_delta = clock.tick(1000)/1000.0 #
+                time_delta = clock.tick(60)/1000.0 # Cap frame rate at 60 FPS
 
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -456,18 +494,11 @@ def main():
                 pygame.display.flip()
             device.close()
             return 0
-            
-                
-
         except KeyboardInterrupt:
             print("Disconnected")
             device.close()
-
 if __name__ == "__main__":
-    # call an exe function
-    
     while True:
         out = main()
         if out == 1:
             break
-

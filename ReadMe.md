@@ -34,7 +34,23 @@ This project integrates the Wii Balance Board with custom software to measure we
 - Easy setup for connecting to the Wii Balance Board via Bluetooth *(after pairing: see [Board Pairing](#board-pairing))*
 
 
-## 📝 Prerequisites <a name="prerequisites"></a>
+-## 📝 Prerequisites <a name="prerequisites"></a>
+
+## 🧑‍💻 Development Without Hardware
+
+WIIBBLE can be developed and tested **without a physical Wii Balance Board** using the built-in mock mode. This is ideal for development in a devcontainer, CI, or when hardware is unavailable.
+
+### Mock Mode
+
+- Run the app with the `--mock` flag to simulate a connected board and realistic weight data.
+- Choose a scenario with `--mock-scenario` (default: `sway`). Supported scenarios:
+  - `still` — standing perfectly still
+  - `sway` — natural postural sway (default)
+  - `lean_left` — weight shifted left
+  - `lean_right` — weight shifted right
+  - `hands` — very light weight (simulating hand use)
+
+
 - Wii Balance Board
 - Windows 10/11
 - Bluetooth-enabled computer
@@ -76,7 +92,9 @@ You can still pair the board to your computer, but you will have to do it from "
 ## 🔨 Installation from Source <a name="installation-from-source"></a>
 1. **Clone the repository, navigate to the directory, and install the required packages:**
    ```bash
-   pip install -r requirements.txt
+   uv venv .venv
+   .venv\Scripts\activate
+   uv pip install -r requirements.txt
    ```
    You may need to install each dependency one at a time. I have noticed some compatibility issues with the `pygame` and `pygame_gui` packages.
 
@@ -92,6 +110,15 @@ You can still pair the board to your computer, but you will have to do it from "
 To compile the python script, you can run the `compiler.bat` file. This will create a folder called `outputBuild` with the executable inside.
 
 ## 📄 Usage <a name="usage"></a>
+
+### Running in Mock Mode
+
+- To run the app without hardware:
+  ```bash
+  python main.py --mock --mock-scenario sway
+  ```
+  Replace `[scenario]` with one of: `still`, `sway`, `lean_left`, `lean_right`, `hands`.
+
 1. **Connect the Wii Balance Board:**
 
    Ensure that the Wii Balance Board is paired (see [Board Pairing](#board-pairing)) with your computer via Bluetooth.

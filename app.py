@@ -4,11 +4,12 @@ import pygame_gui
 import hid
 from board_connection import try_connection
 
-from constants   import VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH
-from resources   import ICON_PATH, PERSON_IMAGE_PATH, CONNECTION_PATH
+from constants       import VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH
+from resources       import ICON_PATH, PERSON_IMAGE_PATH, CONNECTION_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates
-from calibration import wait_for_tare, sensitivity_calibration
-from ui          import draw_main_screen, show_connection_failed, display_message
+from calibration     import wait_for_tare, sensitivity_calibration
+from ui              import draw_main_screen, show_connection_failed, display_message
+from mock_board      import MockHIDDevice
 
 
 # ---------------------------------------------------------------------------
@@ -18,7 +19,6 @@ from ui          import draw_main_screen, show_connection_failed, display_messag
 def connect_wii_board(use_mock: bool = False, mock_scenario: str = "sway"):
     """Return an open HID device (real or mock)."""
     if use_mock:
-        from mock_board import MockHIDDevice
         device = MockHIDDevice.from_scenario(mock_scenario)
         device.open(VENDOR_ID, PRODUCT_ID)
         print(f"[MOCK] Using MockHIDDevice (scenario: {mock_scenario})")
@@ -51,7 +51,6 @@ def try_connection_loop(screen, app_state, use_mock: bool = False) -> None:
         print("[MOCK] Skipping connection screen.")
         return
 
-    from resources import resource_path
     font       = pygame.font.Font(None, 82)
     mid_screen = app_state.screen_width  / 2.5
     mid_height = app_state.screen_height / 2.9

@@ -11,6 +11,7 @@ from calibration     import wait_for_tare, sensitivity_calibration
 from ui              import (draw_main_screen, draw_connection_screen,
                              draw_connection_failed_screen, ensure_textures_loaded,
                              TOOLBAR_H, STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
+from theme           import (BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR, STATS_TEXT_COLOR)
 from mock_board      import MockHIDDevice
 
 
@@ -75,6 +76,37 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 # UI control panel
 # ---------------------------------------------------------------------------
 
+TOGGLE_BTN_H = 20
+
+
+def _build_toggle_btn(session_state: dict) -> None:
+    if dpg.does_item_exist("toolbar_toggle"):
+        dpg.delete_item("toolbar_toggle")
+    label = "v  Settings" if session_state.get("toolbar_visible", True) else ">  Settings"
+    with dpg.window(
+        tag="toolbar_toggle",
+        no_title_bar=True, no_resize=True, no_move=True,
+        no_scrollbar=True, no_collapse=True,
+        pos=(0, 0), width=130, height=TOGGLE_BTN_H,
+    ):
+        dpg.add_button(
+            tag="toggle_btn", label=label,
+            callback=lambda: _toggle_toolbar(session_state),
+            width=120, height=TOGGLE_BTN_H - 2,
+        )
+
+
+def _toggle_toolbar(session_state: dict) -> None:
+    visible = not session_state.get("toolbar_visible", True)
+    session_state["toolbar_visible"] = visible
+    if dpg.does_item_exist("control_panel"):
+        dpg.configure_item("control_panel", show=visible)
+    label = "v  Settings" if visible else ">  Settings"
+    if dpg.does_item_exist("toggle_btn"):
+        dpg.configure_item("toggle_btn", label=label)
+    session_state["action"] = "toolbar_toggled"
+
+
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """
     Build the top control bar with buttons and settings controls.
@@ -90,7 +122,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
         no_move=True,
         no_scrollbar=True,
         no_collapse=True,
-        pos=(0, 0),
+        pos=(0, TOGGLE_BTN_H),
         width=sw,
         height=55,
     ):
@@ -219,9 +251,9 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
 
     dpg.delete_item("stats_dl", children_only=True)
 
-    # Weight distribution bar (red background, green for each side)
+    # Weight distribution bar — muted teal palette (from theme.py)
     dpg.draw_rectangle((0, bar_top), (sw, bar_bot),
-                       fill=(255, 0, 0, 255), color=(255, 0, 0, 255), parent="stats_dl")
+                       fill=BAR_BG_COLOR, color=BAR_BG_COLOR, parent="stats_dl")
     if _stats_cache["weight"] > 0:
         pl = _stats_cache["left"]  / 100
         pr = _stats_cache["right"] / 100
@@ -229,16 +261,16 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
         pl = pr = 0.5
     x0 = sw // 2 - pl * sw // 2
     dpg.draw_rectangle((x0, bar_top), (sw // 2, bar_bot),
-                       fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent="stats_dl")
+                       fill=BAR_LEFT_COLOR, color=BAR_LEFT_COLOR, parent="stats_dl")
     x0 = sw // 2
     x1 = sw // 2 + pr * sw // 2
     dpg.draw_rectangle((x0, bar_top), (x1, bar_bot),
-                       fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent="stats_dl")
+                       fill=BAR_RIGHT_COLOR, color=BAR_RIGHT_COLOR, parent="stats_dl")
 
     # Text above the bar
-    dpg.draw_text((10,                  y), f"{left_val}%",     color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
-    dpg.draw_text((sw // 2 - 40,        y), f"{weight_val} kg", color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
-    dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
+    dpg.draw_text((10,                  y), f"{left_val}%",     color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    dpg.draw_text((sw // 2 - 40,        y), f"{weight_val} kg", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
 
 
 def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
@@ -283,12 +315,15 @@ def _run_session(app_state, settings, args) -> int:
     # viewport_drawlist draws directly onto the viewport background (full screen)
     dl = dpg.add_viewport_drawlist(front=False)
 
-    session_state = {"action": None}
+    session_state = {"action": None, "toolbar_visible": True}
 
-    # Clean up any previous control panel
+    # Clean up previous session widgets
+    if dpg.does_item_exist("toolbar_toggle"):
+        dpg.delete_item("toolbar_toggle")
     if dpg.does_item_exist("control_panel"):
         dpg.delete_item("control_panel")
 
+    _build_toggle_btn(session_state)
     _build_control_panel(app_state, settings, session_state)
 
     _build_stats_bar(app_state)
@@ -370,9 +405,14 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
             session_state["action"] = None
 
-        # Handle viewport resize
+        # Toolbar toggle — consume the action, canvas height recalculates below
+        if action == "toolbar_toggled":
+            session_state["action"] = None
+
+        # Handle viewport resize — canvas height depends on toolbar visibility
         vw = dpg.get_viewport_width()
-        vh = dpg.get_viewport_height() - 55
+        toolbar_h = (TOGGLE_BTN_H + 55) if session_state.get("toolbar_visible", True) else TOGGLE_BTN_H
+        vh = dpg.get_viewport_height() - toolbar_h
         if vw != app_state.screen_width or vh != app_state.screen_height:
             app_state.screen_width  = vw
             app_state.screen_height = vh

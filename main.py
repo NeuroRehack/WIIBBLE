@@ -10,6 +10,7 @@ import dearpygui.dearpygui as dpg
 
 from state import AppState, Settings
 from app   import run
+from theme import apply_global_theme
 
 
 def parse_args():
@@ -61,6 +62,7 @@ if __name__ == "__main__":
         y_pos=0,
     )
     dpg.setup_dearpygui()
+    apply_global_theme()
     dpg.show_viewport()
     dpg.maximize_viewport()
 

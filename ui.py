@@ -6,6 +6,10 @@
 import math
 import dearpygui.dearpygui as dpg
 from resources import IMAGE_PATHS, CONNECTION_PATH, PERSON_IMAGE_PATH
+from theme import (CANVAS_BG, CANVAS_LINE, CANVAS_LINE_W, CANVAS_CENTRE_DOT,
+                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS,
+                   BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR,
+                   STATS_TEXT_COLOR)
 
 # ---------------------------------------------------------------------------
 # Layout constants — all proportional to viewport dimensions.
@@ -220,15 +224,15 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     cy = sh // 2 + T
 
     # Background (canvas area only, below toolbar)
-    dpg.draw_rectangle((0, T), (sw, sh + T), fill=(255, 255, 255, 255),
-                        color=(255, 255, 255, 255), parent=dl)
+    dpg.draw_rectangle((0, T), (sw, sh + T), fill=CANVAS_BG,
+                        color=CANVAS_BG, parent=dl)
 
     # Centre lines
-    line_w = max(1, int(sw / 200))
-    dpg.draw_line((0, cy), (sw, cy), color=(0, 0, 0, 255), thickness=line_w, parent=dl)
-    dpg.draw_line((cx, T), (cx, sh + T), color=(0, 0, 0, 255), thickness=line_w, parent=dl)
-    dpg.draw_circle((cx, cy), int(sw / 50), color=(0, 0, 0, 255), fill=(0, 0, 0, 255), parent=dl)
-    dpg.draw_circle((cx, cy), int(sw / 20), color=(255, 255, 255, 255), fill=(255, 255, 255, 255), parent=dl)
+    line_w = CANVAS_LINE_W
+    dpg.draw_line((0, cy), (sw, cy), color=CANVAS_LINE, thickness=line_w, parent=dl)
+    dpg.draw_line((cx, T), (cx, sh + T), color=CANVAS_LINE, thickness=line_w, parent=dl)
+    dpg.draw_circle((cx, cy), CANVAS_CENTRE_R, color=CANVAS_CENTRE_DOT,
+                    fill=CANVAS_CENTRE_DOT, parent=dl)
 
     # Target circles (clicked locations — stored in viewport coords)
     for loc in app_state.clicked_locations:
@@ -267,7 +271,7 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     dpg.draw_rectangle(
         (cx + min_x, cy + min_y),
         (cx + max_x, cy + max_y),
-        color=(0, 0, 0, 255), thickness=line_w, parent=dl,
+        color=BBOX_COLOR, thickness=BBOX_THICKNESS, parent=dl,
     )
 
     # Weight bar and stats text are both drawn on stats_dl in app.py

@@ -10,7 +10,7 @@ from data_processing import read_data, parse_data, tare, calculate_coordinates
 from calibration     import wait_for_tare, sensitivity_calibration
 from ui              import (draw_main_screen, draw_connection_screen,
                              draw_connection_failed_screen, ensure_textures_loaded,
-                             TOOLBAR_H, STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
+                             STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
 from theme           import (BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR, STATS_TEXT_COLOR)
 from mock_board      import MockHIDDevice
 
@@ -76,104 +76,110 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 # UI control panel
 # ---------------------------------------------------------------------------
 
-TOGGLE_BTN_H = 20
-
-
-def _build_toggle_btn(session_state: dict) -> None:
-    if dpg.does_item_exist("toolbar_toggle"):
-        dpg.delete_item("toolbar_toggle")
-    label = "v  Settings" if session_state.get("toolbar_visible", True) else ">  Settings"
-    with dpg.window(
-        tag="toolbar_toggle",
-        no_title_bar=True, no_resize=True, no_move=True,
-        no_scrollbar=True, no_collapse=True,
-        pos=(0, 0), width=130, height=TOGGLE_BTN_H,
-    ):
-        dpg.add_button(
-            tag="toggle_btn", label=label,
-            callback=lambda: _toggle_toolbar(session_state),
-            width=120, height=TOGGLE_BTN_H - 2,
-        )
+TOOLBAR_FULL_H = 55   # toolbar height — canvas always reserves this space
+GEAR_BTN_SIZE  = 40   # floating gear button size
+GEAR_LABEL     = "[=]"  # ASCII settings icon (ProggyClean font has no unicode)
 
 
 def _toggle_toolbar(session_state: dict) -> None:
     visible = not session_state.get("toolbar_visible", True)
     session_state["toolbar_visible"] = visible
-    if dpg.does_item_exist("control_panel"):
-        dpg.configure_item("control_panel", show=visible)
-    label = "v  Settings" if visible else ">  Settings"
-    if dpg.does_item_exist("toggle_btn"):
-        dpg.configure_item("toggle_btn", label=label)
+    if visible:
+        # Show full toolbar, hide floating gear
+        if dpg.does_item_exist("control_panel"):
+            dpg.configure_item("control_panel", show=True)
+        if dpg.does_item_exist("gear_btn_window"):
+            dpg.configure_item("gear_btn_window", show=False)
+    else:
+        # Hide full toolbar, show floating gear
+        if dpg.does_item_exist("control_panel"):
+            dpg.configure_item("control_panel", show=False)
+        if dpg.does_item_exist("gear_btn_window"):
+            dpg.configure_item("gear_btn_window", show=True)
     session_state["action"] = "toolbar_toggled"
 
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """
-    Build the top control bar with buttons and settings controls.
-    Uses Dear PyGui widgets — replaces pygame_gui entirely.
-    session_state is a mutable dict used to signal restart/quit to the main loop.
+    Builds two windows that are mutually exclusive:
+
+    control_panel     — full opaque toolbar (expanded state)
+    gear_btn_window   — tiny no_background floating button (collapsed state)
+
+    Canvas always fills full viewport. Toolbar windows float on top.
     """
     sw = app_state.screen_width
 
+    # --- Full toolbar ---
     with dpg.window(
         tag="control_panel",
-        no_title_bar=True,
-        no_resize=True,
-        no_move=True,
-        no_scrollbar=True,
-        no_collapse=True,
-        pos=(0, TOGGLE_BTN_H),
-        width=sw,
-        height=55,
+        no_title_bar=True, no_resize=True, no_move=True,
+        no_scrollbar=True, no_collapse=True,
+        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H,
     ):
-        # DPG 2.x: use group(horizontal=True) instead of deprecated add_same_line()
         with dpg.group(horizontal=True):
             dpg.add_button(
-                label="RESTART",
-                callback=lambda: session_state.update({"action": "restart"}),
-                width=120, height=40,
+                tag="toggle_btn", label=GEAR_LABEL,
+                callback=lambda: _toggle_toolbar(session_state),
+                width=GEAR_BTN_SIZE, height=GEAR_BTN_SIZE,
             )
-            dpg.add_button(
-                label="RESET SCREEN",
-                callback=lambda: session_state.update({"action": "reset"}),
-                width=140, height=40,
-            )
-            dpg.add_spacer(width=20)
+            dpg.add_spacer(width=8)
+            with dpg.group(tag="settings_group", horizontal=True):
+                dpg.add_button(
+                    label="RESTART",
+                    callback=lambda: session_state.update({"action": "restart"}),
+                    width=110, height=40,
+                )
+                dpg.add_button(
+                    label="RESET SCREEN",
+                    callback=lambda: session_state.update({"action": "reset"}),
+                    width=130, height=40,
+                )
+                dpg.add_spacer(width=16)
+                dpg.add_text("Trail:")
+                trail_items   = ["None", "Medium", "Long"]
+                trail_map     = {"None": 0, "Medium": 30, "Long": 100}
+                trail_rmap    = {0: "None", 30: "Medium", 100: "Long"}
+                current_label = trail_rmap.get(settings.trail_length, "Long")
+                dpg.add_combo(
+                    tag="trail_combo", items=trail_items,
+                    default_value=current_label, width=90,
+                    callback=lambda s, v: _on_trail_change(trail_map[v], settings),
+                )
+                dpg.add_spacer(width=16)
+                dpg.add_text("Zoom:")
+                dpg.add_slider_float(
+                    tag="zoom_slider",
+                    default_value=settings.zoom_factor,
+                    min_value=0.1, max_value=10.0, width=140,
+                    format="%.2fx",
+                    callback=lambda s, v: _on_zoom_change(v, settings, app_state),
+                )
+                dpg.add_spacer(width=8)
+                dpg.add_button(
+                    label="Auto-Scale", tag="zoom_to_bbox_btn",
+                    callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
+                    width=110, height=40,
+                )
 
-            # S2 — Trail selector (None / Medium / Long)
-            dpg.add_text("Trail:", indent=0)
-            trail_items = ["None", "Medium", "Long"]
-            trail_map   = {"None": 0, "Medium": 30, "Long": 100}
-            trail_rmap  = {0: "None", 30: "Medium", 100: "Long"}
-            # Find closest label for current setting
-            current_label = trail_rmap.get(settings.trail_length, "Long")
-            dpg.add_combo(
-                tag="trail_combo",
-                items=trail_items,
-                default_value=current_label,
-                width=90,
-                callback=lambda s, v: _on_trail_change(trail_map[v], settings),
-            )
-            dpg.add_spacer(width=20)
-
-            # S3 — Zoom slider
-            dpg.add_text("Zoom:")
-            dpg.add_slider_float(
-                tag="zoom_slider",
-                default_value=settings.zoom_factor,
-                min_value=0.1,
-                max_value=10.0,
-                width=140,
-                format="%.2fx",
-                callback=lambda s, v: _on_zoom_change(v, settings, app_state),
-            )
-            dpg.add_spacer(width=10)
-            dpg.add_button(
-                label="Auto-Scale",
-                tag="zoom_to_bbox_btn",
-                callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
-                width=120, height=40,
-            )
+    # --- Floating gear button (collapsed state) ---
+    # no_background=True means zero DPG chrome — just the button pixel-perfect
+    if dpg.does_item_exist("gear_btn_window"):
+        dpg.delete_item("gear_btn_window")
+    with dpg.window(
+        tag="gear_btn_window",
+        no_title_bar=True, no_resize=True, no_move=True,
+        no_scrollbar=True, no_collapse=True,
+        no_background=True,
+        pos=(4, 4),
+        width=GEAR_BTN_SIZE + 4, height=GEAR_BTN_SIZE + 4,
+        show=False,
+    ):
+        dpg.add_button(
+            tag="gear_float_btn", label=GEAR_LABEL,
+            callback=lambda: _toggle_toolbar(session_state),
+            width=GEAR_BTN_SIZE, height=GEAR_BTN_SIZE,
+        )
 
 
 def _on_trail_change(value: int, settings) -> None:
@@ -277,7 +283,10 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
     """
     Left click on canvas: toggle cursor mode if clicking on cursor,
     otherwise add a target circle.
+    Ignores clicks in the toolbar area.
     """
+    if my <= TOOLBAR_FULL_H:
+        return
     cursor_radius = (int(0.05 * app_state.screen_height)
                      if settings.cursor_mode == "avatar" else 20)
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
@@ -308,7 +317,9 @@ def _run_session(app_state, settings, args) -> int:
 
     # Update screen dimensions from current viewport
     app_state.screen_width  = dpg.get_viewport_width()
-    app_state.screen_height = dpg.get_viewport_height() - 55  # subtract control bar
+    # During connect/tare/calibration toolbar is hidden — use full height.
+    # After calibration it shows, and resize handler corrects screen_height.
+    app_state.screen_height = dpg.get_viewport_height()
 
     ensure_textures_loaded()
 
@@ -318,13 +329,15 @@ def _run_session(app_state, settings, args) -> int:
     session_state = {"action": None, "toolbar_visible": True}
 
     # Clean up previous session widgets
-    if dpg.does_item_exist("toolbar_toggle"):
-        dpg.delete_item("toolbar_toggle")
-    if dpg.does_item_exist("control_panel"):
-        dpg.delete_item("control_panel")
+    for _tag in ("control_panel", "gear_btn_window"):
+        if dpg.does_item_exist(_tag):
+            dpg.delete_item(_tag)
 
-    _build_toggle_btn(session_state)
     _build_control_panel(app_state, settings, session_state)
+    # Both windows hidden until main loop starts (after calibration)
+    dpg.configure_item("control_panel", show=False)
+    if dpg.does_item_exist("gear_btn_window"):
+        dpg.configure_item("gear_btn_window", show=False)
 
     _build_stats_bar(app_state)
 
@@ -373,6 +386,10 @@ def _run_session(app_state, settings, args) -> int:
         return 1
     app_state.weight = calibrated_weight
 
+    # Restore toolbar after calibration
+    if dpg.does_item_exist("control_panel"):
+        dpg.configure_item("control_panel", show=True)
+
     # --- Step 4: Main loop ---
     # Extents now stored in app_state so zoom callback can rescale them live.
     # app_state.reset() already zeroes these — nothing else needed here.
@@ -405,14 +422,14 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
             session_state["action"] = None
 
-        # Toolbar toggle — consume the action, canvas height recalculates below
+        # Toolbar toggle — just consume, canvas never resizes
         if action == "toolbar_toggled":
             session_state["action"] = None
 
-        # Handle viewport resize — canvas height depends on toolbar visibility
+        # Canvas is always viewport_height - TOOLBAR_FULL_H.
+        # Toolbar floats over canvas — toggling it never changes screen dimensions.
         vw = dpg.get_viewport_width()
-        toolbar_h = (TOGGLE_BTN_H + 55) if session_state.get("toolbar_visible", True) else TOGGLE_BTN_H
-        vh = dpg.get_viewport_height() - toolbar_h
+        vh = dpg.get_viewport_height()
         if vw != app_state.screen_width or vh != app_state.screen_height:
             app_state.screen_width  = vw
             app_state.screen_height = vh
@@ -447,10 +464,8 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_min_y = min(app_state.zoomed_min_y, y)
 
             ball_x = int(app_state.screen_width  // 2 + x)
-            # ball_y is in full viewport coords: canvas centre is at (screen_height/2 + 55)
-            # where 55 is the control bar height. screen_height already excludes the bar,
-            # so the canvas centre in viewport space is screen_height//2 + 55.
-            ball_y = int(app_state.screen_height // 2 + y + 55)
+            # ball_y: canvas centre is screen_height/2, no toolbar offset
+            ball_y = int(app_state.screen_height // 2 + y)
 
             app_state.ball_x = ball_x
             app_state.ball_y = ball_y

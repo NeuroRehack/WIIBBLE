@@ -93,9 +93,9 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
     """
     # Read live viewport — not app_state which lags one frame on resize
     sw = dpg.get_viewport_width()
-    sh = dpg.get_viewport_height() - TOOLBAR_H
+    sh = dpg.get_viewport_height()
 
-    dpg.draw_rectangle((0, 0), (sw, sh + TOOLBAR_H),
+    dpg.draw_rectangle((0, 0), (sw, sh),
                         fill=(110, 159, 168, 255), color=(110, 159, 168, 255), parent=dl)
 
     tag = _wii_texture_tags[2]
@@ -104,12 +104,12 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
     scaled_h = int(CALIB_IMG_HEIGHT * sh)
     scaled_w = int(scaled_h * iw_orig / ih_orig)
     img_x = int(sw * CALIB_IMG_CENTRE_X - scaled_w // 2)
-    img_y = int(sh * CALIB_IMG_VERT + TOOLBAR_H - scaled_h // 2)
+    img_y = int(sh * CALIB_IMG_VERT - scaled_h // 2)
     dpg.draw_image(tag, (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl)
 
     font_size = int(sh * CALIB_TEXT_FONT)
     text_x    = int(sw * CALIB_TEXT_X)
-    text_y    = int(sh * CALIB_TEXT_TOP + TOOLBAR_H)
+    text_y    = int(sh * CALIB_TEXT_TOP)
     line_h    = int(font_size * CALIB_TEXT_LINE_H)
 
     dpg.draw_text((text_x, text_y),            "Step",
@@ -133,7 +133,7 @@ def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:
     All proportions are defined in the LAYOUT constants at the top of this file.
     """
     cx     = int(sw * CALIB_ARC_CENTRE_X)
-    cy     = int(sh * CALIB_ARC_CENTRE_Y + TOOLBAR_H)
+    cy     = int(sh * CALIB_ARC_CENTRE_Y)
     radius = int(sh * CALIB_ARC_RADIUS)
     color  = (0, 250, 0, 255) if step == "on" else (250, 0, 0, 255)
     sweep  = 2 * math.pi * counter / max_count if max_count > 0 else 0
@@ -207,30 +207,29 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     """
     Draw one frame of the main balance display onto drawlist dl.
 
-    ball_x/ball_y are in FULL viewport coordinates (y includes TOOLBAR_H offset).
-    All canvas drawing is offset by TOOLBAR_H so it appears below the control bar.
-    sw/sh are canvas dimensions (viewport minus toolbar).
+    ball_x/ball_y are in full viewport coordinates.
+    Canvas fills entire viewport; toolbar windows float on top.
+    sw/sh are full viewport dimensions. Toolbar floats on top.
     """
     sw, sh = app_state.screen_width, app_state.screen_height
-    T = TOOLBAR_H  # shorthand
 
     top_right    = corners["top_right"]
     bottom_right = corners["bottom_right"]
     top_left     = corners["top_left"]
     bottom_left  = corners["bottom_left"]
 
-    # Canvas centre in viewport coords
+    # Canvas centre — full viewport, no offset
     cx = sw // 2
-    cy = sh // 2 + T
+    cy = sh // 2
 
-    # Background (canvas area only, below toolbar)
-    dpg.draw_rectangle((0, T), (sw, sh + T), fill=CANVAS_BG,
+    # Background — full viewport
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=CANVAS_BG,
                         color=CANVAS_BG, parent=dl)
 
     # Centre lines
     line_w = CANVAS_LINE_W
     dpg.draw_line((0, cy), (sw, cy), color=CANVAS_LINE, thickness=line_w, parent=dl)
-    dpg.draw_line((cx, T), (cx, sh + T), color=CANVAS_LINE, thickness=line_w, parent=dl)
+    dpg.draw_line((cx, 0), (cx, sh), color=CANVAS_LINE, thickness=line_w, parent=dl)
     dpg.draw_circle((cx, cy), CANVAS_CENTRE_R, color=CANVAS_CENTRE_DOT,
                     fill=CANVAS_CENTRE_DOT, parent=dl)
 

@@ -70,6 +70,35 @@ def measure_weight(device, data_struct: dict) -> float:
     return sum(weight_vals)
 
 
+def apply_filter(corners: dict, filter_buffer: list, filter_window: int) -> dict:
+    """
+    Apply a moving average filter to raw corner kg values.
+
+    Appends the new corners reading to filter_buffer (in-place), trims it to
+    filter_window length, then returns the mean of each corner across the buffer.
+
+    filter_window=1 is a pass-through — no smoothing, no latency.
+    Filtering at the sensor level (before coordinate calculation) suppresses
+    ADC noise before it gets amplified by the coordinate scaling step.
+
+    Args:
+        corners:       dict of {corner_name: kg_value} from parse_data()
+        filter_buffer: mutable list stored in app_state — modified in-place
+        filter_window: number of frames to average (from settings.filter_window)
+
+    Returns:
+        dict of smoothed corner kg values with the same keys as corners
+    """
+    filter_buffer.append(corners)
+    if len(filter_buffer) > filter_window:
+        filter_buffer.pop(0)
+    n = len(filter_buffer)
+    return {
+        key: sum(frame[key] for frame in filter_buffer) / n
+        for key in corners
+    }
+
+
 def calculate_coordinates(
     top_left: float,
     top_right: float,

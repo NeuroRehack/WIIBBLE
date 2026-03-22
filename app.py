@@ -6,7 +6,7 @@ from board_connection import try_connection
 
 from constants       import VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH
 from resources       import ICON_PATH, resource_path
-from data_processing import read_data, parse_data, tare, calculate_coordinates
+from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter
 from calibration     import wait_for_tare, sensitivity_calibration
 from ui              import (draw_main_screen, draw_connection_screen,
                              draw_connection_failed_screen, ensure_textures_loaded,
@@ -469,19 +469,10 @@ def _run_session(app_state, settings, args) -> int:
         if data:
             corners = parse_data(data, app_state.data_struct)
 
-            # S4 — Moving average filter applied to raw corner kg values.
-            # Filtering at the sensor level (before coordinate calculation)
-            # means noise is suppressed before any scaling is applied.
-            # filter_window=1 is a pass-through.
-            app_state.filter_buffer.append(corners)
-            if len(app_state.filter_buffer) > settings.filter_window:
-                app_state.filter_buffer.pop(0)
-            n = len(app_state.filter_buffer)
-            smoothed = {
-                key: sum(frame[key] for frame in app_state.filter_buffer) / n
-                for key in corners
-            }
-
+            # S4 — Moving average filter (see data_processing.apply_filter)
+            smoothed = apply_filter(
+                corners, app_state.filter_buffer, settings.filter_window
+            )
             top_right    = smoothed["top_right"]
             bottom_right = smoothed["bottom_right"]
             top_left     = smoothed["top_left"]

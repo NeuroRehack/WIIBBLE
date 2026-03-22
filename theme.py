@@ -46,6 +46,11 @@ BAR_RIGHT_COLOR     = (107, 168, 150, 255)   # right side — muted teal-green
 # Stats text
 STATS_TEXT_COLOR    = ( 40,  50,  60, 255)   # dark on white canvas
 
+# Cursor, trail and calibration screen
+CURSOR_COLOR     = (107, 159, 168, 255)  # circle cursor colour
+TRAIL_COLOR_BASE = (107, 159, 168)       # trail RGB base (alpha fades with age)
+CALIB_BG_COLOR   = (110, 159, 168, 255)  # teal background for calibration screens
+
 
 def load_fonts() -> None:
     """

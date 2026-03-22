@@ -7,7 +7,7 @@ import math
 import dearpygui.dearpygui as dpg
 from resources import IMAGE_PATHS, CONNECTION_PATH, PERSON_IMAGE_PATH
 from theme import (CANVAS_BG, CANVAS_LINE, CANVAS_LINE_W, CANVAS_CENTRE_DOT,
-                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS,
+                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS, CURSOR_COLOR, TRAIL_COLOR_BASE, CALIB_BG_COLOR,
                    BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR,
                    STATS_TEXT_COLOR)
 
@@ -96,7 +96,7 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
     sh = dpg.get_viewport_height()
 
     dpg.draw_rectangle((0, 0), (sw, sh),
-                        fill=(110, 159, 168, 255), color=(110, 159, 168, 255), parent=dl)
+                        fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
 
     tag = _wii_texture_tags[2]
     cfg = dpg.get_item_configuration(tag)
@@ -154,8 +154,8 @@ def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:
 def draw_connection_screen(dl, app_state) -> None:
     """Draw the 'Trying to connect' screen."""
     sw, sh = app_state.screen_width, app_state.screen_height
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=(110, 159, 168, 255),
-                        color=(110, 159, 168, 255), parent=dl)
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR,
+                        color=CALIB_BG_COLOR, parent=dl)
     font_size = int(sh * 0.06)
     mid_x = sw / 2.5
     mid_y = sh / 2.9
@@ -166,8 +166,8 @@ def draw_connection_screen(dl, app_state) -> None:
 def draw_connection_failed_screen(dl, app_state) -> None:
     """Draw the 'Failed to connect' screen with checklist."""
     sw, sh = app_state.screen_width, app_state.screen_height
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=(110, 159, 168, 255),
-                        color=(110, 159, 168, 255), parent=dl)
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR,
+                        color=CALIB_BG_COLOR, parent=dl)
 
     cfg = dpg.get_item_configuration(_connection_texture_tag)
     iw_orig, ih_orig = cfg["width"], cfg["height"]
@@ -241,14 +241,13 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
         dpg.draw_circle(loc, 50, color=fill, fill=fill, parent=dl)
 
     # Trail (S2: sliced to trail_length; coords are in viewport space)
-    trail_color_base = (110, 159, 168)
     coords = app_state.historical_coords[-settings.trail_length:] if settings.trail_length > 0 else []
     n = len(coords)
     for i in range(1, n):
         frac = i / n
-        tc = (int(frac * trail_color_base[0]),
-              int(frac * trail_color_base[1]),
-              int(frac * trail_color_base[2]), 200)
+        tc = (int(frac * TRAIL_COLOR_BASE[0]),
+              int(frac * TRAIL_COLOR_BASE[1]),
+              int(frac * TRAIL_COLOR_BASE[2]), 200)
         radius = max(1, int(i * 20 / n))
         dpg.draw_circle(coords[i], radius, color=tc, fill=tc, parent=dl)
 
@@ -263,7 +262,7 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
         dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
     else:
         dpg.draw_circle((ball_x, ball_y), 20,
-                        color=(110, 159, 168, 255), fill=(110, 159, 168, 255), parent=dl)
+                        color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl)
 
     # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
     # They need to be offset by canvas centre (cx, cy) to get viewport coords.

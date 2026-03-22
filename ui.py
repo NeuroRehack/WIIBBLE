@@ -61,58 +61,67 @@ def get_person_image_size() -> tuple:
 def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state) -> None:
     """
     Draw the 'Step ON' or 'Step OFF' calibration screen.
-    step: "on" | "off"
-    Draws background, image, text, and progress arc onto the drawlist dl.
+    Layout: image centred-left, text + arc on the right third of the screen.
     """
     sw, sh = app_state.screen_width, app_state.screen_height
 
-    # Background
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=(110, 159, 168, 255),
+    # Background — covers full viewport including toolbar area
+    dpg.draw_rectangle((0, 0), (sw, sh + 55), fill=(110, 159, 168, 255),
                         color=(110, 159, 168, 255), parent=dl)
 
-    # Calibration image (wii2)
+    # Image — left-centre of screen
     tag = _wii_texture_tags[2]
     cfg = dpg.get_item_configuration(tag)
     iw_orig, ih_orig = cfg["width"], cfg["height"]
-    scaled_h = int(0.8 * sh)
+    scaled_h = int(0.75 * sh)
     scaled_w = int(scaled_h * iw_orig / ih_orig)
-    img_x = sw // 2.2 - scaled_w // 2
-    img_y = sh // 1.5 - scaled_h // 2
+    img_x = int(sw * 0.25 - scaled_w // 2)
+    img_y = int(sh * 0.55 + 55 - scaled_h // 2)
     dpg.draw_image(tag, (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl)
 
-    # Text
-    mid_x = sw / 1.8
-    mid_y = sh / 2.9
-    font_size = int(sh * 0.07)
-    dpg.draw_text((mid_x, mid_y),              "Step",         color=(250, 250, 250, 255), size=font_size, parent=dl)
-    dpg.draw_text((mid_x, mid_y + font_size),  "ON" if step == "on" else "OFF",
+    # Text block — right side, vertically centred
+    font_size = int(sh * 0.065)
+    text_x = int(sw * 0.57)
+    text_y = int(sh * 0.28 + 55)
+    line_h = int(font_size * 1.3)
+
+    dpg.draw_text((text_x, text_y),          "Step",
+                  color=(250, 250, 250, 255), size=font_size, parent=dl)
+    dpg.draw_text((text_x, text_y + line_h), "ON" if step == "on" else "OFF",
                   color=(0, 250, 0, 255) if step == "on" else (250, 0, 0, 255),
                   size=font_size, parent=dl)
-    dpg.draw_text((mid_x, mid_y + font_size * 2), "the board",   color=(250, 250, 250, 255), size=font_size, parent=dl)
+    dpg.draw_text((text_x, text_y + line_h * 2), "the board",
+                  color=(250, 250, 250, 255), size=font_size, parent=dl)
     if step == "on":
-        dpg.draw_text((mid_x, mid_y + font_size * 5), "and stand still", color=(250, 250, 250, 255), size=font_size, parent=dl)
+        dpg.draw_text((text_x, text_y + line_h * 4), "and stand still",
+                      color=(250, 250, 250, 255), size=font_size, parent=dl)
 
-    # Progress arc (approximated as a series of line segments)
+    # Progress arc — centred on right half, below text
     _draw_arc(dl, sw, sh, counter, max_count, step)
 
 
 def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:
-    """Draw a progress arc using line segments (DPG has no native arc primitive)."""
-    cx = sw * 0.54 + sh * 0.25   # centre x
-    cy = sh * 0.2  + sh * 0.25   # centre y
-    radius = sh * 0.22
+    """
+    Draw a progress arc using line segments.
+    Starts from the top (-pi/2) and sweeps clockwise so it fills like a clock.
+    Positioned on the right half of the screen, below the text block.
+    """
+    cx = int( sw * 0.65 )           # right panel, pulled in to avoid clipping
+    cy = int(sh * 0.45 )     # below text, vertically centred
+    radius = int(sh * 0.22)
     color = (0, 250, 0, 255) if step == "on" else (250, 0, 0, 255)
-    angle = 2 * math.pi * counter / max_count if max_count > 0 else 0
-    segments = max(1, int(angle * 30))  # ~30 segments per full circle
+    sweep = 2 * math.pi * counter / max_count if max_count > 0 else 0
+    segments = max(1, int(sweep * 40))
 
+    start = -math.pi / 2  # 12 o'clock position
     for i in range(segments):
-        a0 = i       * angle / segments
-        a1 = (i + 1) * angle / segments
+        a0 = start + i       * sweep / segments
+        a1 = start + (i + 1) * sweep / segments
         x0 = cx + radius * math.cos(a0)
         y0 = cy + radius * math.sin(a0)
         x1 = cx + radius * math.cos(a1)
         y1 = cy + radius * math.sin(a1)
-        dpg.draw_line((x0, y0), (x1, y1), color=color, thickness=4, parent=dl)
+        dpg.draw_line((x0, y0), (x1, y1), color=color, thickness=5, parent=dl)
 
 
 def draw_connection_screen(dl, app_state) -> None:
@@ -238,23 +247,5 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
         color=(0, 0, 0, 255), thickness=line_w, parent=dl,
     )
 
-    # Weight distribution bar (at bottom of canvas in viewport coords)
-    if app_state.weight > 0:
-        perc_left  = (top_left  + bottom_left)  / app_state.weight
-        perc_right = (top_right + bottom_right) / app_state.weight
-    else:
-        perc_left = perc_right = 0.5
-
-    bar_top = sh + T - 20
-    bar_bot = sh + T
-    dpg.draw_rectangle((0, bar_top), (sw, bar_bot), fill=(255, 0, 0, 255), color=(255, 0, 0, 255), parent=dl)
-    x0 = sw // 2 - perc_left  * sw // 2
-    x1 = sw // 2
-    dpg.draw_rectangle((x0, bar_top), (x1, bar_bot), fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent=dl)
-    x0 = sw // 2
-    x1 = sw // 2 + perc_right * sw // 2
-    dpg.draw_rectangle((x0, bar_top), (x1, bar_bot), fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent=dl)
-
-    # Text stats (perc_left, perc_right, curr_weight) are rendered as crisp
-    # DPG widget text in the stats_bar window built in app.py — not here.
-    # Drawing text on a drawlist causes blur due to sub-pixel redraws every frame.
+    # Weight bar and stats text are both drawn on stats_dl in app.py
+    # so they render above the canvas layer in the correct order.

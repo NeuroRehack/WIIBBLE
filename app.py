@@ -182,13 +182,13 @@ _stats_cache = {"left": -1, "weight": -1, "right": -1}
 
 
 def _build_stats_bar(app_state) -> None:
-    # Create a dedicated drawlist for stats text.
-    # It sits below the canvas drawlist and only redraws on value change.
-    sw = app_state.screen_width
-    vh = dpg.get_viewport_height()
+    # Create or reuse a dedicated drawlist for stats (bar + text).
+    # front=True ensures it draws above the canvas drawlist.
     if not dpg.does_item_exist("stats_dl"):
         dpg.add_viewport_drawlist(tag="stats_dl", front=True)
-    # Reset cache to force a redraw on first frame
+    # Clear any content from a previous session
+    dpg.delete_item("stats_dl", children_only=True)
+    # Reset cache to force a full redraw on first frame
     _stats_cache["left"]   = -1
     _stats_cache["weight"] = -1
     _stats_cache["right"]  = -1
@@ -212,13 +212,34 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
     sw = dpg.get_viewport_width()
     vh = dpg.get_viewport_height()
     font_size = max(24, int(vh * 0.055))
-    # Position text at integer pixel coords to avoid sub-pixel blur
-    y = int(vh - font_size - 8)
+    # Sit above the 20px weight bar with padding, using integer coords
+    y = int(vh - font_size - 50)
+
+    bar_top = vh - 50
+    bar_bot = vh
 
     dpg.delete_item("stats_dl", children_only=True)
-    dpg.draw_text((10,          y), f"{left_val}%",    color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
-    dpg.draw_text((sw // 2 - 40, y), f"{weight_val} kg", color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
-    dpg.draw_text((sw - 120,    y), f"{right_val}%",   color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
+
+    # Weight distribution bar (red background, green for each side)
+    dpg.draw_rectangle((0, bar_top), (sw, bar_bot),
+                       fill=(255, 0, 0, 255), color=(255, 0, 0, 255), parent="stats_dl")
+    if _stats_cache["weight"] > 0:
+        pl = _stats_cache["left"]  / 100
+        pr = _stats_cache["right"] / 100
+    else:
+        pl = pr = 0.5
+    x0 = sw // 2 - pl * sw // 2
+    dpg.draw_rectangle((x0, bar_top), (sw // 2, bar_bot),
+                       fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent="stats_dl")
+    x0 = sw // 2
+    x1 = sw // 2 + pr * sw // 2
+    dpg.draw_rectangle((x0, bar_top), (x1, bar_bot),
+                       fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent="stats_dl")
+
+    # Text above the bar
+    dpg.draw_text((10,                  y), f"{left_val}%",     color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
+    dpg.draw_text((sw // 2 - 40,        y), f"{weight_val} kg", color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
+    dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
 
 
 def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:

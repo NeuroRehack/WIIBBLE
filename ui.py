@@ -140,7 +140,9 @@ def draw_main_screen(
                             int(frac * trail_color[2])),
                            coords[i], int(i * 20 / n))
 
-    # --- Cursor (S1: avatar or simple circle) ---
+    # --- Cursor (avatar or simple circle) ---
+    # Both cursor types are clickable to toggle mode — the hit radius
+    # matches what app.py uses for click detection.
     if settings.cursor_mode == "avatar":
         iw, ih = person_image.get_size()
         scaled = pygame.transform.scale(
@@ -150,6 +152,7 @@ def draw_main_screen(
         sw2, sh2 = scaled.get_size()
         screen.blit(scaled, (ball_x - sw2 // 2, ball_y - sh2))
     else:
+        # Circle cursor: filled with outline so it reads as interactive
         pygame.draw.circle(screen, (110, 159, 168), (ball_x, ball_y), 20)
 
     # --- Bounding box of historical movement ---

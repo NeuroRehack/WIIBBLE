@@ -31,7 +31,7 @@ if __name__ == "__main__":
     pygame.mixer.quit()  # no audio hardware in most deployment environments
 
     info = pygame.display.Info()
-    settings  = Settings()
+    settings  = Settings.load()
     app_state = AppState(
         screen_width=info.current_w,
         screen_height=info.current_h * 0.9,

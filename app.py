@@ -176,11 +176,24 @@ def _run_session(app_state, settings, args) -> int:
                         min_x, min_y = app_state.screen_width, app_state.screen_height
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    app_state.clicked_locations.append(event.pos)
+                    mx, my = event.pos
+                    # clicking on the cursor toggles cursor mode.
+                    # Use the cursor radius that matches what ui.py draws:
+                    #   avatar  — bounding box half-height (~5% of screen height)
+                    #   circle  — radius 20px
+                    sw, sh = app_state.screen_width, app_state.screen_height
+                    cursor_radius = int(0.05 * sh) if settings.cursor_mode == "avatar" else 20
+                    dist = ((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2) ** 0.5
+                    if dist <= cursor_radius:
+                        settings.toggle_cursor_mode()
+                    else:
+                        app_state.clicked_locations.append(event.pos)
 
                 manager.process_events(event)
 
             data = read_data(device)
+            if not data:
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
             if data:
                 corners = parse_data(data, app_state.data_struct)
                 top_right, bottom_right, top_left, bottom_left = corners.values()
@@ -198,6 +211,19 @@ def _run_session(app_state, settings, args) -> int:
 
                 ball_x = int(app_state.screen_width  // 2 + x)
                 ball_y = int(app_state.screen_height // 2 + y)
+
+                # Keep app_state current so click handler can use cursor position
+                app_state.ball_x = ball_x
+                app_state.ball_y = ball_y
+
+                # change mouse cursor to hand when hovering over the balance cursor
+                cursor_radius = int(0.05 * app_state.screen_height) if settings.cursor_mode == "avatar" else 20
+                mx, my = pygame.mouse.get_pos()
+                dist = ((mx - ball_x) ** 2 + (my - ball_y) ** 2) ** 0.5
+                if dist <= cursor_radius:
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+                else:
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
                 app_state.historical_coords.append((ball_x, ball_y))
                 # Keep list capped at trail_length (S2)

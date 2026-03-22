@@ -7,6 +7,29 @@ import math
 import dearpygui.dearpygui as dpg
 from resources import IMAGE_PATHS, CONNECTION_PATH, PERSON_IMAGE_PATH
 
+# ---------------------------------------------------------------------------
+# Layout constants — all proportional to viewport dimensions.
+# Change a value here and it propagates everywhere.
+# ---------------------------------------------------------------------------
+TOOLBAR_H         = 55      # height of top control bar in pixels
+STATS_STRIP_H     = 50      # height of bottom stats strip in pixels
+STATS_FONT_SCALE  = 0.055   # stats font size as fraction of viewport height
+STATS_FONT_MIN    = 24      # minimum stats font size in pixels
+
+# Calibration screen (fractions of canvas width/height)
+CALIB_IMG_CENTRE_X  = 0.25
+CALIB_IMG_HEIGHT    = 0.75
+CALIB_IMG_VERT      = 0.55
+CALIB_TEXT_X        = 0.57
+CALIB_TEXT_TOP      = 0.28
+CALIB_TEXT_FONT     = 0.065
+CALIB_TEXT_LINE_H   = 1.3
+CALIB_ARC_CENTRE_X  = 0.65
+CALIB_ARC_CENTRE_Y  = 0.45
+CALIB_ARC_RADIUS    = 0.22
+CALIB_ARC_THICKNESS = 5
+CALIB_ARC_SEGMENTS  = 40
+
 
 # ---------------------------------------------------------------------------
 # Texture registry — images must be loaded into DPG's texture system
@@ -61,67 +84,67 @@ def get_person_image_size() -> tuple:
 def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state) -> None:
     """
     Draw the 'Step ON' or 'Step OFF' calibration screen.
-    Layout: image centred-left, text + arc on the right third of the screen.
+    Reads live viewport dimensions so layout is always correct after resize.
+    All proportions are defined in the LAYOUT constants at the top of this file.
     """
-    sw, sh = app_state.screen_width, app_state.screen_height
+    # Read live viewport — not app_state which lags one frame on resize
+    sw = dpg.get_viewport_width()
+    sh = dpg.get_viewport_height() - TOOLBAR_H
 
-    # Background — covers full viewport including toolbar area
-    dpg.draw_rectangle((0, 0), (sw, sh + 55), fill=(110, 159, 168, 255),
-                        color=(110, 159, 168, 255), parent=dl)
+    dpg.draw_rectangle((0, 0), (sw, sh + TOOLBAR_H),
+                        fill=(110, 159, 168, 255), color=(110, 159, 168, 255), parent=dl)
 
-    # Image — left-centre of screen
     tag = _wii_texture_tags[2]
     cfg = dpg.get_item_configuration(tag)
     iw_orig, ih_orig = cfg["width"], cfg["height"]
-    scaled_h = int(0.75 * sh)
+    scaled_h = int(CALIB_IMG_HEIGHT * sh)
     scaled_w = int(scaled_h * iw_orig / ih_orig)
-    img_x = int(sw * 0.25 - scaled_w // 2)
-    img_y = int(sh * 0.55 + 55 - scaled_h // 2)
+    img_x = int(sw * CALIB_IMG_CENTRE_X - scaled_w // 2)
+    img_y = int(sh * CALIB_IMG_VERT + TOOLBAR_H - scaled_h // 2)
     dpg.draw_image(tag, (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl)
 
-    # Text block — right side, vertically centred
-    font_size = int(sh * 0.065)
-    text_x = int(sw * 0.57)
-    text_y = int(sh * 0.28 + 55)
-    line_h = int(font_size * 1.3)
+    font_size = int(sh * CALIB_TEXT_FONT)
+    text_x    = int(sw * CALIB_TEXT_X)
+    text_y    = int(sh * CALIB_TEXT_TOP + TOOLBAR_H)
+    line_h    = int(font_size * CALIB_TEXT_LINE_H)
 
-    dpg.draw_text((text_x, text_y),          "Step",
+    dpg.draw_text((text_x, text_y),            "Step",
                   color=(250, 250, 250, 255), size=font_size, parent=dl)
-    dpg.draw_text((text_x, text_y + line_h), "ON" if step == "on" else "OFF",
+    dpg.draw_text((text_x, text_y + line_h),   "ON" if step == "on" else "OFF",
                   color=(0, 250, 0, 255) if step == "on" else (250, 0, 0, 255),
                   size=font_size, parent=dl)
-    dpg.draw_text((text_x, text_y + line_h * 2), "the board",
+    dpg.draw_text((text_x, text_y + line_h*2), "the board",
                   color=(250, 250, 250, 255), size=font_size, parent=dl)
     if step == "on":
-        dpg.draw_text((text_x, text_y + line_h * 4), "and stand still",
+        dpg.draw_text((text_x, text_y + line_h*4), "and stand still",
                       color=(250, 250, 250, 255), size=font_size, parent=dl)
 
-    # Progress arc — centred on right half, below text
     _draw_arc(dl, sw, sh, counter, max_count, step)
 
 
 def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:
     """
-    Draw a progress arc using line segments.
-    Starts from the top (-pi/2) and sweeps clockwise so it fills like a clock.
-    Positioned on the right half of the screen, below the text block.
+    Draw a clockwise progress arc from 12 o'clock using line segments.
+    sw/sh must be live viewport dimensions (passed from draw_step_instruction).
+    All proportions are defined in the LAYOUT constants at the top of this file.
     """
-    cx = int( sw * 0.65 )           # right panel, pulled in to avoid clipping
-    cy = int(sh * 0.45 )     # below text, vertically centred
-    radius = int(sh * 0.22)
-    color = (0, 250, 0, 255) if step == "on" else (250, 0, 0, 255)
-    sweep = 2 * math.pi * counter / max_count if max_count > 0 else 0
-    segments = max(1, int(sweep * 40))
+    cx     = int(sw * CALIB_ARC_CENTRE_X)
+    cy     = int(sh * CALIB_ARC_CENTRE_Y + TOOLBAR_H)
+    radius = int(sh * CALIB_ARC_RADIUS)
+    color  = (0, 250, 0, 255) if step == "on" else (250, 0, 0, 255)
+    sweep  = 2 * math.pi * counter / max_count if max_count > 0 else 0
+    segs   = max(1, int(sweep * CALIB_ARC_SEGMENTS))
+    start  = -math.pi / 2  # 12 o'clock
 
-    start = -math.pi / 2  # 12 o'clock position
-    for i in range(segments):
-        a0 = start + i       * sweep / segments
-        a1 = start + (i + 1) * sweep / segments
+    for i in range(segs):
+        a0 = start + i       * sweep / segs
+        a1 = start + (i + 1) * sweep / segs
         x0 = cx + radius * math.cos(a0)
         y0 = cy + radius * math.sin(a0)
         x1 = cx + radius * math.cos(a1)
         y1 = cy + radius * math.sin(a1)
-        dpg.draw_line((x0, y0), (x1, y1), color=color, thickness=5, parent=dl)
+        dpg.draw_line((x0, y0), (x1, y1), color=color,
+                      thickness=CALIB_ARC_THICKNESS, parent=dl)
 
 
 def draw_connection_screen(dl, app_state) -> None:
@@ -171,7 +194,7 @@ def draw_connection_failed_screen(dl, app_state) -> None:
 # Main balance screen
 # ---------------------------------------------------------------------------
 
-TOOLBAR_H = 55  # height of control panel — canvas drawing is offset below this
+# TOOLBAR_H defined in layout constants at top of this file
 
 
 def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,

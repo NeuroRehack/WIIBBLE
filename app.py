@@ -9,7 +9,8 @@ from resources       import ICON_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates
 from calibration     import wait_for_tare, sensitivity_calibration
 from ui              import (draw_main_screen, draw_connection_screen,
-                             draw_connection_failed_screen, ensure_textures_loaded)
+                             draw_connection_failed_screen, ensure_textures_loaded,
+                             TOOLBAR_H, STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
 from mock_board      import MockHIDDevice
 
 
@@ -211,12 +212,10 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
 
     sw = dpg.get_viewport_width()
     vh = dpg.get_viewport_height()
-    font_size = max(24, int(vh * 0.055))
-    # Sit above the 20px weight bar with padding, using integer coords
-    y = int(vh - font_size - 50)
-
-    bar_top = vh - 50
-    bar_bot = vh
+    font_size = max(STATS_FONT_MIN, int(vh * STATS_FONT_SCALE))
+    bar_top   = vh - STATS_STRIP_H
+    bar_bot   = vh
+    y         = bar_top - font_size - 6
 
     dpg.delete_item("stats_dl", children_only=True)
 

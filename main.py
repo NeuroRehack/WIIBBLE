@@ -1,5 +1,6 @@
 #WIBBLE - Wii Balance Board Live Environment
 
+
 import os
 import sys
 import argparse
@@ -10,8 +11,10 @@ import numpy as np
 import pygame_gui
 from board_connection import try_connection
 
-# Cross-platform DLL path
-DLL_RELATIVE_PATH = os.path.join('WiiBalanceBoardLibrary', 'bin', 'Debug', 'net48', 'WiiBalanceBoardLibrary.dll')
+from constants import VENDOR_ID, PRODUCT_ID, SCALE_FACTOR, DLL_RELATIVE_PATH
+from state import Settings, AppState
+
+
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -29,10 +32,7 @@ person_image_path = resource_path("images/logoPerson.png")
 image_paths = [resource_path(f"images/wii{i}.png") for i in range(3)]
 connection_path = resource_path("images/connection.png")
 
-# Constants
-VENDOR_ID = 0x057e  # Nintendo Co., Ltd
-PRODUCT_ID = 0x0306  # Balance Board
-SCALE_FACTOR = 2.6441910428028423
+
 
 
 # Argument parsing
@@ -41,22 +41,18 @@ parser.add_argument("--mock", action="store_true", help="Run in mock mode withou
 parser.add_argument("--mock-scenario", type=str, default="sway", help="Mock scenario: still, sway, lean_left, lean_right, hands")
 args = parser.parse_args()
 
+
 # Initialize pygame and get screen size
 pygame.init()
 info = pygame.display.Info()
-SCREEN_WIDTH = info.current_w * 1
-SCREEN_HEIGHT = info.current_h * 0.9
 
-# Data structure for balance board
-data_struct = {
-    "top_right": {"rawIndex": 3, "tare": 0},
-    "bottom_right": {"rawIndex": 5, "tare": 0},
-    "top_left": {"rawIndex": 7, "tare": 0},
-    "bottom_left": {"rawIndex": 9, "tare": 0}
-}
-
-historical_coords = [(0, 0) for _ in range(100)]
-weight = 0.1
+# Initialize settings and app state
+settings = Settings()
+app_state = AppState(
+    screen_width=info.current_w * 1,
+    screen_height=info.current_h * 0.9,
+    historical_coords=[(0, 0)] * settings.trail_length
+)
 
 def connect_wii_board(use_mock=False, mock_scenario="sway"):
     if use_mock:
@@ -86,7 +82,7 @@ def read_data(device):
 
 def parse_data(data):
     corners = {}
-    for key, val in data_struct.items():
+    for key, val in app_state.data_struct.items():
         raw_index = val["rawIndex"]
         tare = val["tare"]
         corners[key] = round((data[raw_index] + data[raw_index + 1] / 255 - tare) * SCALE_FACTOR, 2)
@@ -95,30 +91,30 @@ def parse_data(data):
 def tare(device):
     print("Taring...")
     # Reset tare values before taring
-    for val in data_struct.values():
+    for val in app_state.data_struct.values():
         val["tare"] = 0
     i = 0
     while i < 10:
         data = device.read(32)
         if data:
             data = np.array(data)
-            for val in data_struct.values():
+            for val in app_state.data_struct.values():
                 val["tare"] += data[val["rawIndex"]] + data[val["rawIndex"] + 1] / 255
             i += 1
         print("*" * i)
-    for val in data_struct.values():
+    for val in app_state.data_struct.values():
         val["tare"] /= 10
-    print(f"Tare: {data_struct}")
+    print(f"Tare: {app_state.data_struct}")
 
 def calculate_coordinates(top_left, top_right, bottom_left, bottom_right):
-    top_left /= -weight
-    top_right /= -weight
-    bottom_left /= -weight
-    bottom_right /= -weight
+    top_left /= -app_state.weight
+    top_right /= -app_state.weight
+    bottom_left /= -app_state.weight
+    bottom_right /= -app_state.weight
     x = (top_left + bottom_left) / 2 - (top_right + bottom_right) / 2
     y = (top_left + top_right) / 2 - (bottom_left + bottom_right) / 2
-    x *= SCREEN_WIDTH * 0.9
-    y *= SCREEN_HEIGHT * 0.9
+    x *= app_state.screen_width * 0.9
+    y *= app_state.screen_height * 0.9
     return x, y
 
 def measure_weight(device):
@@ -156,36 +152,30 @@ def display_message(screen, font, message, color, position):
 
     
 
-def show_step_on_board(screen,image):
-    mid_screen = SCREEN_WIDTH / 1.8
-    mid_height = SCREEN_HEIGHT / 2.9
+def show_step_on_board(screen, image):
+    mid_screen = app_state.screen_width / 1.8
+    mid_height = app_state.screen_height / 2.9
     font = pygame.font.Font(None, 82)
     screen.fill((110, 159, 168))
-    # display an image
     imgsize = image.get_size()
     w, h = imgsize
-    # scale the image to the screen size
-    image = pygame.transform.scale(image, (0.8*SCREEN_HEIGHT*w//h, 0.8*SCREEN_HEIGHT))
-    screen.blit(image, (SCREEN_WIDTH//2.2-w//2, SCREEN_HEIGHT//1.5-h//2))
+    image = pygame.transform.scale(image, (0.8 * app_state.screen_height * w // h, int(0.8 * app_state.screen_height)))
+    screen.blit(image, (app_state.screen_width // 2.2 - w // 2, app_state.screen_height // 1.5 - h // 2))
     display_message(screen, font, "         Step", (250, 250, 250), (mid_screen, mid_height))
-    display_message(screen,font ,"\n          ON", (0, 250, 0), (mid_screen, mid_height))
+    display_message(screen, font, "\n          ON", (0, 250, 0), (mid_screen, mid_height))
     display_message(screen, font, "\n\n     the board", (250, 250, 250), (mid_screen, mid_height))
-    display_message(screen,font ,"\n\n\n\n\n\n and stand still", (250, 250, 250), (mid_screen, mid_height))
+    display_message(screen, font, "\n\n\n\n\n\n and stand still", (250, 250, 250), (mid_screen, mid_height))
     pygame.display.flip()
 
-def show_step_off_board(screen,image):
-    mid_screen = SCREEN_WIDTH / 1.8
-    mid_height = SCREEN_HEIGHT / 2.9
-    
-    
+def show_step_off_board(screen, image):
+    mid_screen = app_state.screen_width / 1.8
+    mid_height = app_state.screen_height / 2.9
     font = pygame.font.Font(None, 82)
     screen.fill((110, 159, 168))
-    # display an image
     imgsize = image.get_size()
     w, h = imgsize
-    # scale the image to the screen size
-    image = pygame.transform.scale(image, (0.8*SCREEN_HEIGHT*w//h, 0.8*SCREEN_HEIGHT))
-    screen.blit(image, (SCREEN_WIDTH//2.2-w//2, SCREEN_HEIGHT//1.5-h//2))
+    image = pygame.transform.scale(image, (0.8 * app_state.screen_height * w // h, int(0.8 * app_state.screen_height)))
+    screen.blit(image, (app_state.screen_width // 2.2 - w // 2, app_state.screen_height // 1.5 - h // 2))
     display_message(screen, font, "         Step", (250, 250, 250), (mid_screen, mid_height))
     display_message(screen, font, "\n         OFF", (250, 0, 0), (mid_screen, mid_height))
     display_message(screen, font, "\n\n     the board", (250, 250, 250), (mid_screen, mid_height))
@@ -231,8 +221,11 @@ def sensitivity_calibration(device, screen, on_start=None):
         # draw a circle the gets completed as the counter increases
         
     
-        show_step_on_board(screen,images[2])
-        pygame.draw.arc(screen, (0, 250, 0), (SCREEN_WIDTH*0.54, SCREEN_HEIGHT*0.2, SCREEN_HEIGHT//2, SCREEN_HEIGHT//2), 0, 2 * np.pi *counter / maxCounter, 10)# 
+        show_step_on_board(screen, images[2])
+        pygame.draw.arc(
+            screen, (0, 250, 0),
+            (app_state.screen_width * 0.54, app_state.screen_height * 0.2, int(app_state.screen_height // 2), int(app_state.screen_height // 2)),
+            0, 2 * np.pi * counter / maxCounter, 10)
         pygame.display.flip()
     return weight
 
@@ -272,8 +265,11 @@ def wait_for_tare(device, screen):
         # draw a circle the gets completed as the counter increases
         
     
-        show_step_off_board(screen,images[2])
-        pygame.draw.arc(screen, (250, 0, 0), (SCREEN_WIDTH*0.54, SCREEN_HEIGHT*0.2, SCREEN_HEIGHT//2, SCREEN_HEIGHT//2), 0, 2 * np.pi *counter / maxCounter, 10)# 
+        show_step_off_board(screen, images[2])
+        pygame.draw.arc(
+            screen, (250, 0, 0),
+            (app_state.screen_width * 0.54, app_state.screen_height * 0.2, int(app_state.screen_height // 2), int(app_state.screen_height // 2)),
+            0, 2 * np.pi * counter / maxCounter, 10)
         pygame.display.flip()
     return weight
                 
@@ -289,8 +285,8 @@ def try_connection_loop(screen, use_mock=False):
         return
     # a function that tries to connect to the balance board
     font = pygame.font.Font(None, 82)
-    mid_screen = SCREEN_WIDTH / 2.5
-    mid_height = SCREEN_HEIGHT / 2.9
+    mid_screen = app_state.screen_width / 2.5
+    mid_height = app_state.screen_height / 2.9
     while True:
         screen.fill((110, 159, 168))
         display_message(screen, font, "Trying to connect", (250, 250, 250), (mid_screen, mid_height))
@@ -309,9 +305,9 @@ def try_connection_loop(screen, use_mock=False):
             imgsize = image.get_size()
             w, h = imgsize
             # scale the image to the screen size
-            image = pygame.transform.scale(image, (0.8*SCREEN_HEIGHT*w//h, 0.8*SCREEN_HEIGHT))
-            w,h = image.get_size()
-            screen.blit(image, (SCREEN_WIDTH//2-w//2, SCREEN_HEIGHT//2-h//2))
+            image = pygame.transform.scale(image, (0.8 * app_state.screen_height * w // h, int(0.8 * app_state.screen_height)))
+            w, h = image.get_size()
+            screen.blit(image, (app_state.screen_width // 2 - w // 2, app_state.screen_height // 2 - h // 2))
             display_message(screen, font, "Failed to connect", (250, 0, 0), (mid_screen*0.6, mid_height))
             display_message(screen, font, "\nCheck the following: ", (250, 250, 250), (mid_screen*0.6, mid_height))
             display_message(screen, font, "\n\n    1. bluetooth is enabled on your computer", (250, 250, 250), (mid_screen*0.6, mid_height))
@@ -325,39 +321,29 @@ def try_connection_loop(screen, use_mock=False):
 
 
 def main():
-    global SCREEN_WIDTH, SCREEN_HEIGHT, weight, data_struct, historical_coords
-    # Reset global state on each run (supports RESTART button)
-    data_struct = {
-        "top_right":    {"rawIndex": 3, "tare": 0},
-        "bottom_right": {"rawIndex": 5, "tare": 0},
-        "top_left":     {"rawIndex": 7, "tare": 0},
-        "bottom_left":  {"rawIndex": 9, "tare": 0}
-    }
-    historical_coords = [(0, 0) for _ in range(100)]
-    clickedLocations = []
-
-    screen = pygame.display.set_mode((int(SCREEN_WIDTH), int(SCREEN_HEIGHT)), pygame.RESIZABLE)
+    # Reset app state on each run (supports RESTART button)
+    app_state.reset()
+    screen = pygame.display.set_mode((int(app_state.screen_width), int(app_state.screen_height)), pygame.RESIZABLE)
     pygame.display.set_caption("WIBBLE - Wii Balance Board Live Environment")
     # set icon
     icon = pygame.image.load(icon_path)
     pygame.display.set_icon(icon)
     
-    manager = pygame_gui.UIManager((SCREEN_WIDTH, SCREEN_HEIGHT))
+    manager = pygame_gui.UIManager((app_state.screen_width, app_state.screen_height))
 
     # Create a button
     button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((0, 0), (150, 50)),
                                             text='RESTART',
                                             manager=manager,
                                             object_id="#settings_button",
-
                                             )
     reset_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((150, 0), (150, 50)),
                                             text='RESET SCREEN',
                                             manager=manager,
                                             object_id="#reset_button",
-                                            
                                             )
     clock = pygame.time.Clock()
+    clickedLocations = app_state.clicked_locations
     
     try:
         try_connection_loop(screen, use_mock=args.mock)
@@ -384,8 +370,9 @@ def main():
         weight = sensitivity_calibration(device, screen, on_start=on_start)
         if weight == -1:
             return 1
+        app_state.weight = weight  # store calibrated weight so calculate_coordinates() uses it
         
-        max_x, max_y, min_x, min_y = 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+        max_x, max_y, min_x, min_y = 0, 0, app_state.screen_width, app_state.screen_height
         run = True
         personImage = pygame.image.load(person_image_path)
 
@@ -399,15 +386,15 @@ def main():
                         device.close()
                         return 1
                     elif event.type == pygame.VIDEORESIZE:
-                        SCREEN_WIDTH, SCREEN_HEIGHT = event.w, event.h
-                        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+                        app_state.screen_width, app_state.screen_height = event.w, event.h
+                        screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
                     elif event.type == pygame_gui.UI_BUTTON_PRESSED:
                         if event.ui_element == button:
                             run = False
                         if event.ui_element == reset_button:
                             clickedLocations = []
-                            historical_coords = [(0, 0) for _ in range(100)]
-                            max_x, max_y, min_x, min_y = 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT
+                            app_state.historical_coords = [(0, 0) for _ in range(100)]
+                            max_x, max_y, min_x, min_y = 0, 0, app_state.screen_width, app_state.screen_height
                             
                     # if the person click the left mouse button
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -429,17 +416,17 @@ def main():
                     # Update historical coordinates
                     curr_weight = sum(corners.values())
                     screen.fill((255, 255, 255))
-                    ball_x = SCREEN_WIDTH // 2 + int(x)
-                    ball_y = SCREEN_HEIGHT // 2 + int(y)
-                    historical_coords.pop(0)
-                    historical_coords.append((ball_x, ball_y))
+                    ball_x = app_state.screen_width // 2 + int(x)
+                    ball_y = app_state.screen_height // 2 + int(y)
+                    app_state.historical_coords.pop(0)
+                    app_state.historical_coords.append((ball_x, ball_y))
                     
                     # Draw Center Lines
-                    pygame.draw.line(screen, (0, 0, 0), (0, SCREEN_HEIGHT // 2), (SCREEN_WIDTH, SCREEN_HEIGHT // 2), int(SCREEN_WIDTH / 200))
-                    pygame.draw.line(screen, (0, 0, 0), (SCREEN_WIDTH // 2, 0), (SCREEN_WIDTH // 2, SCREEN_HEIGHT), int(SCREEN_WIDTH / 200))
+                    pygame.draw.line(screen, (0, 0, 0), (0, app_state.screen_height // 2), (app_state.screen_width, app_state.screen_height // 2), int(app_state.screen_width / 200))
+                    pygame.draw.line(screen, (0, 0, 0), (app_state.screen_width // 2, 0), (app_state.screen_width // 2, app_state.screen_height), int(app_state.screen_width / 200))
                     # add circle to the center
-                    pygame.draw.circle(screen, (0, 0, 0), (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2), int(SCREEN_WIDTH / 50))
-                    pygame.draw.circle(screen, (255,255,255), (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2), int(SCREEN_WIDTH / 20))
+                    pygame.draw.circle(screen, (0, 0, 0), (app_state.screen_width // 2, app_state.screen_height // 2), int(app_state.screen_width / 50))
+                    pygame.draw.circle(screen, (255,255,255), (app_state.screen_width // 2, app_state.screen_height // 2), int(app_state.screen_width / 20))
                     
                     for loc in clickedLocations:
                         pygame.draw.circle(screen, (255, 0, 0), loc,50 )
@@ -452,12 +439,12 @@ def main():
                     
                     # Draw historical coordinates and current ball position
                     trail_color = (110, 159, 168)
-                    for i in range(1, len(historical_coords)):
-                        pygame.draw.circle(screen, (i * 255 / len(historical_coords), 0, 0), historical_coords[i], i * 20 / len(historical_coords))
-                        pygame.draw.circle(screen, (i * trail_color[0] / len(historical_coords), 
-                                                    i * trail_color[1] / len(historical_coords), 
-                                                    i * trail_color[2] / len(historical_coords)), 
-                                           historical_coords[i], i * 20 / len(historical_coords))
+                    for i in range(1, len(app_state.historical_coords)):
+                        pygame.draw.circle(screen, (i * 255 / len(app_state.historical_coords), 0, 0), app_state.historical_coords[i], i * 20 / len(app_state.historical_coords))
+                        pygame.draw.circle(screen, (i * trail_color[0] / len(app_state.historical_coords), 
+                                                    i * trail_color[1] / len(app_state.historical_coords), 
+                                                    i * trail_color[2] / len(app_state.historical_coords)), 
+                                           app_state.historical_coords[i], i * 20 / len(app_state.historical_coords))
                     pygame.draw.circle(screen, (110, 159, 168), (ball_x, ball_y), 20)
                     
 
@@ -465,27 +452,25 @@ def main():
                     # Draw weight distribution bar at the bottom of the screen
                     perc_left = (top_left + bottom_left) / weight # compute the percentage of weight on the left side
                     perc_right = (top_right + bottom_right) / weight # compute the percentage of weight on the right side
-                    pygame.draw.rect(screen, (255, 0, 0), (0, SCREEN_HEIGHT - 20, int(SCREEN_WIDTH * weight / weight), 20)) # draw a red rectangle at the bottom of the screen
-                    x0 = SCREEN_WIDTH // 2 - perc_left * SCREEN_WIDTH // 2 # compute the x coordinate of the left weight distribution
-                    x1 = SCREEN_WIDTH // 2 - x0                             # compute the width of the left weight distribution
-                    pygame.draw.rect(screen, (0, 255, 0), (x0, SCREEN_HEIGHT - 20, x1, 20)) # draw the left weight distribution
-                    x0 = SCREEN_WIDTH // 2  # compute the x coordinate of the right weight distribution
-                    x1 = perc_right * SCREEN_WIDTH // 2 # compute the width of the right weight distribution
-                    pygame.draw.rect(screen, (0, 255, 0), (x0, SCREEN_HEIGHT - 20, x1, 20)) # draw the right weight distribution
+                    pygame.draw.rect(screen, (255, 0, 0), (0, app_state.screen_height - 20, int(app_state.screen_width * weight / weight), 20)) # draw a red rectangle at the bottom of the screen
+                    x0 = app_state.screen_width // 2 - perc_left * app_state.screen_width // 2 # compute the x coordinate of the left weight distribution
+                    x1 = app_state.screen_width // 2 - x0                             # compute the width of the left weight distribution
+                    pygame.draw.rect(screen, (0, 255, 0), (x0, app_state.screen_height - 20, x1, 20)) # draw the left weight distribution
+                    x0 = app_state.screen_width // 2  # compute the x coordinate of the right weight distribution
+                    x1 = perc_right * app_state.screen_width // 2 # compute the width of the right weight distribution
+                    pygame.draw.rect(screen, (0, 255, 0), (x0, app_state.screen_height - 20, x1, 20)) # draw the right weight distribution
                     
                     # Display the percentage of weight on each side and the total weight
                     font = pygame.font.Font(None, 64)
                     text = font.render(f"{int(perc_left * 100)}%", True, (0, 0, 0))
-                    screen.blit(text, (50, SCREEN_HEIGHT - 100))
-                    text = font.render(f"{int(perc_right * 100)}%", True, (0, 0, 0))
-                    screen.blit(text, (SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100))
+                    screen.blit(text, (50, app_state.screen_height - 100))
                     text = font.render(f"{int(curr_weight)} kg", True, (0, 0, 0))
-                    screen.blit(text, (SCREEN_WIDTH / 2.4, SCREEN_HEIGHT * 0.9))
-                    pygame.draw.rect(screen, (0, 0, 0), (min_x + SCREEN_WIDTH // 2, min_y + SCREEN_HEIGHT // 2, max_x - min_x, max_y - min_y), int(SCREEN_WIDTH / 200))
+                    screen.blit(text, (app_state.screen_width / 2.4, app_state.screen_height * 0.9))
+                    pygame.draw.rect(screen, (0, 0, 0), (min_x + app_state.screen_width // 2, min_y + app_state.screen_height // 2, max_x - min_x, max_y - min_y), int(app_state.screen_width / 200))
                     
                     imgsize = personImage.get_size()
                     w, h = imgsize
-                    personImageScaled = pygame.transform.scale(personImage, (0.1*SCREEN_HEIGHT*w//h, 0.1*SCREEN_HEIGHT))
+                    personImageScaled = pygame.transform.scale(personImage, (0.1*app_state.screen_height*w//h, 0.1*app_state.screen_height))
                     w,h = personImageScaled.get_size()
                     screen.blit(personImageScaled, (ball_x-w//2, ball_y-h))
                     

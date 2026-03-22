@@ -1,0 +1,44 @@
+[project]
+name = "wiibble"
+version = "0.1.0"
+description = "Wii Balance Board Live Environment — clinical rehabilitation tool"
+readme = "ReadMe.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+dependencies = [
+    "hidapi==0.14.0.post2",
+    "numpy==1.24.4",
+    "pythonnet==3.0.3",
+    "dearpygui==2.1.1",
+    "pytz",
+]
+
+[project.optional-dependencies]
+# Development extras — not needed on the clinical machine
+dev = [
+    "pyinstaller==6.10.0",
+    "pytest>=7.0",
+    "ruff>=0.4",
+]
+
+# No [build-system] section — WIIBBLE is a runnable application, not a
+# distributable library. uv sync installs dependencies only, no wheel build.
+# Run the app with: python main.py  or  python main.py --mock
+
+[tool.uv]
+# uv generates uv.lock from this file.
+# To install:            uv sync
+# To install dev extras: uv sync --extra dev
+# To add a dependency:   uv add <package>
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # pycodestyle, pyflakes, isort
+ignore = ["E501"]               # line length handled separately
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

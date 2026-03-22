@@ -11,7 +11,9 @@ from calibration     import wait_for_tare, sensitivity_calibration
 from ui              import (draw_main_screen, draw_connection_screen,
                              draw_connection_failed_screen, ensure_textures_loaded,
                              STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
-from theme           import (BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR, STATS_TEXT_COLOR)
+import theme as _theme_module
+from theme           import (BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR, STATS_TEXT_COLOR,
+                              ICON_COG)
 from mock_board      import MockHIDDevice
 
 
@@ -78,7 +80,9 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 
 TOOLBAR_FULL_H = 55   # toolbar height — canvas always reserves this space
 GEAR_BTN_SIZE  = 40   # floating gear button size
-GEAR_LABEL     = "[=]"  # ASCII settings icon (ProggyClean font has no unicode)
+def _get_gear_label() -> str:
+    # Access FA_ICON_FONT via module to get the live value, not the import-time None
+    return ICON_COG if _theme_module.FA_ICON_FONT is not None else "[=]"
 
 
 def _toggle_toolbar(session_state: dict) -> None:
@@ -119,7 +123,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
     ):
         with dpg.group(horizontal=True):
             dpg.add_button(
-                tag="toggle_btn", label=GEAR_LABEL,
+                tag="toggle_btn", label=_get_gear_label(),
                 callback=lambda: _toggle_toolbar(session_state),
                 width=GEAR_BTN_SIZE, height=GEAR_BTN_SIZE,
             )
@@ -176,10 +180,15 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
         show=False,
     ):
         dpg.add_button(
-            tag="gear_float_btn", label=GEAR_LABEL,
+            tag="gear_float_btn", label=_get_gear_label(),
             callback=lambda: _toggle_toolbar(session_state),
             width=GEAR_BTN_SIZE, height=GEAR_BTN_SIZE,
         )
+
+    # Bind icon font to gear buttons if FontAwesome loaded successfully
+    if _theme_module.FA_ICON_FONT is not None:
+        dpg.bind_item_font("toggle_btn",     _theme_module.FA_ICON_FONT)
+        dpg.bind_item_font("gear_float_btn", _theme_module.FA_ICON_FONT)
 
 
 def _on_trail_change(value: int, settings) -> None:

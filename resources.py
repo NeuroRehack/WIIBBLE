@@ -19,6 +19,9 @@ def resource_path(relative_path: str) -> str:
     return path
 
 
+# Pre-resolved asset paths
+FA_SOLID_FONT_PATH = resource_path("assets/fonts/fa-solid-900.ttf")
+
 # Pre-resolved image paths — imported by any module that needs them
 ICON_PATH         = resource_path("images/logo.png")
 PERSON_IMAGE_PATH = resource_path("images/logoPerson.png")

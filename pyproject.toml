@@ -12,6 +12,7 @@ dependencies = [
     "pythonnet==3.0.3",
     "dearpygui==2.1.1",
     "pytz",
+    # FontAwesome 5 Solid TTF vendored at assets/fonts/fa-solid-900.ttf (OFL-1.1)
 ]
 
 [project.optional-dependencies]

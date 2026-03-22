@@ -10,7 +10,7 @@ import dearpygui.dearpygui as dpg
 
 from state import AppState, Settings
 from app   import run
-from theme import apply_global_theme
+from theme import load_fonts, apply_global_theme
 
 
 def parse_args():
@@ -61,8 +61,9 @@ if __name__ == "__main__":
         x_pos=0,
         y_pos=0,
     )
+    load_fonts()          # must happen before setup_dearpygui()
     dpg.setup_dearpygui()
-    apply_global_theme()
+    apply_global_theme()  # colours/styles after setup
     dpg.show_viewport()
     dpg.maximize_viewport()
 

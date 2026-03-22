@@ -1,8 +1,17 @@
 # theme.py
-# Centralised DPG theme and colour palette for WIIBBLE.
+# Centralised DPG theme, colour palette, and font loading for WIIBBLE.
 # Call apply_global_theme() once after dpg.setup_dearpygui().
 
 import dearpygui.dearpygui as dpg
+from resources import FA_SOLID_FONT_PATH
+
+# ---------------------------------------------------------------------------
+# FontAwesome 5 Solid icon codepoints used in the UI
+# ---------------------------------------------------------------------------
+ICON_COG = ""   # fa-cog (gear / settings)
+
+# Module-level handle — set by apply_global_theme(), used by callers
+FA_ICON_FONT = None
 
 # ---------------------------------------------------------------------------
 # Colour palette
@@ -38,10 +47,30 @@ BAR_RIGHT_COLOR     = (107, 168, 150, 255)   # right side — muted teal-green
 STATS_TEXT_COLOR    = ( 40,  50,  60, 255)   # dark on white canvas
 
 
+def load_fonts() -> None:
+    """
+    Load custom fonts into DPG font registry.
+    MUST be called before dpg.setup_dearpygui() — DPG only uses the
+    first font registry it sees, and setup_dearpygui() finalises it.
+    """
+    global FA_ICON_FONT
+    import os
+    if os.path.exists(FA_SOLID_FONT_PATH):
+        with dpg.font_registry():
+            with dpg.font(FA_SOLID_FONT_PATH, 20) as fa_font:
+                # Only load FA5 icon range — keeps atlas small
+                dpg.add_font_range(0xF000, 0xF8FF)
+        FA_ICON_FONT = fa_font
+        print(f"[Theme] FontAwesome loaded from {FA_SOLID_FONT_PATH}")
+    else:
+        print(f"[WARN] FontAwesome not found at {FA_SOLID_FONT_PATH} — using ASCII fallback")
+        FA_ICON_FONT = None
+
+
 def apply_global_theme() -> None:
     """
-    Apply a clean global DPG theme. Call once after dpg.setup_dearpygui().
-    Sets colours and rounding for all windows, buttons, sliders, and combos.
+    Apply DPG colours and styles.
+    Call after dpg.setup_dearpygui(). Font loading is separate (load_fonts).
     """
     with dpg.theme() as global_theme:
         with dpg.theme_component(dpg.mvAll):

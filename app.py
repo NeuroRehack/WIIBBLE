@@ -1,14 +1,15 @@
 # app.py
-import pygame
-import pygame_gui
+import math
+import dearpygui.dearpygui as dpg
 import hid
 from board_connection import try_connection
 
 from constants       import VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH
-from resources       import ICON_PATH, PERSON_IMAGE_PATH, CONNECTION_PATH, resource_path
+from resources       import ICON_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates
 from calibration     import wait_for_tare, sensitivity_calibration
-from ui              import draw_main_screen, show_connection_failed, display_message
+from ui              import (draw_main_screen, draw_connection_screen,
+                             draw_connection_failed_screen, ensure_textures_loaded)
 from mock_board      import MockHIDDevice
 
 
@@ -34,58 +35,183 @@ def connect_wii_board(use_mock: bool = False, mock_scenario: str = "sway"):
         return None
 
 
-def _wait_for_key():
-    """Block until Enter is pressed or the window is closed."""
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return -1
-
-
-def try_connection_loop(screen, app_state, use_mock: bool = False) -> None:
-    """Show connection screen and loop until board connects (skipped in mock)."""
+def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
+    """
+    Show connection screen and loop until board connects.
+    Returns True on success, False if window closed.
+    Skipped entirely in mock mode.
+    """
     if use_mock:
         print("[MOCK] Skipping connection screen.")
-        return
+        return True
 
-    font       = pygame.font.Font(None, 82)
-    mid_screen = app_state.screen_width  / 2.5
-    mid_height = app_state.screen_height / 2.9
-
-    while True:
-        screen.fill((110, 159, 168))
-        display_message(screen, font, "Trying to connect", (250, 250, 250), (mid_screen, mid_height))
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return
+    while dpg.is_dearpygui_running():
+        # Show "Trying to connect" while attempting
+        dpg.delete_item(dl, children_only=True)
+        draw_connection_screen(dl, app_state)
+        dpg.render_dearpygui_frame()
 
         result = try_connection(resource_path(DLL_RELATIVE_PATH))
         if result == 0:
-            break
-        elif result == 1:
-            show_connection_failed(screen, font, app_state)
-            _wait_for_key()
+            return True
+
+        # Show failed screen and wait for Enter key
+        while dpg.is_dearpygui_running():
+            dpg.delete_item(dl, children_only=True)
+            draw_connection_failed_screen(dl, app_state)
+            dpg.render_dearpygui_frame()
+            if dpg.is_key_pressed(dpg.mvKey_Return):
+                # Show retrying feedback immediately before next attempt
+                dpg.delete_item(dl, children_only=True)
+                draw_connection_screen(dl, app_state)
+                dpg.render_dearpygui_frame()
+                break
+
+    return False
 
 
 # ---------------------------------------------------------------------------
-# Main loop
+# UI control panel
+# ---------------------------------------------------------------------------
+
+def _build_control_panel(app_state, settings, session_state: dict) -> None:
+    """
+    Build the top control bar with buttons and settings controls.
+    Uses Dear PyGui widgets — replaces pygame_gui entirely.
+    session_state is a mutable dict used to signal restart/quit to the main loop.
+    """
+    sw = app_state.screen_width
+
+    with dpg.window(
+        tag="control_panel",
+        no_title_bar=True,
+        no_resize=True,
+        no_move=True,
+        no_scrollbar=True,
+        no_collapse=True,
+        pos=(0, 0),
+        width=sw,
+        height=55,
+    ):
+        # DPG 2.x: use group(horizontal=True) instead of deprecated add_same_line()
+        with dpg.group(horizontal=True):
+            dpg.add_button(
+                label="RESTART",
+                callback=lambda: session_state.update({"action": "restart"}),
+                width=120, height=40,
+            )
+            dpg.add_button(
+                label="RESET SCREEN",
+                callback=lambda: session_state.update({"action": "reset"}),
+                width=140, height=40,
+            )
+            dpg.add_spacer(width=20)
+
+            # S2 — Trail selector (None / Medium / Long)
+            dpg.add_text("Trail:", indent=0)
+            trail_items = ["None", "Medium", "Long"]
+            trail_map   = {"None": 0, "Medium": 30, "Long": 100}
+            trail_rmap  = {0: "None", 30: "Medium", 100: "Long"}
+            # Find closest label for current setting
+            current_label = trail_rmap.get(settings.trail_length, "Long")
+            dpg.add_combo(
+                tag="trail_combo",
+                items=trail_items,
+                default_value=current_label,
+                width=90,
+                callback=lambda s, v: _on_trail_change(trail_map[v], settings),
+            )
+            dpg.add_spacer(width=20)
+
+            # S3 — Zoom slider
+            dpg.add_text("Zoom:")
+            dpg.add_slider_float(
+                tag="zoom_slider",
+                default_value=settings.zoom_factor,
+                min_value=0.1,
+                max_value=10.0,
+                width=140,
+                format="%.2fx",
+                callback=lambda s, v: _on_zoom_change(v, settings, app_state),
+            )
+            dpg.add_spacer(width=10)
+            dpg.add_button(
+                label="Reset Zoom",
+                callback=lambda: _on_zoom_reset(settings),
+                width=100, height=40,
+            )
+            dpg.add_spacer(width=10)
+            dpg.add_button(
+                label="Zoom to BBox",
+                tag="zoom_to_bbox_btn",
+                callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
+                width=120, height=40,
+            )
+
+
+def _on_trail_change(value: int, settings) -> None:
+    settings.trail_length = value
+    settings.save()
+
+
+def _on_zoom_change(value: float, settings, app_state) -> None:
+    settings.zoom_factor = value
+    # Immediately rescale zoomed extents so bounding box updates on slider drag
+    app_state.zoomed_max_x = app_state.raw_max_x * value
+    app_state.zoomed_max_y = app_state.raw_max_y * value
+    app_state.zoomed_min_x = app_state.raw_min_x * value
+    app_state.zoomed_min_y = app_state.raw_min_y * value
+    settings.save()
+
+
+def _on_zoom_reset(settings) -> None:
+    settings.zoom_factor = 1.0
+    dpg.set_value("zoom_slider", 1.0)
+    settings.save()
+
+
+# ---------------------------------------------------------------------------
+# Click handling — cursor toggle vs target circle
+# ---------------------------------------------------------------------------
+
+def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings) -> None:
+    bbox_w = max(abs(raw_max_x), abs(raw_min_x)) * 2
+    bbox_h = max(abs(raw_max_y), abs(raw_min_y)) * 2
+    base_w = app_state.screen_width  * 0.9
+    base_h = app_state.screen_height * 0.9
+    if bbox_w < 1 or bbox_h < 1:
+        return
+    new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 2)
+    new_zoom = max(0.1, min(10.0, new_zoom))
+    settings.zoom_factor = new_zoom
+    dpg.set_value("zoom_slider", new_zoom)
+    settings.save()
+
+
+def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
+    """
+    Left click on canvas: toggle cursor mode if clicking on cursor,
+    otherwise add a target circle.
+    """
+    cursor_radius = (int(0.05 * app_state.screen_height)
+                     if settings.cursor_mode == "avatar" else 20)
+    dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
+    if dist <= cursor_radius:
+        settings.toggle_cursor_mode()
+    else:
+        app_state.clicked_locations.append((mx, my))
+
+
+# ---------------------------------------------------------------------------
+# Main run loop
 # ---------------------------------------------------------------------------
 
 def run(app_state, settings, args) -> None:
-    """
-    Outer run loop — re-enters main() on RESTART, exits on QUIT or error.
-    """
-    while True:
+    """Outer loop — restarts session on RESTART, exits on QUIT."""
+    while dpg.is_dearpygui_running():
         result = _run_session(app_state, settings, args)
         if result != 0:
             break
-        # result == 0 means RESTART was pressed — loop again
 
 
 def _run_session(app_state, settings, args) -> int:
@@ -95,32 +221,39 @@ def _run_session(app_state, settings, args) -> int:
     """
     app_state.reset()
 
-    # --- pygame display setup ---
-    screen = pygame.display.set_mode(
-        (int(app_state.screen_width), int(app_state.screen_height)),
-        pygame.RESIZABLE,
-    )
-    pygame.display.set_caption("WIIBBLE - Wii Balance Board Live Environment")
-    pygame.display.set_icon(pygame.image.load(ICON_PATH))
+    # Update screen dimensions from current viewport
+    app_state.screen_width  = dpg.get_viewport_width()
+    app_state.screen_height = dpg.get_viewport_height() - 55  # subtract control bar
 
-    manager = pygame_gui.UIManager((app_state.screen_width, app_state.screen_height))
-    restart_btn = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((0, 0), (150, 50)),
-        text="RESTART",
-        manager=manager,
-        object_id="#restart_button",
-    )
-    reset_btn = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((150, 0), (150, 50)),
-        text="RESET SCREEN",
-        manager=manager,
-        object_id="#reset_button",
-    )
-    clock = pygame.time.Clock()
+    ensure_textures_loaded()
+
+    # viewport_drawlist draws directly onto the viewport background (full screen)
+    dl = dpg.add_viewport_drawlist(front=False)
+
+    session_state = {"action": None}
+
+    # Clean up any previous control panel
+    if dpg.does_item_exist("control_panel"):
+        dpg.delete_item("control_panel")
+
+    _build_control_panel(app_state, settings, session_state)
+
+    # Register canvas click handler via a handler registry
+    if dpg.does_item_exist("click_handler"):
+        dpg.delete_item("click_handler")
+    with dpg.handler_registry(tag="click_handler"):
+        dpg.add_mouse_click_handler(
+            button=0,
+            callback=lambda: _handle_canvas_click(
+                *dpg.get_mouse_pos(local=False), app_state, settings
+            ),
+        )
 
     # --- Step 1: Connect ---
     try:
-        try_connection_loop(screen, app_state, use_mock=args.mock)
+        connected = _try_connection_loop(dl, app_state, use_mock=args.mock)
+        if not connected:
+            return 1
     except Exception as e:
         print(f"Connection failed: {e}")
         return 1
@@ -129,8 +262,13 @@ def _run_session(app_state, settings, args) -> int:
     if not device:
         return 1
 
-    # --- Step 2: Tare (board empty) ---
-    wait_for_tare(device, screen, app_state)
+    # Show connecting screen while taring
+    dpg.delete_item(dl, children_only=True)
+    draw_connection_screen(dl, app_state)
+    dpg.render_dearpygui_frame()
+
+    # --- Step 2: Tare ---
+    wait_for_tare(device, dl, app_state)
     try:
         tare(device, app_state.data_struct)
     except Exception as e:
@@ -138,118 +276,110 @@ def _run_session(app_state, settings, args) -> int:
         device.close()
         return 1
 
-    # --- Step 3: Sensitivity calibration (step on board) ---
-    # on_start switches mock to body-weight phase AFTER baseline is measured
+    # --- Step 3: Calibration ---
     on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
-    calibrated_weight = sensitivity_calibration(device, screen, app_state, on_start=on_start)
+    calibrated_weight = sensitivity_calibration(device, dl, app_state, on_start=on_start)
     if calibrated_weight == -1:
         return 1
     app_state.weight = calibrated_weight
 
     # --- Step 4: Main loop ---
-    max_x = max_y = 0
-    min_x, min_y = app_state.screen_width, app_state.screen_height
-    person_image = pygame.image.load(PERSON_IMAGE_PATH)
+    # Extents now stored in app_state so zoom callback can rescale them live.
+    # app_state.reset() already zeroes these — nothing else needed here.
+    app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
+    app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
 
-    try:
-        while True:
-            time_delta = clock.tick(60) / 1000.0
+    while dpg.is_dearpygui_running():
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    device.close()
-                    return 1
+        # Handle control panel actions
+        action = session_state.get("action")
+        if action == "restart":
+            device.close()
+            dpg.delete_item(dl)
+            return 0
+        if action == "reset":
+            app_state.clicked_locations = []
+            app_state.historical_coords = [(0, 0)] * settings.trail_length
+            app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
+            app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
+            app_state.raw_max_x = app_state.raw_max_y = 0.0
+            app_state.raw_min_x = app_state.raw_min_y = 0.0
+            session_state["action"] = None
+        if action == "zoom_to_bbox":
+            _on_zoom_to_bbox(app_state.raw_max_x, app_state.raw_max_y,
+                             app_state.raw_min_x, app_state.raw_min_y,
+                             app_state, settings)
+            app_state.zoomed_max_x = app_state.raw_max_x * settings.zoom_factor
+            app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
+            app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
+            app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
+            session_state["action"] = None
 
-                elif event.type == pygame.VIDEORESIZE:
-                    app_state.screen_width  = event.w
-                    app_state.screen_height = event.h
-                    screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+        # Handle viewport resize
+        vw = dpg.get_viewport_width()
+        vh = dpg.get_viewport_height() - 55
+        if vw != app_state.screen_width or vh != app_state.screen_height:
+            app_state.screen_width  = vw
+            app_state.screen_height = vh
+            dpg.configure_item("control_panel", width=vw)
 
-                elif event.type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == restart_btn:
-                        device.close()
-                        return 0   # signal outer loop to restart
-                    if event.ui_element == reset_btn:
-                        app_state.clicked_locations = []
-                        app_state.historical_coords = [(0, 0)] * settings.trail_length
-                        max_x = max_y = 0
-                        min_x, min_y = app_state.screen_width, app_state.screen_height
+        # Read sensor data
+        data = read_data(device)
+        if data:
+            corners = parse_data(data, app_state.data_struct)
+            top_right, bottom_right, top_left, bottom_left = corners.values()
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    mx, my = event.pos
-                    # clicking on the cursor toggles cursor mode.
-                    # Use the cursor radius that matches what ui.py draws:
-                    #   avatar  — bounding box half-height (~5% of screen height)
-                    #   circle  — radius 20px
-                    sw, sh = app_state.screen_width, app_state.screen_height
-                    cursor_radius = int(0.05 * sh) if settings.cursor_mode == "avatar" else 20
-                    dist = ((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2) ** 0.5
-                    if dist <= cursor_radius:
-                        settings.toggle_cursor_mode()
-                    else:
-                        app_state.clicked_locations.append(event.pos)
+            # Raw coords (zoom=1.0) — stored for zoom-to-bbox calculation
+            raw_x, raw_y = calculate_coordinates(
+                top_left, top_right, bottom_left, bottom_right,
+                weight=app_state.weight,
+                screen_width=app_state.screen_width,
+                screen_height=app_state.screen_height,
+                zoom=1.0,
+            )
+            app_state.raw_max_x = max(app_state.raw_max_x, raw_x)
+            app_state.raw_max_y = max(app_state.raw_max_y, raw_y)
+            app_state.raw_min_x = min(app_state.raw_min_x, raw_x)
+            app_state.raw_min_y = min(app_state.raw_min_y, raw_y)
 
-                manager.process_events(event)
+            # Zoomed coords derived from raw — always correct after zoom change
+            x = raw_x * settings.zoom_factor
+            y = raw_y * settings.zoom_factor
+            app_state.zoomed_max_x = max(app_state.zoomed_max_x, x)
+            app_state.zoomed_max_y = max(app_state.zoomed_max_y, y)
+            app_state.zoomed_min_x = min(app_state.zoomed_min_x, x)
+            app_state.zoomed_min_y = min(app_state.zoomed_min_y, y)
 
-            data = read_data(device)
-            if not data:
-                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
-            if data:
-                corners = parse_data(data, app_state.data_struct)
-                top_right, bottom_right, top_left, bottom_left = corners.values()
+            ball_x = int(app_state.screen_width  // 2 + x)
+            # ball_y is in full viewport coords: canvas centre is at (screen_height/2 + 55)
+            # where 55 is the control bar height. screen_height already excludes the bar,
+            # so the canvas centre in viewport space is screen_height//2 + 55.
+            ball_y = int(app_state.screen_height // 2 + y + 55)
 
-                x, y = calculate_coordinates(
-                    top_left, top_right, bottom_left, bottom_right,
-                    weight=app_state.weight,
-                    screen_width=app_state.screen_width,
-                    screen_height=app_state.screen_height,
-                    zoom=settings.zoom_factor,
-                )
+            app_state.ball_x = ball_x
+            app_state.ball_y = ball_y
 
-                max_x, max_y = max(max_x, x), max(max_y, y)
-                min_x, min_y = min(min_x, x), min(min_y, y)
+            app_state.historical_coords.append((ball_x, ball_y))
+            if len(app_state.historical_coords) > settings.trail_length:
+                app_state.historical_coords.pop(0)
 
-                ball_x = int(app_state.screen_width  // 2 + x)
-                ball_y = int(app_state.screen_height // 2 + y)
+            curr_weight = sum(corners.values())
 
-                # Keep app_state current so click handler can use cursor position
-                app_state.ball_x = ball_x
-                app_state.ball_y = ball_y
+            # Redraw canvas
+            dpg.delete_item(dl, children_only=True)
+            draw_main_screen(
+                dl=dl,
+                corners=corners,
+                ball_x=ball_x,
+                ball_y=ball_y,
+                curr_weight=curr_weight,
+                max_x=app_state.zoomed_max_x, max_y=app_state.zoomed_max_y,
+                min_x=app_state.zoomed_min_x, min_y=app_state.zoomed_min_y,
+                app_state=app_state,
+                settings=settings,
+            )
 
-                # change mouse cursor to hand when hovering over the balance cursor
-                cursor_radius = int(0.05 * app_state.screen_height) if settings.cursor_mode == "avatar" else 20
-                mx, my = pygame.mouse.get_pos()
-                dist = ((mx - ball_x) ** 2 + (my - ball_y) ** 2) ** 0.5
-                if dist <= cursor_radius:
-                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
-                else:
-                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        dpg.render_dearpygui_frame()
 
-                app_state.historical_coords.append((ball_x, ball_y))
-                # Keep list capped at trail_length (S2)
-                if len(app_state.historical_coords) > settings.trail_length:
-                    app_state.historical_coords.pop(0)
-
-                curr_weight = sum(corners.values())
-
-                draw_main_screen(
-                    screen=screen,
-                    corners=corners,
-                    ball_x=ball_x,
-                    ball_y=ball_y,
-                    curr_weight=curr_weight,
-                    max_x=max_x, max_y=max_y,
-                    min_x=min_x, min_y=min_y,
-                    person_image=person_image,
-                    app_state=app_state,
-                    settings=settings,
-                )
-
-            manager.update(time_delta)
-            manager.draw_ui(screen)
-            pygame.display.flip()
-
-    except KeyboardInterrupt:
-        print("Interrupted.")
-        device.close()
-        return 1
+    device.close()
+    return 1

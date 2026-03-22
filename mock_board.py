@@ -53,7 +53,7 @@ class MockHIDDevice:
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
 
     def open(self, vendor_id, product_id):
-        print(f"[MOCK] Opened mock HID device (scenario='{self.scenario}')")
+        #print(f"[MOCK] Opened mock HID device (scenario='{self.scenario}')")
         self._phase = "tare"
         self._stable_until = None
         self.start_time = time.time()
@@ -67,7 +67,7 @@ class MockHIDDevice:
         Switches to stable weight for 3 seconds then normal running mode.
         """
         if self._phase == "tare":
-            print("[MOCK] trigger_step_on() -- switching to step_on_stable phase")
+            #print("[MOCK] trigger_step_on() -- switching to step_on_stable phase")
             self._phase = "step_on_stable"
             self._stable_until = time.time() + 3.0
             self.start_time = time.time()
@@ -82,8 +82,14 @@ class MockHIDDevice:
             frac_part = int((raw - int_part) * 255)
             data[idx]     = int_part
             data[idx + 1] = frac_part
-        total = sum(kg_vals)
-        print(f"[MOCK] phase={self._phase:16s} | sensors={[round(v, 2) for v in kg_vals]} | total={total:.2f} kg")
+
+        # Slow down calibration phases so the clinician can read the screen.
+        # measure_weight() calls read() 10 times per measurement, so a 50ms
+        # sleep here gives ~0.5s per weight sample — natural pacing.
+        # No sleep in normal mode to keep the main loop responsive at 60fps.
+        if self._phase in ("tare", "step_on_stable"):
+            time.sleep(0.02)
+
         return data
 
     def _get_kg_values(self):
@@ -95,7 +101,7 @@ class MockHIDDevice:
                 base = self._scenario_params["base"]
                 return [v + random.gauss(0, 0.02) for v in base]
             else:
-                print("[MOCK] Stable phase complete -- switching to normal mode")
+                #print("[MOCK] Stable phase complete -- switching to normal mode")
                 self._phase = "normal"
                 self.start_time = time.time()
 

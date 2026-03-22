@@ -1,11 +1,13 @@
 # main.py — WIIBBLE entry point
 #
-# This file is intentionally thin. All application logic lives in app.py.
-# Keeping pygame.init() and argparse here (not at module level in other files)
-# means imports are safe to use in tests without side effects.
+# Intentionally thin. All application logic lives in app.py.
+# dpg context setup and argparse live here so other modules
+# are safe to import in tests without side effects.
 
 import argparse
-import pygame
+import tkinter
+import dearpygui.dearpygui as dpg
+
 from state import AppState, Settings
 from app   import run
 
@@ -24,19 +26,44 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_screen_size() -> tuple:
+    """
+    Get the primary monitor resolution using tkinter (stdlib, no extra deps).
+    Used to size the DPG viewport to fill the screen on startup.
+    """
+    root = tkinter.Tk()
+    root.withdraw()  # hide the tkinter window immediately
+    w = root.winfo_screenwidth()
+    h = root.winfo_screenheight()
+    root.destroy()
+    return w, h
+
+
 if __name__ == "__main__":
     args = parse_args()
 
-    pygame.init()
-    pygame.mixer.quit()  # no audio hardware in most deployment environments
+    dpg.create_context()
 
-    info = pygame.display.Info()
     settings  = Settings.load()
+
+    screen_w, screen_h = get_screen_size()
     app_state = AppState(
-        screen_width=info.current_w,
-        screen_height=info.current_h * 0.9,
+        screen_width=screen_w,
+        screen_height=screen_h * 0.9,  # leave room for taskbar
         historical_coords=[(0, 0)] * settings.trail_length,
     )
 
+    dpg.create_viewport(
+        title="WIIBBLE - Wii Balance Board Live Environment",
+        width=screen_w,
+        height=screen_h,
+        x_pos=0,
+        y_pos=0,
+    )
+    dpg.setup_dearpygui()
+    dpg.show_viewport()
+    dpg.maximize_viewport()
+
     run(app_state, settings, args)
-    pygame.quit()
+
+    dpg.destroy_context()

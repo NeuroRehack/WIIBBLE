@@ -1,183 +1,262 @@
 # ui.py
-import pygame
-import numpy as np
-from resources import IMAGE_PATHS, CONNECTION_PATH
+# All rendering via Dear PyGui drawlist API.
+# The viewport_drawlist draws directly onto the viewport background — no
+# window chrome around the canvas. UI controls sit in a separate overlay window.
+
+import math
+import dearpygui.dearpygui as dpg
+from resources import IMAGE_PATHS, CONNECTION_PATH, PERSON_IMAGE_PATH
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Texture registry — images must be loaded into DPG's texture system
 # ---------------------------------------------------------------------------
 
-def display_message(screen, font, message: str, color, position):
+_textures_loaded = False
+_wii_texture_tags = []
+_person_texture_tag = "person_image"
+_connection_texture_tag = "connection_image"
+
+
+def ensure_textures_loaded():
+    """Load all images into DPG texture registry on first call."""
+    global _textures_loaded, _wii_texture_tags
+    if _textures_loaded:
+        return
+
+    with dpg.texture_registry():
+        # Calibration screen images (wii0, wii1, wii2)
+        for i, path in enumerate(IMAGE_PATHS):
+            w, h, _, data = dpg.load_image(path)
+            tag = f"wii_image_{i}"
+            dpg.add_static_texture(w, h, data, tag=tag)
+            _wii_texture_tags.append(tag)
+
+        # Person cursor image
+        w, h, _, data = dpg.load_image(PERSON_IMAGE_PATH)
+        dpg.add_static_texture(w, h, data, tag=_person_texture_tag)
+
+        # Connection failed image
+        w, h, _, data = dpg.load_image(CONNECTION_PATH)
+        dpg.add_static_texture(w, h, data, tag=_connection_texture_tag)
+
+    _textures_loaded = True
+
+
+def get_wii_image_size(index: int) -> tuple:
+    """Return (width, height) of a wii calibration image."""
+    return dpg.get_item_configuration(_wii_texture_tags[index])["width"], \
+           dpg.get_item_configuration(_wii_texture_tags[index])["height"]
+
+
+def get_person_image_size() -> tuple:
+    cfg = dpg.get_item_configuration(_person_texture_tag)
+    return cfg["width"], cfg["height"]
+
+
+# ---------------------------------------------------------------------------
+# Calibration screens — drawn to viewport_drawlist each frame
+# ---------------------------------------------------------------------------
+
+def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state) -> None:
     """
-    Render a (possibly multi-line) string onto screen.
-    Blank lines advance the y position by one line height.
-    """
-    lines = message.split('\n')
-    y_offset = 0
-    for line in lines:
-        if line.strip() == '':
-            y_offset += font.get_linesize()
-            continue
-        text = font.render(line, True, color)
-        screen.blit(text, (position[0], position[1] + y_offset))
-        y_offset += font.get_linesize()
-
-
-def _scale_image(image, screen_height: float):
-    """Scale an image to 80% of screen height, preserving aspect ratio."""
-    w, h = image.get_size()
-    new_w = int(0.8 * screen_height * w / h)
-    new_h = int(0.8 * screen_height)
-    return pygame.transform.scale(image, (new_w, new_h))
-
-
-# ---------------------------------------------------------------------------
-# Calibration screens
-# ---------------------------------------------------------------------------
-
-def show_step_instruction(screen, image, step: str, app_state) -> None:
-    """
-    Show the 'Step ON' or 'Step OFF' instruction screen.
+    Draw the 'Step ON' or 'Step OFF' calibration screen.
     step: "on" | "off"
-    Replaces the near-identical show_step_on_board / show_step_off_board pair.
+    Draws background, image, text, and progress arc onto the drawlist dl.
     """
     sw, sh = app_state.screen_width, app_state.screen_height
-    mid_screen = sw / 1.8
-    mid_height = sh / 2.9
-    font = pygame.font.Font(None, 82)
 
-    screen.fill((110, 159, 168))
-    scaled = _scale_image(image, sh)
-    iw, ih = scaled.get_size()
-    screen.blit(scaled, (sw // 2.2 - iw // 2, sh // 1.5 - ih // 2))
+    # Background
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=(110, 159, 168, 255),
+                        color=(110, 159, 168, 255), parent=dl)
 
-    display_message(screen, font, "         Step", (250, 250, 250), (mid_screen, mid_height))
+    # Calibration image (wii2)
+    tag = _wii_texture_tags[2]
+    cfg = dpg.get_item_configuration(tag)
+    iw_orig, ih_orig = cfg["width"], cfg["height"]
+    scaled_h = int(0.8 * sh)
+    scaled_w = int(scaled_h * iw_orig / ih_orig)
+    img_x = sw // 2.2 - scaled_w // 2
+    img_y = sh // 1.5 - scaled_h // 2
+    dpg.draw_image(tag, (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl)
+
+    # Text
+    mid_x = sw / 1.8
+    mid_y = sh / 2.9
+    font_size = int(sh * 0.07)
+    dpg.draw_text((mid_x, mid_y),              "Step",         color=(250, 250, 250, 255), size=font_size, parent=dl)
+    dpg.draw_text((mid_x, mid_y + font_size),  "ON" if step == "on" else "OFF",
+                  color=(0, 250, 0, 255) if step == "on" else (250, 0, 0, 255),
+                  size=font_size, parent=dl)
+    dpg.draw_text((mid_x, mid_y + font_size * 2), "the board",   color=(250, 250, 250, 255), size=font_size, parent=dl)
     if step == "on":
-        display_message(screen, font, "\n          ON",  (0, 250, 0),     (mid_screen, mid_height))
-        display_message(screen, font, "\n\n     the board",           (250, 250, 250), (mid_screen, mid_height))
-        display_message(screen, font, "\n\n\n\n\n\n and stand still", (250, 250, 250), (mid_screen, mid_height))
-    else:
-        display_message(screen, font, "\n         OFF",  (250, 0, 0),     (mid_screen, mid_height))
-        display_message(screen, font, "\n\n     the board",           (250, 250, 250), (mid_screen, mid_height))
+        dpg.draw_text((mid_x, mid_y + font_size * 5), "and stand still", color=(250, 250, 250, 255), size=font_size, parent=dl)
 
-    pygame.display.flip()
+    # Progress arc (approximated as a series of line segments)
+    _draw_arc(dl, sw, sh, counter, max_count, step)
 
 
-def show_connection_failed(screen, font, app_state) -> None:
-    """Render the 'Failed to connect' screen with checklist."""
+def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:
+    """Draw a progress arc using line segments (DPG has no native arc primitive)."""
+    cx = sw * 0.54 + sh * 0.25   # centre x
+    cy = sh * 0.2  + sh * 0.25   # centre y
+    radius = sh * 0.22
+    color = (0, 250, 0, 255) if step == "on" else (250, 0, 0, 255)
+    angle = 2 * math.pi * counter / max_count if max_count > 0 else 0
+    segments = max(1, int(angle * 30))  # ~30 segments per full circle
+
+    for i in range(segments):
+        a0 = i       * angle / segments
+        a1 = (i + 1) * angle / segments
+        x0 = cx + radius * math.cos(a0)
+        y0 = cy + radius * math.sin(a0)
+        x1 = cx + radius * math.cos(a1)
+        y1 = cy + radius * math.sin(a1)
+        dpg.draw_line((x0, y0), (x1, y1), color=color, thickness=4, parent=dl)
+
+
+def draw_connection_screen(dl, app_state) -> None:
+    """Draw the 'Trying to connect' screen."""
     sw, sh = app_state.screen_width, app_state.screen_height
-    mid_screen = sw / 2.5
-    mid_height = sh / 2.9
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=(110, 159, 168, 255),
+                        color=(110, 159, 168, 255), parent=dl)
+    font_size = int(sh * 0.06)
+    mid_x = sw / 2.5
+    mid_y = sh / 2.9
+    dpg.draw_text((mid_x, mid_y), "Trying to connect...",
+                  color=(250, 250, 250, 255), size=font_size, parent=dl)
 
-    screen.fill((110, 159, 168))
-    image = pygame.image.load(CONNECTION_PATH)
-    scaled = _scale_image(image, sh)
-    iw, ih = scaled.get_size()
-    screen.blit(scaled, (sw // 2 - iw // 2, sh // 2 - ih // 2))
 
-    display_message(screen, font, "Failed to connect",                                   (250, 0, 0),     (mid_screen * 0.6, mid_height))
-    display_message(screen, font, "\nCheck the following: ",                             (250, 250, 250), (mid_screen * 0.6, mid_height))
-    display_message(screen, font, "\n\n    1. bluetooth is enabled on your computer",   (250, 250, 250), (mid_screen * 0.6, mid_height))
-    display_message(screen, font, "\n\n\n    2. the board is paired to your computer",  (250, 250, 250), (mid_screen * 0.6, mid_height))
-    display_message(screen, font, "\n\n\n\n    3. the board is on and blinking blue",   (250, 250, 250), (mid_screen * 0.6, mid_height))
-    display_message(screen, font, "\n\n\n\n\nand press enter",                          (250, 250, 250), (mid_screen * 0.6, mid_height))
-    pygame.display.flip()
+def draw_connection_failed_screen(dl, app_state) -> None:
+    """Draw the 'Failed to connect' screen with checklist."""
+    sw, sh = app_state.screen_width, app_state.screen_height
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=(110, 159, 168, 255),
+                        color=(110, 159, 168, 255), parent=dl)
+
+    cfg = dpg.get_item_configuration(_connection_texture_tag)
+    iw_orig, ih_orig = cfg["width"], cfg["height"]
+    scaled_h = int(0.8 * sh)
+    scaled_w = int(scaled_h * iw_orig / ih_orig)
+    img_x = sw // 2 - scaled_w // 2
+    img_y = sh // 2 - scaled_h // 2
+    dpg.draw_image(_connection_texture_tag,
+                   (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl)
+
+    font_size = int(sh * 0.05)
+    mx = sw * 0.12
+    my = sh / 2.9
+    lines = [
+        ("Failed to connect",                              (250, 0,   0,   255)),
+        ("Check the following:",                           (250, 250, 250, 255)),
+        ("  1. Bluetooth is enabled on your computer",    (250, 250, 250, 255)),
+        ("  2. The board is paired to your computer",     (250, 250, 250, 255)),
+        ("  3. The board is on and blinking blue",        (250, 250, 250, 255)),
+        ("Press Enter to try again",                      (250, 250, 250, 255)),
+    ]
+    for i, (text, color) in enumerate(lines):
+        dpg.draw_text((mx, my + i * font_size * 1.4), text,
+                      color=color, size=font_size, parent=dl)
 
 
 # ---------------------------------------------------------------------------
-# Main loop rendering
+# Main balance screen
 # ---------------------------------------------------------------------------
 
-def draw_main_screen(
-    screen,
-    corners: dict,
-    ball_x: int,
-    ball_y: int,
-    curr_weight: float,
-    max_x, max_y, min_x, min_y,
-    person_image,
-    app_state,
-    settings,
-) -> None:
-    """
-    Render one frame of the main balance display.
+TOOLBAR_H = 55  # height of control panel — canvas drawing is offset below this
 
-    Reads from app_state: screen dimensions, historical_coords, clicked_locations, weight.
-    Reads from settings:  trail_length (S2), cursor_mode (S1).
+
+def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
+                     curr_weight: float, max_x, max_y, min_x, min_y,
+                     app_state, settings) -> None:
+    """
+    Draw one frame of the main balance display onto drawlist dl.
+
+    ball_x/ball_y are in FULL viewport coordinates (y includes TOOLBAR_H offset).
+    All canvas drawing is offset by TOOLBAR_H so it appears below the control bar.
+    sw/sh are canvas dimensions (viewport minus toolbar).
     """
     sw, sh = app_state.screen_width, app_state.screen_height
+    T = TOOLBAR_H  # shorthand
+
     top_right    = corners["top_right"]
     bottom_right = corners["bottom_right"]
     top_left     = corners["top_left"]
     bottom_left  = corners["bottom_left"]
 
-    screen.fill((255, 255, 255))
+    # Canvas centre in viewport coords
+    cx = sw // 2
+    cy = sh // 2 + T
 
-    # --- Centre lines ---
+    # Background (canvas area only, below toolbar)
+    dpg.draw_rectangle((0, T), (sw, sh + T), fill=(255, 255, 255, 255),
+                        color=(255, 255, 255, 255), parent=dl)
+
+    # Centre lines
     line_w = max(1, int(sw / 200))
-    pygame.draw.line(screen, (0, 0, 0), (0, sh // 2),   (sw, sh // 2),   line_w)
-    pygame.draw.line(screen, (0, 0, 0), (sw // 2, 0),   (sw // 2, sh),   line_w)
-    pygame.draw.circle(screen, (0, 0, 0),     (sw // 2, sh // 2), int(sw / 50))
-    pygame.draw.circle(screen, (255, 255, 255),(sw // 2, sh // 2), int(sw / 20))
+    dpg.draw_line((0, cy), (sw, cy), color=(0, 0, 0, 255), thickness=line_w, parent=dl)
+    dpg.draw_line((cx, T), (cx, sh + T), color=(0, 0, 0, 255), thickness=line_w, parent=dl)
+    dpg.draw_circle((cx, cy), int(sw / 50), color=(0, 0, 0, 255), fill=(0, 0, 0, 255), parent=dl)
+    dpg.draw_circle((cx, cy), int(sw / 20), color=(255, 255, 255, 255), fill=(255, 255, 255, 255), parent=dl)
 
-    # --- Clicked target circles ---
+    # Target circles (clicked locations — stored in viewport coords)
     for loc in app_state.clicked_locations:
-        hit = np.linalg.norm(np.array(loc) - np.array([ball_x, ball_y])) < 50
-        pygame.draw.circle(screen, (0, 255, 0) if hit else (255, 0, 0), loc, 50)
+        dist = math.sqrt((loc[0] - ball_x) ** 2 + (loc[1] - ball_y) ** 2)
+        hit = dist < 50
+        fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
+        dpg.draw_circle(loc, 50, color=fill, fill=fill, parent=dl)
 
-    # --- Trail (S2: respect settings.trail_length) ---
-    trail_color = (110, 159, 168)
-    coords = app_state.historical_coords[-settings.trail_length:]
+    # Trail (S2: sliced to trail_length; coords are in viewport space)
+    trail_color_base = (110, 159, 168)
+    coords = app_state.historical_coords[-settings.trail_length:] if settings.trail_length > 0 else []
     n = len(coords)
     for i in range(1, n):
         frac = i / n
-        pygame.draw.circle(screen, (int(frac * 255), 0, 0),
-                           coords[i], int(i * 20 / n))
-        pygame.draw.circle(screen,
-                           (int(frac * trail_color[0]),
-                            int(frac * trail_color[1]),
-                            int(frac * trail_color[2])),
-                           coords[i], int(i * 20 / n))
+        tc = (int(frac * trail_color_base[0]),
+              int(frac * trail_color_base[1]),
+              int(frac * trail_color_base[2]), 200)
+        radius = max(1, int(i * 20 / n))
+        dpg.draw_circle(coords[i], radius, color=tc, fill=tc, parent=dl)
 
-    # --- Cursor (avatar or simple circle) ---
-    # Both cursor types are clickable to toggle mode — the hit radius
-    # matches what app.py uses for click detection.
+    # Cursor (S1) — ball_x/ball_y in viewport coords
     if settings.cursor_mode == "avatar":
-        iw, ih = person_image.get_size()
-        scaled = pygame.transform.scale(
-            person_image,
-            (int(0.1 * sh * iw / ih), int(0.1 * sh))
-        )
-        sw2, sh2 = scaled.get_size()
-        screen.blit(scaled, (ball_x - sw2 // 2, ball_y - sh2))
+        cfg = dpg.get_item_configuration(_person_texture_tag)
+        iw, ih = cfg["width"], cfg["height"]
+        scaled_h = int(0.1 * sh)
+        scaled_w = int(scaled_h * iw / ih)
+        p1 = (ball_x - scaled_w // 2, ball_y - scaled_h)
+        p2 = (ball_x + scaled_w // 2, ball_y)
+        dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
     else:
-        # Circle cursor: filled with outline so it reads as interactive
-        pygame.draw.circle(screen, (110, 159, 168), (ball_x, ball_y), 20)
+        dpg.draw_circle((ball_x, ball_y), 20,
+                        color=(110, 159, 168, 255), fill=(110, 159, 168, 255), parent=dl)
 
-    # --- Bounding box of historical movement ---
-    pygame.draw.rect(screen, (0, 0, 0),
-                     (min_x + sw // 2, min_y + sh // 2,
-                      max_x - min_x,   max_y - min_y),
-                     line_w)
+    # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
+    # They need to be offset by canvas centre (cx, cy) to get viewport coords.
+    dpg.draw_rectangle(
+        (cx + min_x, cy + min_y),
+        (cx + max_x, cy + max_y),
+        color=(0, 0, 0, 255), thickness=line_w, parent=dl,
+    )
 
-    # --- Weight distribution bar ---
+    # Weight distribution bar (at bottom of canvas in viewport coords)
     if app_state.weight > 0:
         perc_left  = (top_left  + bottom_left)  / app_state.weight
         perc_right = (top_right + bottom_right) / app_state.weight
     else:
         perc_left = perc_right = 0.5
 
-    pygame.draw.rect(screen, (255, 0, 0), (0, sh - 20, int(sw), 20))
+    bar_top = sh + T - 20
+    bar_bot = sh + T
+    dpg.draw_rectangle((0, bar_top), (sw, bar_bot), fill=(255, 0, 0, 255), color=(255, 0, 0, 255), parent=dl)
     x0 = sw // 2 - perc_left  * sw // 2
-    x1 = sw // 2 - x0
-    pygame.draw.rect(screen, (0, 255, 0), (x0, sh - 20, x1, 20))
+    x1 = sw // 2
+    dpg.draw_rectangle((x0, bar_top), (x1, bar_bot), fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent=dl)
     x0 = sw // 2
-    x1 = perc_right * sw // 2
-    pygame.draw.rect(screen, (0, 255, 0), (x0, sh - 20, x1, 20))
+    x1 = sw // 2 + perc_right * sw // 2
+    dpg.draw_rectangle((x0, bar_top), (x1, bar_bot), fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent=dl)
 
-    # --- Text overlays ---
-    font = pygame.font.Font(None, 64)
-    screen.blit(font.render(f"{int(perc_left  * 100)}%", True, (0, 0, 0)), (50,       sh - 100))
-    screen.blit(font.render(f"{int(perc_right * 100)}%", True, (0, 0, 0)), (sw - 200, sh - 100))
-    screen.blit(font.render(f"{int(curr_weight)} kg",    True, (0, 0, 0)), (sw / 2.4, sh * 0.9))
+    # Text overlays
+    font_size = int(sh * 0.055)
+    dpg.draw_text((50,       sh + T - 100), f"{int(perc_left  * 100)}%", color=(0, 0, 0, 255), size=font_size, parent=dl)
+    dpg.draw_text((sw - 160, sh + T - 100), f"{int(perc_right * 100)}%", color=(0, 0, 0, 255), size=font_size, parent=dl)
+    dpg.draw_text((sw / 2.4, (sh + T) * 0.9), f"{int(curr_weight)} kg", color=(0, 0, 0, 255), size=font_size, parent=dl)

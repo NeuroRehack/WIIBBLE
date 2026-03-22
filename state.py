@@ -90,6 +90,20 @@ class AppState:
     record_start:  float = 0.0   # S5
     record_buffer: list  = field(default_factory=list)  # S5
 
+    # Raw (zoom=1.0) coordinate extents — used for zoom-to-bbox and
+    # live bounding box rescaling when zoom slider changes.
+    raw_max_x: float = 0.0
+    raw_max_y: float = 0.0
+    raw_min_x: float = 0.0
+    raw_min_y: float = 0.0
+
+    # Zoomed extents (raw * zoom_factor) — what the bounding box actually draws.
+    # Kept in app_state so _on_zoom_change() can update them without local vars.
+    zoomed_max_x: float = 0.0
+    zoomed_max_y: float = 0.0
+    zoomed_min_x: float = 0.0
+    zoomed_min_y: float = 0.0
+
     def reset(self):
         """Called on RESTART — resets session data but preserves calibration."""
         self.ball_x = 0
@@ -104,3 +118,7 @@ class AppState:
         }
         self.is_recording = False
         self.record_buffer = []
+        self.raw_max_x = self.raw_max_y = 0.0
+        self.raw_min_x = self.raw_min_y = 0.0
+        self.zoomed_max_x = self.zoomed_max_y = 0.0
+        self.zoomed_min_x = self.zoomed_min_y = 0.0

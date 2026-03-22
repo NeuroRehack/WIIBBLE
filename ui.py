@@ -255,8 +255,6 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     x1 = sw // 2 + perc_right * sw // 2
     dpg.draw_rectangle((x0, bar_top), (x1, bar_bot), fill=(0, 255, 0, 255), color=(0, 255, 0, 255), parent=dl)
 
-    # Text overlays
-    font_size = int(sh * 0.055)
-    dpg.draw_text((50,       sh + T - 100), f"{int(perc_left  * 100)}%", color=(0, 0, 0, 255), size=font_size, parent=dl)
-    dpg.draw_text((sw - 160, sh + T - 100), f"{int(perc_right * 100)}%", color=(0, 0, 0, 255), size=font_size, parent=dl)
-    dpg.draw_text((sw / 2.4, (sh + T) * 0.9), f"{int(curr_weight)} kg", color=(0, 0, 0, 255), size=font_size, parent=dl)
+    # Text stats (perc_left, perc_right, curr_weight) are rendered as crisp
+    # DPG widget text in the stats_bar window built in app.py — not here.
+    # Drawing text on a drawlist causes blur due to sub-pixel redraws every frame.

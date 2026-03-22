@@ -136,13 +136,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
             )
             dpg.add_spacer(width=10)
             dpg.add_button(
-                label="Reset Zoom",
-                callback=lambda: _on_zoom_reset(settings),
-                width=100, height=40,
-            )
-            dpg.add_spacer(width=10)
-            dpg.add_button(
-                label="Zoom to BBox",
+                label="Auto-Scale",
                 tag="zoom_to_bbox_btn",
                 callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
                 width=120, height=40,
@@ -164,12 +158,6 @@ def _on_zoom_change(value: float, settings, app_state) -> None:
     settings.save()
 
 
-def _on_zoom_reset(settings) -> None:
-    settings.zoom_factor = 1.0
-    dpg.set_value("zoom_slider", 1.0)
-    settings.save()
-
-
 # ---------------------------------------------------------------------------
 # Click handling — cursor toggle vs target circle
 # ---------------------------------------------------------------------------
@@ -186,6 +174,51 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
     settings.zoom_factor = new_zoom
     dpg.set_value("zoom_slider", new_zoom)
     settings.save()
+
+
+# Cached stats values — stats drawlist only redraws when these change.
+# This eliminates the sub-pixel jitter that caused blurry text.
+_stats_cache = {"left": -1, "weight": -1, "right": -1}
+
+
+def _build_stats_bar(app_state) -> None:
+    # Create a dedicated drawlist for stats text.
+    # It sits below the canvas drawlist and only redraws on value change.
+    sw = app_state.screen_width
+    vh = dpg.get_viewport_height()
+    if not dpg.does_item_exist("stats_dl"):
+        dpg.add_viewport_drawlist(tag="stats_dl", front=True)
+    # Reset cache to force a redraw on first frame
+    _stats_cache["left"]   = -1
+    _stats_cache["weight"] = -1
+    _stats_cache["right"]  = -1
+
+
+def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -> None:
+    left_val   = int(perc_left   * 100)
+    weight_val = int(curr_weight)
+    right_val  = int(perc_right  * 100)
+
+    # Only redraw if values actually changed
+    if (left_val   == _stats_cache["left"] and
+        weight_val == _stats_cache["weight"] and
+        right_val  == _stats_cache["right"]):
+        return
+
+    _stats_cache["left"]   = left_val
+    _stats_cache["weight"] = weight_val
+    _stats_cache["right"]  = right_val
+
+    sw = dpg.get_viewport_width()
+    vh = dpg.get_viewport_height()
+    font_size = max(24, int(vh * 0.055))
+    # Position text at integer pixel coords to avoid sub-pixel blur
+    y = int(vh - font_size - 8)
+
+    dpg.delete_item("stats_dl", children_only=True)
+    dpg.draw_text((10,          y), f"{left_val}%",    color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
+    dpg.draw_text((sw // 2 - 40, y), f"{weight_val} kg", color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
+    dpg.draw_text((sw - 120,    y), f"{right_val}%",   color=(0, 0, 0, 255), size=font_size, parent="stats_dl")
 
 
 def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
@@ -237,6 +270,8 @@ def _run_session(app_state, settings, args) -> int:
         dpg.delete_item("control_panel")
 
     _build_control_panel(app_state, settings, session_state)
+
+    _build_stats_bar(app_state)
 
     # Register canvas click handler via a handler registry
     if dpg.does_item_exist("click_handler"):
@@ -322,6 +357,7 @@ def _run_session(app_state, settings, args) -> int:
             app_state.screen_width  = vw
             app_state.screen_height = vh
             dpg.configure_item("control_panel", width=vw)
+            # stats_dl redraws itself at correct position on next value change
 
         # Read sensor data
         data = read_data(device)
@@ -378,6 +414,13 @@ def _run_session(app_state, settings, args) -> int:
                 app_state=app_state,
                 settings=settings,
             )
+            # Update crisp stats bar (avoids blurry drawlist text)
+            if app_state.weight > 0:
+                pl = (corners["top_left"]  + corners["bottom_left"])  / app_state.weight
+                pr = (corners["top_right"] + corners["bottom_right"]) / app_state.weight
+            else:
+                pl = pr = 0.5
+            _update_stats_bar(pl, pr, curr_weight)
 
         dpg.render_dearpygui_frame()
 

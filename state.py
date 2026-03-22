@@ -5,7 +5,7 @@ from dataclasses import dataclass, field, asdict
 
 
 # Settings are persisted to this file between sessions.
-SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".wiibble", "settings.json")
+SETTINGS_PATH = os.path.join( ".wiibble", "settings.json")
 
 
 @dataclass

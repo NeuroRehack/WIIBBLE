@@ -151,6 +151,17 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                     callback=lambda s, v: _on_trail_change(trail_map[v], settings),
                 )
                 dpg.add_spacer(width=16)
+                dpg.add_text("Filter:")
+                dpg.add_slider_int(
+                    tag="filter_slider",
+                    default_value=settings.filter_window,
+                    min_value=1,
+                    max_value=100,
+                    width=140,
+                    format="%d frames",
+                    callback=lambda s, v: _on_filter_change(v, settings, app_state),
+                )
+                dpg.add_spacer(width=16)
                 dpg.add_text("Zoom:")
                 dpg.add_slider_float(
                     tag="zoom_slider",
@@ -193,6 +204,14 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
 
 def _on_trail_change(value: int, settings) -> None:
     settings.trail_length = value
+    settings.save()
+
+
+def _on_filter_change(value: int, settings, app_state) -> None:
+    settings.filter_window = value
+    # Trim buffer immediately if window shrank
+    if len(app_state.filter_buffer) > value:
+        app_state.filter_buffer = app_state.filter_buffer[-value:]
     settings.save()
 
 
@@ -449,9 +468,26 @@ def _run_session(app_state, settings, args) -> int:
         data = read_data(device)
         if data:
             corners = parse_data(data, app_state.data_struct)
-            top_right, bottom_right, top_left, bottom_left = corners.values()
 
-            # Raw coords (zoom=1.0) — stored for zoom-to-bbox calculation
+            # S4 — Moving average filter applied to raw corner kg values.
+            # Filtering at the sensor level (before coordinate calculation)
+            # means noise is suppressed before any scaling is applied.
+            # filter_window=1 is a pass-through.
+            app_state.filter_buffer.append(corners)
+            if len(app_state.filter_buffer) > settings.filter_window:
+                app_state.filter_buffer.pop(0)
+            n = len(app_state.filter_buffer)
+            smoothed = {
+                key: sum(frame[key] for frame in app_state.filter_buffer) / n
+                for key in corners
+            }
+
+            top_right    = smoothed["top_right"]
+            bottom_right = smoothed["bottom_right"]
+            top_left     = smoothed["top_left"]
+            bottom_left  = smoothed["bottom_left"]
+
+            # Raw coords (zoom=1.0) — derived from smoothed sensor values
             raw_x, raw_y = calculate_coordinates(
                 top_left, top_right, bottom_left, bottom_right,
                 weight=app_state.weight,
@@ -459,12 +495,13 @@ def _run_session(app_state, settings, args) -> int:
                 screen_height=app_state.screen_height,
                 zoom=1.0,
             )
+
             app_state.raw_max_x = max(app_state.raw_max_x, raw_x)
             app_state.raw_max_y = max(app_state.raw_max_y, raw_y)
             app_state.raw_min_x = min(app_state.raw_min_x, raw_x)
             app_state.raw_min_y = min(app_state.raw_min_y, raw_y)
 
-            # Zoomed coords derived from raw — always correct after zoom change
+            # Zoomed coords
             x = raw_x * settings.zoom_factor
             y = raw_y * settings.zoom_factor
             app_state.zoomed_max_x = max(app_state.zoomed_max_x, x)
@@ -483,7 +520,7 @@ def _run_session(app_state, settings, args) -> int:
             if len(app_state.historical_coords) > settings.trail_length:
                 app_state.historical_coords.pop(0)
 
-            curr_weight = sum(corners.values())
+            curr_weight = sum(smoothed.values())
 
             # Redraw canvas
             dpg.delete_item(dl, children_only=True)
@@ -500,8 +537,8 @@ def _run_session(app_state, settings, args) -> int:
             )
             # Update crisp stats bar (avoids blurry drawlist text)
             if app_state.weight > 0:
-                pl = (corners["top_left"]  + corners["bottom_left"])  / app_state.weight
-                pr = (corners["top_right"] + corners["bottom_right"]) / app_state.weight
+                pl = (smoothed["top_left"]  + smoothed["bottom_left"])  / app_state.weight
+                pr = (smoothed["top_right"] + smoothed["bottom_right"]) / app_state.weight
             else:
                 pl = pr = 0.5
             _update_stats_bar(pl, pr, curr_weight)

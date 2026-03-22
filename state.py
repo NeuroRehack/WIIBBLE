@@ -90,6 +90,12 @@ class AppState:
     record_start:  float = 0.0   # S5
     record_buffer: list  = field(default_factory=list)  # S5
 
+    # Moving average filter buffer — stores last N raw corner kg dicts.
+    # Averaging happens before calculate_coordinates() so noise is suppressed
+    # at the sensor level, not in scaled coordinate space.
+    # filter_window=1 means no smoothing (pass-through).
+    filter_buffer: list = field(default_factory=list)
+
     # Raw (zoom=1.0) coordinate extents — used for zoom-to-bbox and
     # live bounding box rescaling when zoom slider changes.
     raw_max_x: float = 0.0
@@ -118,6 +124,7 @@ class AppState:
         }
         self.is_recording = False
         self.record_buffer = []
+        self.filter_buffer = []
         self.raw_max_x = self.raw_max_y = 0.0
         self.raw_min_x = self.raw_min_y = 0.0
         self.zoomed_max_x = self.zoomed_max_y = 0.0

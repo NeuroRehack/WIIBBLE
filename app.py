@@ -5,7 +5,7 @@ import hid
 from board_connection import try_connection
 
 from constants       import (VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH,
-                              ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE)
+                              ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE, ZOOM_SCALE)
 from resources       import ICON_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter
 from calibration     import wait_for_tare, sensitivity_calibration
@@ -251,6 +251,7 @@ def _on_filter_change(value: int, settings, app_state) -> None:
 
 
 def _on_zoom_change(value: float, settings, app_state) -> None:
+    value = ZOOM_SCALE**value
     settings.zoom_factor = value
     # Immediately rescale zoomed extents so bounding box updates on slider drag
     app_state.zoomed_max_x = app_state.raw_max_x * value
@@ -271,9 +272,10 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
     base_h = app_state.screen_height * COORD_SCALE
     if bbox_w < 1 or bbox_h < 1:
         return
-    new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 2)
+    new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 10)
     new_zoom = max(ZOOM_MIN, min(ZOOM_MAX, new_zoom))
     settings.zoom_factor = new_zoom
+    new_zoom = math.log(new_zoom)/math.log(ZOOM_SCALE)  # convert back to slider value
     dpg.set_value("zoom_slider", new_zoom)
     settings.save()
 

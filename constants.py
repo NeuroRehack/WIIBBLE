@@ -44,8 +44,9 @@ CALIB_MIN_WEIGHT_DELTA = 5
 # ---------------------------------------------------------------------------
 # Zoom slider range
 # ---------------------------------------------------------------------------
-ZOOM_MIN = 0.1     # minimum zoom factor (most zoomed out)
-ZOOM_MAX = 200.0   # maximum zoom factor (most zoomed in)
+ZOOM_SCALE = 1.01  # base of exponential zoom scaling (1.01^x)
+ZOOM_MIN = -200     # minimum zoom factor (most zoomed out)
+ZOOM_MAX = 600  # maximum zoom factor (most zoomed in)
 
 # ---------------------------------------------------------------------------
 # Moving average filter range

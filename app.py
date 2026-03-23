@@ -2,12 +2,15 @@
 import math
 import dearpygui.dearpygui as dpg
 import hid
+import time
+import os, csv, datetime
+
 from board_connection import try_connection
 
 from constants       import (VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH,
                               ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE, ZOOM_SCALE)
 from resources       import ICON_PATH, resource_path
-from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter
+from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter, calculate_force_deviation_kg
 from calibration     import wait_for_tare, sensitivity_calibration
 from ui              import (draw_main_screen, draw_connection_screen,
                              draw_connection_failed_screen, ensure_textures_loaded,
@@ -102,7 +105,7 @@ def _get_gear_label() -> str:
 
 
 def _toggle_toolbar(session_state: dict) -> None:
-    visible = not session_state.get("toolbar_visible", True)
+    visible = not session_state.get("toolbar_visible", False)
     session_state["toolbar_visible"] = visible
     if visible:
         # Show full toolbar, hide floating gear
@@ -129,6 +132,20 @@ def update_cursor_toggle_label(settings):
 def _on_cursor_toggle(settings):
     settings.toggle_cursor_mode()
     update_cursor_toggle_label(settings)
+    
+def _on_record_duration_change(value: int, settings, app_state) -> None:
+    settings.record_duration = value
+    app_state.record_duration = value
+    settings.save()
+
+def _on_start_recording(app_state, settings) -> None:
+    if app_state.is_recording or app_state.is_countdown:
+        return  # Prevent double start
+    app_state.is_countdown = True
+    app_state.countdown_value = 4
+    app_state.record_duration = settings.record_duration
+    app_state.record_buffer = []
+    app_state.recording_indicator = False
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """
@@ -146,7 +163,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
         tag="control_panel",
         no_title_bar=True, no_resize=True, no_move=True,
         no_scrollbar=True, no_collapse=True,
-        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H,
+        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H, show=False,
     ):
         with dpg.group(horizontal=True):
             dpg.add_button(
@@ -167,6 +184,23 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                     width=TOOLBAR_BTN_W_MD, height=TOOLBAR_BTN_H,
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+                # --- S5: Recording duration input and Start Recording button ---
+                dpg.add_text("Record Duration (s):")
+                dpg.add_input_int(
+                    tag="record_duration_input",
+                    default_value=int(settings.record_duration),
+                    min_value=1, max_value=120, width=80,
+                    callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
+                )
+                dpg.add_spacer(width=TOOLBAR_SPACER_SM)
+                dpg.add_button(
+                    tag="start_recording_btn",
+                    label="Start Recording",
+                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                    callback=lambda: _on_start_recording(app_state, settings),
+                    enabled=not app_state.is_recording and not app_state.is_countdown,
+                )
+
                 # --- Cursor toggle button ---
                 dpg.add_button(
                     tag="cursor_toggle_btn",
@@ -223,7 +257,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
         no_background=True,
         pos=(4, 4),
         width=GEAR_BTN_SIZE + 4, height=GEAR_BTN_SIZE + 4,
-        show=False,
+        show=True,
     ):
         dpg.add_button(
             tag="gear_float_btn", label=_get_gear_label(),
@@ -375,6 +409,18 @@ def run(app_state, settings, args) -> None:
         if result != 0:
             break
 
+def _save_recording_csv(record_buffer):
+    out_dir = os.path.join(os.getcwd(), "recordings")
+    os.makedirs(out_dir, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"recording_{timestamp}.csv"
+    path = os.path.join(out_dir, filename)
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["time (s)", "x (kg)", "y (kg)"])
+        for row in record_buffer:
+            writer.writerow([f"{row[0]:.3f}", f"{row[1]:.3f}", f"{row[2]:.3f}"])
+    print(f"[Recording] Saved to {path}")
 
 def _run_session(app_state, settings, args) -> int:
     """
@@ -394,7 +440,7 @@ def _run_session(app_state, settings, args) -> int:
     # viewport_drawlist draws directly onto the viewport background (full screen)
     dl = dpg.add_viewport_drawlist(front=False)
 
-    session_state = {"action": None, "toolbar_visible": True}
+    session_state = {"action": None, "toolbar_visible": False}
 
     # Clean up previous session widgets
     for _tag in ("control_panel", "gear_btn_window"):
@@ -402,10 +448,10 @@ def _run_session(app_state, settings, args) -> int:
             dpg.delete_item(_tag)
 
     _build_control_panel(app_state, settings, session_state)
-    # Both windows hidden until main loop starts (after calibration)
+    # Show only the floating gear button (collapsed toolbar) at startup
     dpg.configure_item("control_panel", show=False)
     if dpg.does_item_exist("gear_btn_window"):
-        dpg.configure_item("gear_btn_window", show=False)
+        dpg.configure_item("gear_btn_window", show=True)
 
     _build_stats_bar(app_state)
 
@@ -454,9 +500,6 @@ def _run_session(app_state, settings, args) -> int:
         return 1
     app_state.weight = calibrated_weight
 
-    # Restore toolbar after calibration
-    if dpg.does_item_exist("control_panel"):
-        dpg.configure_item("control_panel", show=True)
 
     # --- Step 4: Main loop ---
     # Extents now stored in app_state so zoom callback can rescale them live.
@@ -464,7 +507,40 @@ def _run_session(app_state, settings, args) -> int:
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
     app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
 
+
+    last_countdown_tick = time.time()
+    record_start_time = None
     while dpg.is_dearpygui_running():
+        # --- S5: Countdown and Recording Logic ---
+        now = time.time()
+        # Countdown phase
+        if app_state.is_countdown:
+            if now - last_countdown_tick >= 1.0:
+                app_state.countdown_value -= 1
+                last_countdown_tick = now
+                if app_state.countdown_value <= 0:
+                    app_state.is_countdown = False
+                    app_state.is_recording = True
+                    app_state.recording_indicator = True
+                    record_start_time = now
+                    app_state.record_start = now
+                    app_state.record_buffer = []
+        # Recording phase
+        if app_state.is_recording:
+            elapsed = now - (record_start_time if record_start_time else app_state.record_start)
+            # Get x, y in kg for CSV
+            x_kg, y_kg = calculate_force_deviation_kg(top_left, top_right, bottom_left, bottom_right)
+            # Timestamp is relative to recording start
+            app_state.record_buffer.append((elapsed, x_kg, y_kg))
+            # Cap at 100 Hz (skip frames if running faster)
+            if elapsed >= app_state.record_duration:
+                app_state.is_recording = False
+                app_state.recording_indicator = False
+                # Save CSV file
+                _save_recording_csv(app_state.record_buffer)
+        # Visual feedback overlays are now drawn in ui.draw_main_screen
+
+
 
         # Handle control panel actions
         action = session_state.get("action")
@@ -501,7 +577,7 @@ def _run_session(app_state, settings, args) -> int:
         if vw != app_state.screen_width or vh != app_state.screen_height:
             app_state.screen_width  = vw
             app_state.screen_height = vh
-            dpg.configure_item("control_panel", width=vw)
+            dpg.configure_item("control_panel", width=vw*0.85, show=False)  # Resize toolbar to new width, keep it hidden until toggle
             # stats_dl redraws itself at correct position on next value change
 
         # Read sensor data

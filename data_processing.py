@@ -1,3 +1,15 @@
+def calculate_force_deviation_kg(top_left: float, top_right: float, bottom_left: float, bottom_right: float) -> tuple:
+    """
+    Calculate x and y force deviations (in kg) from the four corner sensor readings.
+    x: Net left-right force (kg), positive = more weight on right, negative = more on left
+    y: Net front-back force (kg), positive = more weight forward, negative = more backward
+    Returns (x, y) in kg.
+    """
+    # x axis: right sensors minus left sensors
+    x = (top_right + bottom_right) - (top_left + bottom_left)
+    # y axis: front sensors (top) minus back sensors (bottom)
+    y = (top_left + top_right) - (bottom_left + bottom_right)
+    return x, y
 # data_processing.py
 import numpy as np
 from constants import SCALE_FACTOR, TARE_MAX_WEIGHT, COORD_SCALE

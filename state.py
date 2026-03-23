@@ -90,6 +90,12 @@ class AppState:
     record_start:  float = 0.0   # S5
     record_buffer: list  = field(default_factory=list)  # S5
 
+    # S5: Timed Data Recording to CSV — countdown and status
+    is_countdown: bool = False   # True if countdown is active
+    countdown_value: int = 0     # 3, 2, 1, 0 (seconds left)
+    record_duration: float = 10.0 # Duration in seconds (copied from settings at start)
+    recording_indicator: bool = False # For UI (e.g. red dot/REC)
+
     # Moving average filter buffer — stores last N raw corner kg dicts.
     # Averaging happens before calculate_coordinates() so noise is suppressed
     # at the sensor level, not in scaled coordinate space.
@@ -129,3 +135,7 @@ class AppState:
         self.raw_min_x = self.raw_min_y = 0.0
         self.zoomed_max_x = self.zoomed_max_y = 0.0
         self.zoomed_min_x = self.zoomed_min_y = 0.0
+        self.is_countdown = False
+        self.countdown_value = 0
+        self.record_duration = 10.0
+        self.recording_indicator = False

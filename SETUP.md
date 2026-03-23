@@ -152,7 +152,14 @@ uv run python main.py
    - **Connection screen** — app searches for the board automatically.
    - **Tare screen** — board must be empty. App measures the baseline.
    - **Calibration screen** — step onto the board and stand still when prompted.
-   - **Main canvas** — live cursor, weight stats, and balance bar are now active.
+
+    - **Main canvas** — live cursor, weight stats, and balance bar are now active.
+    - **Recording:**
+       - Set the desired recording duration in the toolbar.
+       - Click **Start Recording** to begin. A short countdown will start.
+       - The button changes to **Stop Recording** while recording is active. Click it to stop early, or let the timer run out.
+       - After recording, a CSV file is saved automatically in the `recordings/` folder (e.g., `recording_YYYYMMDD_HHMMSS.csv`).
+       - The recording feature works in both real and mock modes.
 
 ---
 
@@ -160,9 +167,10 @@ uv run python main.py
 
 | Control | Action |
 |---|---|
-| `[=]` button (top-left) | Collapse / expand the settings toolbar |
+| button (top-left) | Collapse / expand the settings toolbar |
 | **RESTART** | Return to the connection screen |
 | **RESET SCREEN** | Clear trail, targets, and bounding box |
+| **Start/Stop Recording** | Begin or end a recording session; saves data to CSV in `recordings/` |
 | **Trail** combo | Set trail length: None / Medium / Long |
 | **Filter** slider | Moving average smoothing (1 = off, 30 = max smooth) |
 | **Zoom** slider | Scale the cursor movement range |

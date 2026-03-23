@@ -118,6 +118,17 @@ def _toggle_toolbar(session_state: dict) -> None:
             dpg.configure_item("gear_btn_window", show=True)
     session_state["action"] = "toolbar_toggled"
 
+# --- Cursor toggle helpers (top-level) ---
+def _cursor_label(settings):
+    return f"Cursor: {'Avatar' if settings.cursor_mode == 'avatar' else 'Circle'}"
+
+def update_cursor_toggle_label(settings):
+    import dearpygui.dearpygui as dpg
+    dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
+
+def _on_cursor_toggle(settings):
+    settings.toggle_cursor_mode()
+    update_cursor_toggle_label(settings)
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """
@@ -156,6 +167,16 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                     width=TOOLBAR_BTN_W_MD, height=TOOLBAR_BTN_H,
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+                # --- Cursor toggle button ---
+                dpg.add_button(
+                    tag="cursor_toggle_btn",
+                    label=_cursor_label(settings),
+                    callback=lambda: _on_cursor_toggle(settings),
+                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                )
+                # Expose label update function for use elsewhere
+                app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
+                dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 dpg.add_text("Trail:")
                 trail_items   = ["None", "Medium", "Long"]
                 trail_map     = {"None": 0, "Medium": 30, "Long": 100}
@@ -191,9 +212,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                     label="Auto-Scale", tag="zoom_to_bbox_btn",
                     callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
                     width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
-                )
-
-    # --- Floating gear button (collapsed state) ---
+                )    # --- Floating gear button (collapsed state) ---
     # no_background=True means zero DPG chrome — just the button pixel-perfect
     if dpg.does_item_exist("gear_btn_window"):
         dpg.delete_item("gear_btn_window")
@@ -336,6 +355,9 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
         settings.toggle_cursor_mode()
+        # Update toolbar button label if function is available
+        if hasattr(app_state, "update_cursor_toggle_label"):
+            app_state.update_cursor_toggle_label()
     else:
         app_state.clicked_locations.append((mx, my))
 

@@ -51,7 +51,7 @@ ZOOM_MAX = 200.0   # maximum zoom factor (most zoomed in)
 # Moving average filter range
 # ---------------------------------------------------------------------------
 FILTER_MIN = 1     # no smoothing (pass-through)
-FILTER_MAX = 30    # maximum smoothing window in frames (~500ms at 60fps)
+FILTER_MAX = 100    # maximum smoothing window in frames (~500ms at 60fps)
 
 # ---------------------------------------------------------------------------
 # Coordinate scaling factor — fraction of screen used for the movement range.

@@ -1,6 +1,6 @@
 # data_processing.py
 import numpy as np
-from constants import SCALE_FACTOR, TARE_MAX_WEIGHT
+from constants import SCALE_FACTOR, TARE_MAX_WEIGHT, COORD_SCALE
 
 
 def read_data(device):
@@ -127,6 +127,6 @@ def calculate_coordinates(
     x = (top_left + bottom_left) / 2 - (top_right + bottom_right) / 2
     y = (top_left + top_right)   / 2 - (bottom_left + bottom_right) / 2
 
-    x *= screen_width  * 0.9 * zoom
-    y *= screen_height * 0.9 * zoom
+    x *= screen_width  * COORD_SCALE * zoom
+    y *= screen_height * COORD_SCALE * zoom
     return x, y

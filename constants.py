@@ -34,6 +34,33 @@ SCALE_FACTOR = 2.6441910428028423
 TARE_MAX_WEIGHT = 530
 
 # ---------------------------------------------------------------------------
+# sensitivity_calibration() threshold: minimum weight above the empty baseline
+# to consider a person standing on the board.
+# Set to 5 kg so light-contact scenarios (e.g. hands) are detected correctly.
+# A value of 20 kg was too high for anything other than full body weight.
+# ---------------------------------------------------------------------------
+CALIB_MIN_WEIGHT_DELTA = 5
+
+# ---------------------------------------------------------------------------
+# Zoom slider range
+# ---------------------------------------------------------------------------
+ZOOM_MIN = 0.1     # minimum zoom factor (most zoomed out)
+ZOOM_MAX = 200.0   # maximum zoom factor (most zoomed in)
+
+# ---------------------------------------------------------------------------
+# Moving average filter range
+# ---------------------------------------------------------------------------
+FILTER_MIN = 1     # no smoothing (pass-through)
+FILTER_MAX = 30    # maximum smoothing window in frames (~500ms at 60fps)
+
+# ---------------------------------------------------------------------------
+# Coordinate scaling factor — fraction of screen used for the movement range.
+# Must match the value in calculate_coordinates() in data_processing.py.
+# Centralised here so both the coordinate calc and zoom-to-bbox use the same value.
+# ---------------------------------------------------------------------------
+COORD_SCALE = 0.9
+
+# ---------------------------------------------------------------------------
 # C# board library DLL — built by: cd WiiBalanceBoardLibrary && dotnet build
 # ---------------------------------------------------------------------------
 DLL_RELATIVE_PATH = os.path.join(

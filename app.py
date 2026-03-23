@@ -4,7 +4,8 @@ import dearpygui.dearpygui as dpg
 import hid
 from board_connection import try_connection
 
-from constants       import VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH
+from constants       import (VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH,
+                              ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE)
 from resources       import ICON_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter
 from calibration     import wait_for_tare, sensitivity_calibration
@@ -78,8 +79,23 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 # UI control panel
 # ---------------------------------------------------------------------------
 
-TOOLBAR_FULL_H = 55   # toolbar height — canvas always reserves this space
-GEAR_BTN_SIZE  = 40   # floating gear button size
+# ---------------------------------------------------------------------------
+# UI layout constants — all widget sizes in one place
+# ---------------------------------------------------------------------------
+TOOLBAR_FULL_H      = 55    # toolbar window height in pixels
+GEAR_BTN_SIZE       = 40    # gear toggle button width and height
+TOOLBAR_BTN_H       = 40    # standard toolbar button height
+TOOLBAR_BTN_W_SM    = 110   # small button width (RESTART, Auto-Scale)
+TOOLBAR_BTN_W_MD    = 130   # medium button width (RESET SCREEN)
+TOOLBAR_SLIDER_W    = 140   # slider width (zoom, filter)
+TOOLBAR_COMBO_W     = 90    # combo box width (trail)
+TOOLBAR_SPACER_SM   = 8     # small spacer between related items
+TOOLBAR_SPACER_MD   = 16    # medium spacer between groups
+
+# Click detection radii
+CURSOR_HIT_RADIUS_CIRCLE = 20   # px — circle cursor click detection radius
+CURSOR_HIT_FRACTION      = 0.05 # fraction of screen height for avatar cursor
+
 def _get_gear_label() -> str:
     # Access FA_ICON_FONT via module to get the live value, not the import-time None
     return ICON_COG if _theme_module.FA_ICON_FONT is not None else "[=]"
@@ -132,14 +148,14 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 dpg.add_button(
                     label="RESTART",
                     callback=lambda: session_state.update({"action": "restart"}),
-                    width=110, height=40,
+                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
                 )
                 dpg.add_button(
                     label="RESET SCREEN",
                     callback=lambda: session_state.update({"action": "reset"}),
-                    width=130, height=40,
+                    width=TOOLBAR_BTN_W_MD, height=TOOLBAR_BTN_H,
                 )
-                dpg.add_spacer(width=16)
+                dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 dpg.add_text("Trail:")
                 trail_items   = ["None", "Medium", "Long"]
                 trail_map     = {"None": 0, "Medium": 30, "Long": 100}
@@ -147,34 +163,34 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 current_label = trail_rmap.get(settings.trail_length, "Long")
                 dpg.add_combo(
                     tag="trail_combo", items=trail_items,
-                    default_value=current_label, width=90,
+                    default_value=current_label, width=TOOLBAR_COMBO_W,
                     callback=lambda s, v: _on_trail_change(trail_map[v], settings),
                 )
-                dpg.add_spacer(width=16)
+                dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 dpg.add_text("Filter:")
                 dpg.add_slider_int(
                     tag="filter_slider",
                     default_value=settings.filter_window,
-                    min_value=1,
-                    max_value=100,
-                    width=140,
+                    min_value=FILTER_MIN, max_value=FILTER_MAX,
+                    width=TOOLBAR_SLIDER_W,
                     format="%d frames",
                     callback=lambda s, v: _on_filter_change(v, settings, app_state),
                 )
-                dpg.add_spacer(width=16)
+                dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 dpg.add_text("Zoom:")
                 dpg.add_slider_float(
                     tag="zoom_slider",
                     default_value=settings.zoom_factor,
-                    min_value=0.1, max_value=10.0, width=140,
+                    min_value=ZOOM_MIN, max_value=ZOOM_MAX,
+                    width=TOOLBAR_SLIDER_W,
                     format="%.2fx",
                     callback=lambda s, v: _on_zoom_change(v, settings, app_state),
                 )
-                dpg.add_spacer(width=8)
+                dpg.add_spacer(width=TOOLBAR_SPACER_SM)
                 dpg.add_button(
                     label="Auto-Scale", tag="zoom_to_bbox_btn",
                     callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
-                    width=110, height=40,
+                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
                 )
 
     # --- Floating gear button (collapsed state) ---
@@ -232,12 +248,12 @@ def _on_zoom_change(value: float, settings, app_state) -> None:
 def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings) -> None:
     bbox_w = max(abs(raw_max_x), abs(raw_min_x)) * 2
     bbox_h = max(abs(raw_max_y), abs(raw_min_y)) * 2
-    base_w = app_state.screen_width  * 0.9
-    base_h = app_state.screen_height * 0.9
+    base_w = app_state.screen_width  * COORD_SCALE
+    base_h = app_state.screen_height * COORD_SCALE
     if bbox_w < 1 or bbox_h < 1:
         return
     new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 2)
-    new_zoom = max(0.1, min(10.0, new_zoom))
+    new_zoom = max(ZOOM_MIN, min(ZOOM_MAX, new_zoom))
     settings.zoom_factor = new_zoom
     dpg.set_value("zoom_slider", new_zoom)
     settings.save()
@@ -315,8 +331,8 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
     """
     if my <= TOOLBAR_FULL_H:
         return
-    cursor_radius = (int(0.05 * app_state.screen_height)
-                     if settings.cursor_mode == "avatar" else 20)
+    cursor_radius = (int(CURSOR_HIT_FRACTION * app_state.screen_height)
+                     if settings.cursor_mode == "avatar" else CURSOR_HIT_RADIUS_CIRCLE)
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
         settings.toggle_cursor_mode()

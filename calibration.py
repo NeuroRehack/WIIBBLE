@@ -1,6 +1,6 @@
 # calibration.py
 import dearpygui.dearpygui as dpg
-from constants import TARE_MAX_WEIGHT
+from constants import TARE_MAX_WEIGHT, CALIB_MIN_WEIGHT_DELTA
 from data_processing import measure_weight
 from ui import draw_step_instruction, ensure_textures_loaded
 
@@ -62,7 +62,7 @@ def sensitivity_calibration(device, dl, app_state, on_start=None) -> float:
 
         weight = measure_weight(device, app_state.data_struct)
 
-        if abs(weight - last_w) < 1 and (weight - baseline) > 20:
+        if abs(weight - last_w) < 1 and (weight - baseline) > CALIB_MIN_WEIGHT_DELTA:
             counter += 1
         else:
             counter = 0

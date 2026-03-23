@@ -140,12 +140,18 @@ def _on_record_duration_change(value: int, settings, app_state) -> None:
 
 def _on_start_recording(app_state, settings) -> None:
     if app_state.is_recording or app_state.is_countdown:
+        app_state.is_recording = False
+        dpg.set_item_label("start_recording_btn", "Start Recording")
+        
         return  # Prevent double start
     app_state.is_countdown = True
     app_state.countdown_value = 4
     app_state.record_duration = settings.record_duration
     app_state.record_buffer = []
     app_state.recording_indicator = False
+    # change label of start button to "stop recording"
+    dpg.set_item_label("start_recording_btn", "Stop Recording")
+    
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """
@@ -538,6 +544,14 @@ def _run_session(app_state, settings, args) -> int:
                 app_state.recording_indicator = False
                 # Save CSV file
                 _save_recording_csv(app_state.record_buffer)
+                # reset buffer and timers
+                app_state.record_buffer = []
+                
+        # check if buffer is not empty and recording has stopped, then save the CSV
+        elif not app_state.is_recording and app_state.record_buffer:
+            _save_recording_csv(app_state.record_buffer)
+            app_state.record_buffer = []
+            app_state.recording_indicator = False
         # Visual feedback overlays are now drawn in ui.draw_main_screen
 
 

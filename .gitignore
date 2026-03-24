@@ -3,7 +3,7 @@
 \pybluez-master
 \scale.exe
 \scale.spec
-\venv
+\.venv
 \__pycache__
 # for c# project
 \obj
@@ -13,3 +13,4 @@
 *.dll
 *.exe
 .wiibble
+\recordings

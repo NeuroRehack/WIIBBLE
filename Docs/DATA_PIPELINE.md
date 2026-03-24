@@ -2,7 +2,30 @@
 
 This document outlines the data processing pipeline for the WIIBBLE application, from raw sensor acquisition to CSV recording output.
 
----
+## Pipeline Diagram
+```mermaid
+flowchart TD
+    A(Raw HID Data: 32 bytes) --> B(Parse Data & Apply Tare)
+    B --> C(Moving Average Filter)
+    C --> D(Force Deviation Calculation)
+    D --> E(Buffer: timestamp, x, y)
+    E --> F(CSV Output)
+```
+
+```
+Raw HID Data (32 bytes)
+   ↓
+parse_data + tare
+   ↓
+Moving Average Filter (apply_filter)
+   ↓
+Force Deviation (calculate_force_deviation_kg)
+   ↓
+Buffer (timestamp, x, y)
+   ↓
+CSV Output (_save_recording_csv)
+```
+
 
 ## 1. Data Acquisition
 - **Source:** Wii Balance Board (or mock device)
@@ -71,23 +94,6 @@ This document outlines the data processing pipeline for the WIIBBLE application,
 - **Target:** 100 Hz maximum (capped in main loop, but not strictly enforced)
 - **Actual:** Depends on system performance and frame rate
 
----
-
-## Pipeline Diagram
-
-```
-Raw HID Data (32 bytes)
-   ↓
-parse_data + tare
-   ↓
-Moving Average Filter (apply_filter)
-   ↓
-Force Deviation (calculate_force_deviation_kg)
-   ↓
-Buffer (timestamp, x, y)
-   ↓
-CSV Output (_save_recording_csv)
-```
 
 ---
 

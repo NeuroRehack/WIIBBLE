@@ -43,7 +43,7 @@ def sensitivity_calibration(device, dl, app_state, on_start=None) -> float:
     Show 'Step ON' screen and wait until stable body weight is detected.
 
     Baseline measured first (board empty), then on_start() called.
-    Passes when 20 consecutive readings stable and > baseline + 20 kg.
+    Passes when 20 consecutive readings stable and > baseline + CALIB_MIN_WEIGHT_DELTA kg.
     Returns calibrated body weight.
     """
     ensure_textures_loaded()

@@ -27,11 +27,13 @@ This project integrates the Wii Balance Board with custom software to measure we
   - [🙏 Acknowledgements: ](#-acknowledgements-)
 
 
+
 ## 💡 Features  <a name="features"></a>
-- Simple Real-time data visualization of weight distribution
-- Sensitivity calibration 
+- Simple real-time data visualization of weight distribution
+- Sensitivity calibration
 - Tare functionality for more accurate measurements
 - Easy setup for connecting to the Wii Balance Board via Bluetooth *(after pairing: see [Board Pairing](#board-pairing))*
+- **Recording feature:** Record weight and balance data for a set duration or stop manually, with export to CSV for further analysis
 
 
 -## 📝 Prerequisites <a name="prerequisites"></a>
@@ -136,11 +138,33 @@ To compile the python script, you can run the `compiler.bat` file. This will cre
 
    - Run the executable from the `outputBuild` folder or the location where you downloaded the executable to.
 
+
+---
+
+### Recording Feature
+
+The WIIBBLE application allows you to record weight and balance data for a set duration or stop the recording manually at any time.
+
+**How to use:**
+
+1. In the toolbar, set the desired recording duration (in seconds).
+2. Click the **Start Recording** button. A short countdown will begin before recording starts.
+3. While recording, the button changes to **Stop Recording**. You can:
+  - Let the timer run out (recording will stop automatically), or
+  - Click **Stop Recording** at any time to end the recording early.
+4. After recording stops, a CSV file is automatically saved in the `recordings/` folder. The file contains timestamped weight data for further analysis.
+
+**Notes:**
+- The recording feature works in both real and mock modes.
+- Each recording is saved with a timestamped filename (e.g., `recording_YYYYMMDD_HHMMSS.csv`).
+
+---
+
 3. **Application Flow:**
 
-   - The application will attempt to connect to the Wii Balance Board.
-   - After connecting, follow the on-screen instructions for sensitivity calibration and tare functions.
-   - Once calibrated, the live environment will display real-time weight distribution.
+  - The application will attempt to connect to the Wii Balance Board.
+  - After connecting, follow the on-screen instructions for sensitivity calibration and tare functions.
+  - Once calibrated, the live environment will display real-time weight distribution.
 
 ## 🚑 Troubleshooting <a name="troubleshooting"></a>
 - **Library Issues:** If the application fails to run due to library issues, try installing the required packages one at a time.

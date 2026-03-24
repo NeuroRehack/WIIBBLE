@@ -1,13 +1,8 @@
 # WIIBBLE — TODO & Roadmap
 
----
-
-## Table of Contents
-
 - [WIIBBLE — TODO \& Roadmap](#wiibble--todo--roadmap)
-  - [Table of Contents](#table-of-contents)
   - [🟢Feature requests and improvements](#feature-requests-and-improvements)
-  - [🔴 Critical Bugs](#-critical-bugs)
+  - [🔴 Bugs](#-bugs)
   - [🟡 Code Quality](#-code-quality)
   - [🟢 Developer Experience](#-developer-experience)
     - [Add Logging Framework](#add-logging-framework)
@@ -19,14 +14,15 @@
 ---
 
 ##  🟢Feature requests and improvements
- - [ ] Add a stop watch timer to the UI during recording sessions for better user feedback on elapsed time
+ - [x] Add a stop watch timer to the UI during recording sessions for better user feedback on elapsed time
  - [ ] Modify zoom feature to allow offcenter zooming, not just zooming to the center of the screen. This would allow users to focus on specific areas of the workspace.
  - [ ] Add slider to adjust the sensitivity, which is calculated during the calibration phase. This would allow users to fine-tune the cursor movement to their preference or needs.
  - [ ] change stat bar coulour back to dinamic colour range based on amount of weight on the board
  - [ ] Add option to manually recalibrate the board. Currently, we use a constant SCALE_FACTOR to convert raw sensor values to weight, but this can vary between boards and over time. A manual calibration option would allow users to adjust the scale factor based on known weights for improved accuracy.
+ - [ ] migrate the blurry draw text to a custom font rendering system
 
-## 🔴 Critical Bugs
-
+## 🔴 Bugs
+- [ ] Remove the settings button from the any screen except the main session screen. It currently appears during tare, calibration, connction and failed connection screens, which is confusing since it doesn't do anything in those contexts.
 ---
 
 ## 🟡 Code Quality

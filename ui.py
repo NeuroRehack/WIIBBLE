@@ -275,12 +275,17 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
 
     # Weight bar and stats text are both drawn on stats_dl in app.py
     # so they render above the canvas layer in the correct order.
-    # --- Overlays: Countdown and Recording Indicator ---
-    # Debug: print overlay state
+    # --- Overlays: Countdown, Recording Indicator, and Stopwatch Timer ---
     # Draw countdown overlay (centered text)
     if getattr(app_state, "is_countdown", False):
         dpg.draw_text((sw//2-30, sh//2-60), f"{getattr(app_state, 'countdown_value', '')}", color=(255,0,0,255), size=100, parent=dl)
-    # Draw recording indicator (red dot + REC)
+    # Draw recording indicator (red dot + REC) and stopwatch timer
     if getattr(app_state, "recording_indicator", False):
         dpg.draw_circle((sw*0.95, 20), 18, color=(255,0,0,255), fill=(255,0,0,200), parent=dl)
         dpg.draw_text((sw*0.95 + 25, 4), "REC", color=(255,0,0,255), size=32, parent=dl)
+        # Draw stopwatch timer (mm:ss)
+        elapsed = getattr(app_state, "stopwatch_elapsed", 0.0)
+        mins = int(elapsed // 60)
+        secs = elapsed % 60
+        timer_str = f"{mins:02d}:{secs:04.1f}"
+        dpg.draw_text((sw*0.95 - 150, 4), timer_str, color=(255,0,0,255), size=32, parent=dl)

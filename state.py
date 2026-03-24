@@ -89,6 +89,8 @@ class AppState:
     is_recording:  bool  = False  # S5
     record_start:  float = 0.0   # S5
     record_buffer: list  = field(default_factory=list)  # S5
+    # Stopwatch timer for recording
+    stopwatch_elapsed: float = 0.0  # Elapsed time in seconds (for UI)
 
     # S5: Timed Data Recording to CSV — countdown and status
     is_countdown: bool = False   # True if countdown is active

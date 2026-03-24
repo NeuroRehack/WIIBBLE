@@ -142,13 +142,15 @@ def _on_start_recording(app_state, settings) -> None:
     if app_state.is_recording or app_state.is_countdown:
         app_state.is_recording = False
         dpg.set_item_label("start_recording_btn", "Start Recording")
-        
+        app_state.recording_indicator = False
+        app_state.stopwatch_elapsed = 0.0
         return  # Prevent double start
     app_state.is_countdown = True
     app_state.countdown_value = 4
     app_state.record_duration = settings.record_duration
     app_state.record_buffer = []
     app_state.recording_indicator = False
+    app_state.stopwatch_elapsed = 0.0
     # change label of start button to "stop recording"
     dpg.set_item_label("start_recording_btn", "Stop Recording")
     
@@ -531,9 +533,11 @@ def _run_session(app_state, settings, args) -> int:
                     record_start_time = now
                     app_state.record_start = now
                     app_state.record_buffer = []
+                    app_state.stopwatch_elapsed = 0.0
         # Recording phase
         if app_state.is_recording:
             elapsed = now - (record_start_time if record_start_time else app_state.record_start)
+            app_state.stopwatch_elapsed = elapsed
             # Get x, y in kg for CSV
             x_kg, y_kg = calculate_force_deviation_kg(top_left, top_right, bottom_left, bottom_right)
             # Timestamp is relative to recording start
@@ -542,6 +546,9 @@ def _run_session(app_state, settings, args) -> int:
             if elapsed >= app_state.record_duration:
                 app_state.is_recording = False
                 app_state.recording_indicator = False
+                app_state.stopwatch_elapsed = 0.0
+                # Reset button label to 'Start Recording' when recording ends automatically
+                dpg.set_item_label("start_recording_btn", "Start Recording")
                 # Save CSV file
                 _save_recording_csv(app_state.record_buffer)
                 # reset buffer and timers
@@ -552,6 +559,7 @@ def _run_session(app_state, settings, args) -> int:
             _save_recording_csv(app_state.record_buffer)
             app_state.record_buffer = []
             app_state.recording_indicator = False
+            app_state.stopwatch_elapsed = 0.0
         # Visual feedback overlays are now drawn in ui.draw_main_screen
 
 

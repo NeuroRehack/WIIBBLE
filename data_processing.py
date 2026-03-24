@@ -1,3 +1,7 @@
+# data_processing.py
+import numpy as np
+from constants import SCALE_FACTOR, TARE_MAX_WEIGHT, COORD_SCALE
+
 def calculate_force_deviation_kg(top_left: float, top_right: float, bottom_left: float, bottom_right: float) -> tuple:
     """
     Calculate x and y force deviations (in kg) from the four corner sensor readings.
@@ -10,10 +14,6 @@ def calculate_force_deviation_kg(top_left: float, top_right: float, bottom_left:
     # y axis: front sensors (top) minus back sensors (bottom)
     y = (top_left + top_right) - (bottom_left + bottom_right)
     return x, y
-# data_processing.py
-import numpy as np
-from constants import SCALE_FACTOR, TARE_MAX_WEIGHT, COORD_SCALE
-
 
 def read_data(device):
     """Read a raw 32-byte HID report from the device."""

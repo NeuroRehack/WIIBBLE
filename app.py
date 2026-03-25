@@ -340,32 +340,34 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -
     scrolll up (away from user) is positive, scroll down (toward user) is negative. zooms in when scrolling up, out when scrolling down.
     """
     ctrl_held  = dpg.is_key_down(dpg.mvKey_LControl)
-    
-    # get mouse position in viewport coordinates (0,0 top-left of viewport)
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
-
     if not ctrl_held:
         return  # plain scroll — do nothing
 
-    # pan_speed = wheel_delta * PAN_SPEED
+    # --- Mouse-anchored zoom ---
+    # 1. Compute logical (content) coordinates under the mouse before zoom
+    cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    logical_x = (mouse_x - cx) / settings.zoom_factor
+    logical_y = (mouse_y - cy) / settings.zoom_factor
 
-    # # pan such that the point under the cursor moves toward the center of the screen as you scroll
-    # center_x = app_state.screen_width / 2
-    # center_y = app_state.screen_height / 2
-    # offset_x = (center_x - mouse_x) * pan_speed / center_x
-    # offset_y = (center_y - mouse_y) * pan_speed / center_y
-    # app_state.pan_offset_x += offset_x
-    # app_state.pan_offset_y += offset_y
-    
-    # apply the zoom using exponential scaling (slider value is exponent)
-    # get current slider value from zoom_factor
+    # 2. Compute new zoom factor
     try:
         slider_value = math.log(settings.zoom_factor) / math.log(ZOOM_SCALE)
     except (ValueError, ZeroDivisionError):
         slider_value = 0
     slider_value += wheel_delta * ZOOM_SPEED  # adjust by wheel delta
-    # Clamp slider value
     slider_value = max(ZOOM_MIN, min(ZOOM_MAX, slider_value))
+    new_zoom = ZOOM_SCALE ** slider_value
+
+    # 3. Update pan offset so the logical point under the mouse stays under the mouse
+    new_cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    new_cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    new_pan_offset_x = mouse_x - (logical_x * new_zoom + app_state.screen_width // 2)
+    new_pan_offset_y = mouse_y - (logical_y * new_zoom + app_state.screen_height // 2)
+    app_state.pan_offset_x = new_pan_offset_x
+    app_state.pan_offset_y = new_pan_offset_y
+
     dpg.set_value("zoom_slider", slider_value)
     _on_zoom_change(slider_value, settings, app_state)
     session_state["action"] = "pan_changed"

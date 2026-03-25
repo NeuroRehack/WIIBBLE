@@ -57,7 +57,7 @@ SENSITIVITY_MAX = 3.0   # maximum sensitivity (amplifies cursor movement)
 # ---------------------------------------------------------------------------
 # Pan (Ctrl+Scroll) settings
 # ---------------------------------------------------------------------------
-PAN_SPEED = 200          # pixels per mouse-wheel tick when panning
+PAN_SPEED = 250          # pixels per mouse-wheel tick when panning
 ZOOM_SPEED = 10
 
 # ---------------------------------------------------------------------------

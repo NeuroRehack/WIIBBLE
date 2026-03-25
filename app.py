@@ -8,7 +8,8 @@ import os, csv, datetime
 from board_connection import try_connection
 
 from constants       import (VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH,
-                              ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE, ZOOM_SCALE)
+                              ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE, ZOOM_SCALE,
+                              SENSITIVITY_MIN, SENSITIVITY_MAX, PAN_SPEED, ZOOM_SPEED)
 from resources       import ICON_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter, calculate_force_deviation_kg
 from calibration     import wait_for_tare, sensitivity_calibration
@@ -257,7 +258,25 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                     label="Auto-Scale", tag="zoom_to_bbox_btn",
                     callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
                     width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
-                )    # --- Floating gear button (collapsed state) ---
+                )
+                dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+                # --- S6: Sensitivity slider ---
+                dpg.add_text("Sensitivity:")
+                dpg.add_slider_float(
+                    tag="sensitivity_slider",
+                    default_value=settings.sensitivity,
+                    min_value=SENSITIVITY_MIN, max_value=SENSITIVITY_MAX,
+                    width=TOOLBAR_SLIDER_W,
+                    format="%.2fx",
+                    callback=lambda s, v: _on_sensitivity_change(v, settings),
+                )
+                dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+                # --- Pan: Reset Pan button ---
+                dpg.add_button(
+                    label="Reset Pan", tag="reset_pan_btn",
+                    callback=lambda: session_state.update({"action": "reset_pan"}),
+                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                )
     # no_background=True means zero DPG chrome — just the button pixel-perfect
     if dpg.does_item_exist("gear_btn_window"):
         dpg.delete_item("gear_btn_window")
@@ -304,6 +323,52 @@ def _on_zoom_change(value: float, settings, app_state) -> None:
     app_state.zoomed_min_x = app_state.raw_min_x * value
     app_state.zoomed_min_y = app_state.raw_min_y * value
     settings.save()
+
+
+def _on_sensitivity_change(value: float, settings) -> None:
+    """S6: Adjust cursor movement sensitivity (scales the effective weight divisor)."""
+    settings.sensitivity = value
+    settings.save()
+
+
+def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -> None:
+    """
+    Ctrl+Scroll: pan and zoomthe canvas so users can focus on off-centre regions.
+    Plain scroll (no Ctrl): ignored here — reserved for future use.
+
+    wheel_delta is computed by measuring dx and dy between mouse position and center of the screen
+    scrolll up (away from user) is positive, scroll down (toward user) is negative. zooms in when scrolling up, out when scrolling down.
+    """
+    ctrl_held  = dpg.is_key_down(dpg.mvKey_LControl)
+    
+    # get mouse position in viewport coordinates (0,0 top-left of viewport)
+    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+
+    if not ctrl_held:
+        return  # plain scroll — do nothing
+
+    pan_speed = wheel_delta * PAN_SPEED
+
+    # pan such that the point under the cursor moves toward the center of the screen as you scroll
+    center_x = app_state.screen_width / 2
+    center_y = app_state.screen_height / 2
+    offset_x = (center_x - mouse_x) * pan_speed / center_x
+    offset_y = (center_y - mouse_y) * pan_speed / center_y
+    app_state.pan_offset_x += offset_x
+    app_state.pan_offset_y += offset_y
+    
+    # apply the zoom using exponential scaling (slider value is exponent)
+    # get current slider value from zoom_factor
+    try:
+        slider_value = math.log(settings.zoom_factor) / math.log(ZOOM_SCALE)
+    except (ValueError, ZeroDivisionError):
+        slider_value = 0
+    slider_value += wheel_delta * ZOOM_SPEED  # adjust by wheel delta
+    # Clamp slider value
+    slider_value = max(ZOOM_MIN, min(ZOOM_MAX, slider_value))
+    dpg.set_value("zoom_slider", slider_value)
+    _on_zoom_change(slider_value, settings, app_state)
+    session_state["action"] = "pan_changed"
 
 
 # ---------------------------------------------------------------------------
@@ -483,6 +548,11 @@ def _run_session(app_state, settings, args) -> int:
                 *dpg.get_mouse_pos(local=False), app_state, settings, session_state,
             ),
         )
+        # Ctrl+Scroll: pan the canvas without changing zoom level.
+        # The wheel delta is positive = scroll up = pan up (move view down).
+        dpg.add_mouse_wheel_handler(
+            callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
+        )
 
     # --- Step 1: Connect ---
     try:
@@ -598,6 +668,8 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
             app_state.raw_max_x = app_state.raw_max_y = 0.0
             app_state.raw_min_x = app_state.raw_min_y = 0.0
+            app_state.pan_offset_x = 0.0
+            app_state.pan_offset_y = 0.0
             session_state["action"] = None
         if action == "zoom_to_bbox":
             _on_zoom_to_bbox(app_state.raw_max_x, app_state.raw_max_y,
@@ -607,6 +679,14 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
             app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
             app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
+            session_state["action"] = None
+
+        if action == "reset_pan":
+            app_state.pan_offset_x = 0.0
+            app_state.pan_offset_y = 0.0
+            session_state["action"] = None
+
+        if action == "pan_changed":
             session_state["action"] = None
 
         # Toolbar toggle — just consume, canvas never resizes
@@ -643,10 +723,13 @@ def _run_session(app_state, settings, args) -> int:
             top_left     = smoothed["top_left"]
             bottom_left  = smoothed["bottom_left"]
 
-            # Raw coords (zoom=1.0) — derived from smoothed sensor values
+            # Raw coords (zoom=1.0) — derived from smoothed sensor values.
+            # Sensitivity (S6) divides the effective weight: a higher sensitivity
+            # value reduces the divisor, making the cursor move more per kg shift.
+            effective_weight = app_state.weight / max(settings.sensitivity, 0.01)
             raw_x, raw_y = calculate_coordinates(
                 top_left, top_right, bottom_left, bottom_right,
-                weight=app_state.weight,
+                weight=effective_weight,
                 screen_width=app_state.screen_width,
                 screen_height=app_state.screen_height,
                 zoom=1.0,
@@ -665,9 +748,9 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_min_x = min(app_state.zoomed_min_x, x)
             app_state.zoomed_min_y = min(app_state.zoomed_min_y, y)
 
-            ball_x = int(app_state.screen_width  // 2 + x)
+            ball_x = int(app_state.screen_width  // 2 + x + app_state.pan_offset_x)
             # ball_y: canvas centre is screen_height/2, no toolbar offset
-            ball_y = int(app_state.screen_height // 2 + y)
+            ball_y = int(app_state.screen_height // 2 + y + app_state.pan_offset_y)
 
             app_state.ball_x = ball_x
             app_state.ball_y = ball_y
@@ -690,6 +773,8 @@ def _run_session(app_state, settings, args) -> int:
                 min_x=app_state.zoomed_min_x, min_y=app_state.zoomed_min_y,
                 app_state=app_state,
                 settings=settings,
+                pan_offset_x=app_state.pan_offset_x,
+                pan_offset_y=app_state.pan_offset_y,
             )
             # Update crisp stats bar (avoids blurry drawlist text)
             if app_state.weight > 0:

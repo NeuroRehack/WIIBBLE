@@ -49,6 +49,18 @@ ZOOM_MIN = -200     # minimum zoom factor (most zoomed out)
 ZOOM_MAX = 600  # maximum zoom factor (most zoomed in)
 
 # ---------------------------------------------------------------------------
+# Sensitivity slider range
+# ---------------------------------------------------------------------------
+SENSITIVITY_MIN = 0.1   # minimum sensitivity (reduces cursor movement)
+SENSITIVITY_MAX = 3.0   # maximum sensitivity (amplifies cursor movement)
+
+# ---------------------------------------------------------------------------
+# Pan (Ctrl+Scroll) settings
+# ---------------------------------------------------------------------------
+PAN_SPEED = 200          # pixels per mouse-wheel tick when panning
+ZOOM_SPEED = 10
+
+# ---------------------------------------------------------------------------
 # Moving average filter range
 # ---------------------------------------------------------------------------
 FILTER_MIN = 1     # no smoothing (pass-through)

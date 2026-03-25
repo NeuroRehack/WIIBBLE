@@ -200,11 +200,14 @@ def draw_connection_failed_screen(dl, app_state) -> None:
 
 def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
                      curr_weight: float, max_x, max_y, min_x, min_y,
-                     app_state, settings) -> None:
+                     app_state, settings,
+                     pan_offset_x: float = 0.0, pan_offset_y: float = 0.0) -> None:
     """
     Draw one frame of the main balance display onto drawlist dl.
 
-    ball_x/ball_y are in full viewport coordinates.
+    ball_x/ball_y are in full viewport coordinates (already include pan offset).
+    pan_offset_x/y shift crosshairs and bounding box so the whole canvas pans
+    together — the user's position and the grid move as one unit.
     Canvas fills entire viewport; toolbar windows float on top.
     sw/sh are full viewport dimensions. Toolbar floats on top.
     """
@@ -215,10 +218,9 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     top_left     = corners["top_left"]
     bottom_left  = corners["bottom_left"]
 
-
-    # Canvas centre — full viewport, no offset
-    cx = sw // 2
-    cy = sh // 2
+    # Canvas centre — shifted by pan offset
+    cx = sw // 2 + pan_offset_x
+    cy = sh // 2 + pan_offset_y
 
     # Background — full viewport
     dpg.draw_rectangle((0, 0), (sw, sh), fill=CANVAS_BG,

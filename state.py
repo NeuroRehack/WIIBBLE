@@ -19,6 +19,7 @@ class Settings:
     filter_window:   int   = 1         # S4: moving average window (1 = no smoothing)
     record_duration: int   = 10        # S5: CSV recording duration in seconds
     cursor_mode:     str   = "avatar"  # S1: "avatar" | "circle"
+    sensitivity:     float = 1.0       # S6: cursor movement sensitivity multiplier
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""
@@ -104,6 +105,11 @@ class AppState:
     # filter_window=1 means no smoothing (pass-through).
     filter_buffer: list = field(default_factory=list)
 
+    # Pan offset — Ctrl+Scroll shifts the canvas centre so users can focus on
+    # off-centre regions. Stored in pixels (viewport coords).
+    pan_offset_x: float = 0.0
+    pan_offset_y: float = 0.0
+
     # Raw (zoom=1.0) coordinate extents — used for zoom-to-bbox and
     # live bounding box rescaling when zoom slider changes.
     raw_max_x: float = 0.0
@@ -137,6 +143,8 @@ class AppState:
         self.raw_min_x = self.raw_min_y = 0.0
         self.zoomed_max_x = self.zoomed_max_y = 0.0
         self.zoomed_min_x = self.zoomed_min_y = 0.0
+        self.pan_offset_x = 0.0
+        self.pan_offset_y = 0.0
         self.is_countdown = False
         self.countdown_value = 0
         self.record_duration = 10.0

@@ -6,7 +6,6 @@
     - [UI](#ui)
     - [Functionality](#functionality)
     - [Installation](#installation)
-  - [must contain a non-null value when exiting constructor. Considerdeclaring the event as nullable. ​](#must-contain-a-non-null-value-when-exiting-constructor-considerdeclaring-the-event-as-nullable-)
   - [🟡 Code Quality](#-code-quality)
   - [🟢 Developer Experience](#-developer-experience)
     - [Add Logging Framework](#add-logging-framework)
@@ -36,9 +35,7 @@ changing the screen size (windowed mode and full-screen mode )
 ### Functionality
 - [x] **Needs testing** - latency issues even with filter size of 1 (no filter), it seems to be slower and not very responsive than. could this be due to new graphics engine?
 ### Installation
-- [ ] Installation: Step 4 warning after “dotnet
-build”:​ warning CS8618: Non-nullable event 'BalanceBoardDataReceived'
-must contain a non-null value when exiting constructor. Considerdeclaring the event as nullable. ​
+- [ ] Installation: Step 4 warning after “dotnet build”:​ warning CS8618: Non-nullable event 'BalanceBoardDataReceived' must contain a non-null value when exiting constructor. Considerdeclaring the event as nullable. ​
 ---
 
 ## 🟡 Code Quality

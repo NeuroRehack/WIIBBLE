@@ -80,7 +80,10 @@ class AppState:
     ball_y: int = 0
 
     historical_coords: list = field(default_factory=lambda: [(0, 0)] * 100)
+    # Each target: {"center": (x, y), "radius": r} (all in logical/content coords)
     clicked_locations: list = field(default_factory=list)
+    # Temporary state for a target being created (None or dict with 'center' and 'radius')
+    target_in_progress: dict = None
     data_struct: dict = field(default_factory=lambda: {
         "top_right":    {"rawIndex": 3, "tare": 0},
         "bottom_right": {"rawIndex": 5, "tare": 0},

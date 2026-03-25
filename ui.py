@@ -236,16 +236,31 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     # Target circles (clicked locations — stored in logical/content coords)
     cx = sw // 2 + pan_offset_x
     cy = sh // 2 + pan_offset_y
-    TARGET_RADIUS = 5  # logical radius (content space)
-    for logical in app_state.clicked_locations:
-        # Transform logical to viewport coordinates
-        vx = cx + logical[0] * settings.zoom_factor
-        vy = cy + logical[1] * settings.zoom_factor
-        scaled_radius = TARGET_RADIUS * settings.zoom_factor
+    # Draw all finalized targets (support both old tuple and new dict format)
+    for target in app_state.clicked_locations:
+        if isinstance(target, dict):
+            (lx, ly) = target["center"]
+            logical_radius = target.get("radius", 5.0)
+        else:
+            (lx, ly) = target
+            logical_radius = 5.0
+        vx = cx + lx * settings.zoom_factor
+        vy = cy + ly * settings.zoom_factor
+        scaled_radius = logical_radius * settings.zoom_factor
         dist = math.sqrt((vx - ball_x) ** 2 + (vy - ball_y) ** 2)
         hit = dist < scaled_radius
         fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
         dpg.draw_circle((vx, vy), scaled_radius, color=fill, fill=fill, parent=dl)
+
+    # Draw target-in-progress (preview)
+    tip = getattr(app_state, "target_in_progress", None)
+    if tip is not None:
+        (lx, ly) = tip["center"]
+        logical_radius = tip.get("radius", 5.0)
+        vx = cx + lx * settings.zoom_factor
+        vy = cy + ly * settings.zoom_factor
+        scaled_radius = logical_radius * settings.zoom_factor
+        dpg.draw_circle((vx, vy), scaled_radius, color=(0, 200, 255, 180), fill=(0, 200, 255, 60), parent=dl)
 
     # Trail (S2: sliced to trail_length; coords are in viewport space)
     coords = app_state.historical_coords[-settings.trail_length:] if settings.trail_length > 0 else []

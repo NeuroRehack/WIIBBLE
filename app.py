@@ -469,24 +469,43 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     if (mx <= 50 and my <= 50) or \
        (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False)) or \
        dpg.is_key_down(dpg.mvKey_LControl):  # Ctrl+Click is reserved for panning — ignore to prevent misclicks
-        # Click is in the top-left corner (setting button) or toolbar area — ignore to prevent misclicks
         return
     cursor_radius = (int(CURSOR_HIT_FRACTION * app_state.screen_height)
                      if settings.cursor_mode == "avatar" else CURSOR_HIT_RADIUS_CIRCLE)
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
         settings.toggle_cursor_mode()
-        # Update toolbar button label if function is available
         if hasattr(app_state, "update_cursor_toggle_label"):
             app_state.update_cursor_toggle_label()
     else:
-        # Convert mouse position (viewport) to logical (content) coordinates
-        # Undo pan and zoom, subtract canvas center
+        # Start a new target-in-progress for drag-to-resize
         cx = app_state.screen_width // 2 + app_state.pan_offset_x
         cy = app_state.screen_height // 2 + app_state.pan_offset_y
         logical_x = (mx - cx) / settings.zoom_factor
         logical_y = (my - cy) / settings.zoom_factor
-        app_state.clicked_locations.append((logical_x, logical_y))
+        app_state.target_in_progress = {
+            "center": (logical_x, logical_y),
+            "radius": 5.0  # default initial radius in logical units
+        }
+
+def _handle_target_drag(app_state, settings):
+    # Called on mouse drag if a target is being created
+    if app_state.target_in_progress is None:
+        return
+    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+    cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    logical_x = (mouse_x - cx) / settings.zoom_factor
+    logical_y = (mouse_y - cy) / settings.zoom_factor
+    x0, y0 = app_state.target_in_progress["center"]
+    new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
+    app_state.target_in_progress["radius"] = max(1.0, new_radius)
+
+def _handle_target_release(app_state):
+    # Called on mouse release to finalize target
+    if app_state.target_in_progress is not None:
+        app_state.clicked_locations.append(app_state.target_in_progress)
+        app_state.target_in_progress = None
 
 # --- Ctrl+Left Drag Pan Implementation ---
 def _handle_pan_drag(app_state, session_state):
@@ -579,19 +598,25 @@ def _run_session(app_state, settings, args) -> int:
                 *dpg.get_mouse_pos(local=False), app_state, settings, session_state,
             ),
         )
-        # Ctrl+Scroll: pan the canvas without changing zoom level.
         dpg.add_mouse_wheel_handler(
             callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
         )
-        # Ctrl+Left Drag: pan the canvas
         dpg.add_mouse_drag_handler(
             button=0,
             threshold=0,
-            callback=lambda s, d: _handle_pan_drag(app_state, session_state),
+            callback=lambda s, d: (
+                _handle_pan_drag(app_state, session_state)
+                if dpg.is_key_down(dpg.mvKey_LControl)
+                else _handle_target_drag(app_state, settings)
+            ),
         )
         dpg.add_mouse_release_handler(
             button=0,
-            callback=lambda: _handle_pan_release(app_state),
+            callback=lambda: (
+                _handle_pan_release(app_state)
+                if getattr(app_state, "is_panning", False)
+                else _handle_target_release(app_state)
+            ),
         )
 
 

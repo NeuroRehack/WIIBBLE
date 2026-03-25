@@ -21,7 +21,7 @@ def parse_args():
     )
     parser.add_argument(
         "--mock-scenario", type=str, default="sway",
-        choices=["sway", "still", "lean_left", "lean_right", "hands"],
+        choices=["sway", "still", "lean_left", "lean_right", "hands", "step_on_off"],
         help="Simulation scenario (default: sway)",
     )
     return parser.parse_args()

@@ -49,6 +49,16 @@ class MockHIDDevice:
             self._scenario_params = {"base": [24.0, 24.0, 12.0, 12.0], "noise": 0.1,  "sway": 0.5}
         elif scenario == "hands":
             self._scenario_params = {"base": [1.5,  1.5,  1.5,  1.5],  "noise": 0.03, "sway": 0.05}
+        elif scenario == "step_on_off":
+            # Parameters for step on/off: base weight, noise, cycle duration
+            self._scenario_params = {
+                "base": [18.0, 18.0, 18.0, 18.0],
+                "noise": 0.05,
+                "step_weight": 18.0,  # weight per sensor when on
+                "off_weight": 0.0,    # weight per sensor when off
+                "step_duration": 2.0, # seconds on
+                "off_duration": 2.0   # seconds off
+            }
         else:  # "sway" default
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
 
@@ -112,7 +122,6 @@ class MockHIDDevice:
         p = self._scenario_params
         base  = p["base"]
         noise = p["noise"]
-        sway  = p["sway"]
 
         if self.scenario == "still":
             return [v + random.gauss(0, noise) for v in base]
@@ -138,7 +147,20 @@ class MockHIDDevice:
         elif self.scenario == "hands":
             return [v + random.gauss(0, noise) for v in base]
 
+        elif self.scenario == "step_on_off":
+            # Cycle: step on for step_duration, then off for off_duration
+            cycle = p["step_duration"] + p["off_duration"]
+            t_mod = t % cycle
+            if t_mod < p["step_duration"]:
+                # Stepping on
+                weight = p["step_weight"]
+            else:
+                # Stepping off
+                weight = p["off_weight"]
+            return [weight + random.gauss(0, noise) for _ in range(4)]
+
         else:  # sway
+            sway  = p["sway"]
             amp      = sway * 2.5
             lateral  = math.sin(t / 2.0) * amp
             fore_aft = math.sin(t / 3.5) * amp * 0.6

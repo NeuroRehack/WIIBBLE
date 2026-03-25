@@ -491,6 +491,14 @@ def _run_session(app_state, settings, args) -> int:
     if not device:
         return 1
 
+    # Non-blocking reads — read() returns None immediately if no data ready.
+    # This decouples the render rate from the HID poll rate, eliminating the
+    # one-poll-period latency that occurred when read() blocked the render loop.
+    try:
+        device.set_nonblocking(1)
+    except Exception:
+        pass  # mock device and some HID drivers don't support this; safe to ignore
+
     # Show connecting screen while taring
     dpg.delete_item(dl, children_only=True)
     draw_connection_screen(dl, app_state)
@@ -521,7 +529,10 @@ def _run_session(app_state, settings, args) -> int:
 
 
     last_countdown_tick = time.time()
-    record_start_time = None
+    record_start_time   = None
+    _last_frame_time    = time.perf_counter()
+    _TARGET_FRAME_S     = 1.0 / 120  # cap at 120fps to avoid spinning
+
     while dpg.is_dearpygui_running():
         # --- S5: Countdown and Recording Logic ---
         now = time.time()
@@ -683,6 +694,14 @@ def _run_session(app_state, settings, args) -> int:
             _update_stats_bar(pl, pr, curr_weight)
 
         dpg.render_dearpygui_frame()
+
+        # Maintain frame cap — sleep any spare time so we don't spin at 1000fps.
+        # This keeps CPU usage sane without adding input latency.
+        now = time.perf_counter()
+        elapsed = now - _last_frame_time
+        if elapsed < _TARGET_FRAME_S:
+            time.sleep(_TARGET_FRAME_S - elapsed)
+        _last_frame_time = time.perf_counter()
 
     device.close()
     return 1

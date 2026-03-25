@@ -170,8 +170,12 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
     with dpg.window(
         tag="control_panel",
         no_title_bar=True, no_resize=True, no_move=True,
-        no_scrollbar=True, no_collapse=True,
-        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H, show=False,
+        no_scrollbar=False,          # allow horizontal scroll on small screens
+        no_collapse=True,
+        no_scroll_with_mouse=True,   # don't hijack mouse wheel on canvas
+        horizontal_scrollbar=True,
+        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H,  # +12 for scrollbar
+        show=False,
     ):
         with dpg.group(horizontal=True):
             dpg.add_button(
@@ -599,7 +603,13 @@ def _run_session(app_state, settings, args) -> int:
         if vw != app_state.screen_width or vh != app_state.screen_height:
             app_state.screen_width  = vw
             app_state.screen_height = vh
-            dpg.configure_item("control_panel", width=vw*0.85, show=False)  # Resize toolbar to new width, keep it hidden until toggle
+            # Resize toolbar — preserve current visibility state
+            toolbar_currently_visible = session_state.get("toolbar_visible", False)
+            dpg.configure_item("control_panel", width=vw,
+                               show=toolbar_currently_visible)
+            if dpg.does_item_exist("gear_btn_window"):
+                dpg.configure_item("gear_btn_window",
+                                   show=not toolbar_currently_visible)
             # stats_dl redraws itself at correct position on next value change
 
         # Read sensor data

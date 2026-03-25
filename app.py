@@ -347,15 +347,15 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -
     if not ctrl_held:
         return  # plain scroll — do nothing
 
-    pan_speed = wheel_delta * PAN_SPEED
+    # pan_speed = wheel_delta * PAN_SPEED
 
-    # pan such that the point under the cursor moves toward the center of the screen as you scroll
-    center_x = app_state.screen_width / 2
-    center_y = app_state.screen_height / 2
-    offset_x = (center_x - mouse_x) * pan_speed / center_x
-    offset_y = (center_y - mouse_y) * pan_speed / center_y
-    app_state.pan_offset_x += offset_x
-    app_state.pan_offset_y += offset_y
+    # # pan such that the point under the cursor moves toward the center of the screen as you scroll
+    # center_x = app_state.screen_width / 2
+    # center_y = app_state.screen_height / 2
+    # offset_x = (center_x - mouse_x) * pan_speed / center_x
+    # offset_y = (center_y - mouse_y) * pan_speed / center_y
+    # app_state.pan_offset_x += offset_x
+    # app_state.pan_offset_y += offset_y
     
     # apply the zoom using exponential scaling (slider value is exponent)
     # get current slider value from zoom_factor
@@ -466,7 +466,9 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     otherwise add a target circle.
     Ignores clicks in the toolbar area.
     """
-    if (mx <= 50 and my <= 50) or (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False)):
+    if (mx <= 50 and my <= 50) or \
+       (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False)) or \
+       dpg.is_key_down(dpg.mvKey_LControl):  # Ctrl+Click is reserved for panning — ignore to prevent misclicks
         # Click is in the top-left corner (setting button) or toolbar area — ignore to prevent misclicks
         return
     cursor_radius = (int(CURSOR_HIT_FRACTION * app_state.screen_height)
@@ -480,7 +482,30 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     else:
         app_state.clicked_locations.append((mx, my))
 
+# --- Ctrl+Left Drag Pan Implementation ---
+def _handle_pan_drag(app_state, session_state):
+    import dearpygui.dearpygui as dpg
+    # Only pan if Ctrl is held
+    if not dpg.is_key_down(dpg.mvKey_LControl):
+        return
+    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+    if not getattr(app_state, "is_panning", False):
+        # Start panning
+        app_state.is_panning = True
+        app_state.pan_start_mouse = (mouse_x, mouse_y)
+        app_state.pan_start_offset = (app_state.pan_offset_x, app_state.pan_offset_y)
+    else:
+        start_x, start_y = app_state.pan_start_mouse
+        offset_x, offset_y = app_state.pan_start_offset
+        dx = mouse_x - start_x
+        dy = mouse_y - start_y
+        app_state.pan_offset_x = offset_x + dx
+        app_state.pan_offset_y = offset_y + dy
+        session_state["action"] = "pan_changed"
 
+def _handle_pan_release(app_state):
+    if getattr(app_state, "is_panning", False):
+        app_state.is_panning = False
 # ---------------------------------------------------------------------------
 # Main run loop
 # ---------------------------------------------------------------------------
@@ -538,7 +563,7 @@ def _run_session(app_state, settings, args) -> int:
 
     _build_stats_bar(app_state)
 
-    # Register canvas click handler via a handler registry
+    # Register canvas click and drag handlers via a handler registry
     if dpg.does_item_exist("click_handler"):
         dpg.delete_item("click_handler")
     with dpg.handler_registry(tag="click_handler"):
@@ -549,10 +574,20 @@ def _run_session(app_state, settings, args) -> int:
             ),
         )
         # Ctrl+Scroll: pan the canvas without changing zoom level.
-        # The wheel delta is positive = scroll up = pan up (move view down).
         dpg.add_mouse_wheel_handler(
             callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
         )
+        # Ctrl+Left Drag: pan the canvas
+        dpg.add_mouse_drag_handler(
+            button=0,
+            threshold=0,
+            callback=lambda s, d: _handle_pan_drag(app_state, session_state),
+        )
+        dpg.add_mouse_release_handler(
+            button=0,
+            callback=lambda: _handle_pan_release(app_state),
+        )
+
 
     # --- Step 1: Connect ---
     try:

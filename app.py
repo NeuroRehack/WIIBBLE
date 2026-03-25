@@ -480,7 +480,13 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
         if hasattr(app_state, "update_cursor_toggle_label"):
             app_state.update_cursor_toggle_label()
     else:
-        app_state.clicked_locations.append((mx, my))
+        # Convert mouse position (viewport) to logical (content) coordinates
+        # Undo pan and zoom, subtract canvas center
+        cx = app_state.screen_width // 2 + app_state.pan_offset_x
+        cy = app_state.screen_height // 2 + app_state.pan_offset_y
+        logical_x = (mx - cx) / settings.zoom_factor
+        logical_y = (my - cy) / settings.zoom_factor
+        app_state.clicked_locations.append((logical_x, logical_y))
 
 # --- Ctrl+Left Drag Pan Implementation ---
 def _handle_pan_drag(app_state, session_state):

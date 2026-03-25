@@ -15,7 +15,6 @@ from theme import (CANVAS_BG, CANVAS_LINE, CANVAS_LINE_W, CANVAS_CENTRE_DOT,
 # Layout constants — all proportional to viewport dimensions.
 # Change a value here and it propagates everywhere.
 # ---------------------------------------------------------------------------
-TOOLBAR_H         = 55      # height of top control bar in pixels
 STATS_STRIP_H     = 50      # height of bottom stats strip in pixels
 STATS_FONT_SCALE  = 0.055   # stats font size as fraction of viewport height
 STATS_FONT_MIN    = 24      # minimum stats font size in pixels
@@ -198,7 +197,6 @@ def draw_connection_failed_screen(dl, app_state) -> None:
 # Main balance screen
 # ---------------------------------------------------------------------------
 
-# TOOLBAR_H defined in layout constants at top of this file
 
 
 def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,

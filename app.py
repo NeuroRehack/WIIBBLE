@@ -85,7 +85,7 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 # ---------------------------------------------------------------------------
 # UI layout constants — all widget sizes in one place
 # ---------------------------------------------------------------------------
-TOOLBAR_FULL_H      = 55    # toolbar window height in pixels
+TOOLBAR_FULL_H      = 110    # toolbar window height in pixels
 GEAR_BTN_SIZE       = 40    # gear toggle button width and height
 TOOLBAR_BTN_H       = 40    # standard toolbar button height
 TOOLBAR_BTN_W_SM    = 110   # small button width (RESTART, Auto-Scale)
@@ -126,7 +126,6 @@ def _cursor_label(settings):
     return f"Cursor: {'Avatar' if settings.cursor_mode == 'avatar' else 'Circle'}"
 
 def update_cursor_toggle_label(settings):
-    import dearpygui.dearpygui as dpg
     dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
 
 def _on_cursor_toggle(settings):
@@ -174,7 +173,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
         no_collapse=True,
         no_scroll_with_mouse=True,   # don't hijack mouse wheel on canvas
         horizontal_scrollbar=True,
-        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H,  # +12 for scrollbar
+        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H,
         show=False,
     ):
         with dpg.group(horizontal=True):
@@ -390,13 +389,14 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
     dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
 
 
-def _handle_canvas_click(mx: float, my: float, app_state, settings) -> None:
+def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
     """
     Left click on canvas: toggle cursor mode if clicking on cursor,
     otherwise add a target circle.
     Ignores clicks in the toolbar area.
     """
-    if my <= TOOLBAR_FULL_H:
+    if (mx <= 50 and my <= 50) or (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False)):
+        # Click is in the top-left corner (setting button) or toolbar area — ignore to prevent misclicks
         return
     cursor_radius = (int(CURSOR_HIT_FRACTION * app_state.screen_height)
                      if settings.cursor_mode == "avatar" else CURSOR_HIT_RADIUS_CIRCLE)
@@ -474,7 +474,7 @@ def _run_session(app_state, settings, args) -> int:
         dpg.add_mouse_click_handler(
             button=0,
             callback=lambda: _handle_canvas_click(
-                *dpg.get_mouse_pos(local=False), app_state, settings
+                *dpg.get_mouse_pos(local=False), app_state, settings, session_state,
             ),
         )
 

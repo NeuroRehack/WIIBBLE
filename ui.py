@@ -7,9 +7,8 @@ import math
 import dearpygui.dearpygui as dpg
 from resources import IMAGE_PATHS, CONNECTION_PATH, PERSON_IMAGE_PATH
 from theme import (CANVAS_BG, CANVAS_LINE, CANVAS_LINE_W, CANVAS_CENTRE_DOT,
-                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS, CURSOR_COLOR, TRAIL_COLOR_BASE, CALIB_BG_COLOR,
-                   BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR,
-                   STATS_TEXT_COLOR)
+                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS, CURSOR_COLOR, TRAIL_COLOR_BASE, CALIB_BG_COLOR
+                   )
 
 # ---------------------------------------------------------------------------
 # Layout constants — all proportional to viewport dimensions.

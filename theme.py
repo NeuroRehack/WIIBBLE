@@ -39,9 +39,38 @@ BBOX_COLOR          = (150, 160, 175, 180)   # muted grey bounding box
 BBOX_THICKNESS      = 4
 
 # Weight bar colours — teal palette instead of red/green traffic lights
-BAR_BG_COLOR        = (200, 210, 220, 255)   # light grey background
-BAR_LEFT_COLOR      = ( 80, 140, 180, 255)   # left side — muted blue
-BAR_RIGHT_COLOR     = (107, 168, 150, 255)   # right side — muted teal-green
+
+# Stats bar dynamic colors
+BAR_GREY_COLOR        = (200, 210, 220, 255)
+BAR_DARK_GREY_COLOR = (120, 120, 120, 255)
+BAR_GREEN_COLOR     = ( 80, 200, 120, 255)
+BAR_ORANGE_COLOR    = (255, 165,  50, 255)
+BAR_RED_COLOR       = (220,  60,  60, 255)
+
+
+def get_stats_bar_color(percent: float):
+    """
+    Return the stats bar color based on percent of calibration weight.
+    Discrete transitions:
+        - 0-10%: grey
+        - 10-25%: dark grey
+        - 25-50%: green
+        - 50-75%: orange
+        - 75-100%: red 
+        
+    """
+    if percent <= 0.1:
+        return BAR_GREY_COLOR
+    elif percent <= 0.25:
+        return BAR_DARK_GREY_COLOR
+    elif percent <= 0.5:
+        return BAR_GREEN_COLOR
+    elif percent <= 0.75:
+        return BAR_ORANGE_COLOR
+    elif percent > 0.75:
+        return BAR_RED_COLOR
+    else:
+        return BAR_GREY_COLOR
 
 # Stats text
 STATS_TEXT_COLOR    = ( 40,  50,  60, 255)   # dark on white canvas

@@ -16,8 +16,8 @@ from ui              import (draw_main_screen, draw_connection_screen,
                              draw_connection_failed_screen, ensure_textures_loaded,
                              STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
 import theme as _theme_module
-from theme           import (BAR_BG_COLOR, BAR_LEFT_COLOR, BAR_RIGHT_COLOR, STATS_TEXT_COLOR,
-                              ICON_COG)
+from theme           import (BAR_GREY_COLOR, STATS_TEXT_COLOR,
+                              ICON_COG, get_stats_bar_color)
 from mock_board      import MockHIDDevice
 
 
@@ -343,7 +343,7 @@ def _build_stats_bar(app_state) -> None:
     _stats_cache["right"]  = -1
 
 
-def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -> None:
+def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float, calib_weight: float) -> None:
     left_val   = int(perc_left   * 100)
     weight_val = int(curr_weight)
     right_val  = int(perc_right  * 100)
@@ -367,9 +367,15 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
 
     dpg.delete_item("stats_dl", children_only=True)
 
-    # Weight distribution bar — muted teal palette (from theme.py)
+    # Draw static background bar (light grey)
     dpg.draw_rectangle((0, bar_top), (sw, bar_bot),
-                       fill=BAR_BG_COLOR, color=BAR_BG_COLOR, parent="stats_dl")
+                       fill=BAR_GREY_COLOR, color=BAR_GREY_COLOR, parent="stats_dl")
+
+    # Dynamic central stats bar color based on weight percentage
+    percent = curr_weight / calib_weight if calib_weight > 0 else 0
+    bar_color = get_stats_bar_color(percent)
+    
+    # Draw left/right distribution overlays as before
     if _stats_cache["weight"] > 0:
         pl = _stats_cache["left"]  / 100
         pr = _stats_cache["right"] / 100
@@ -377,11 +383,11 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float) -
         pl = pr = 0.5
     x0 = sw // 2 - pl * sw // 2
     dpg.draw_rectangle((x0, bar_top), (sw // 2, bar_bot),
-                       fill=BAR_LEFT_COLOR, color=BAR_LEFT_COLOR, parent="stats_dl")
+                       fill=bar_color, color=bar_color, parent="stats_dl")
     x0 = sw // 2
     x1 = sw // 2 + pr * sw // 2
     dpg.draw_rectangle((x0, bar_top), (x1, bar_bot),
-                       fill=BAR_RIGHT_COLOR, color=BAR_RIGHT_COLOR, parent="stats_dl")
+                       fill=bar_color, color=bar_color, parent="stats_dl")
 
     # Text above the bar
     dpg.draw_text((10,                  y), f"{left_val}%",     color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
@@ -691,7 +697,7 @@ def _run_session(app_state, settings, args) -> int:
                 pr = (smoothed["top_right"] + smoothed["bottom_right"]) / app_state.weight
             else:
                 pl = pr = 0.5
-            _update_stats_bar(pl, pr, curr_weight)
+            _update_stats_bar(pl, pr, curr_weight, app_state.weight)
 
         dpg.render_dearpygui_frame()
 

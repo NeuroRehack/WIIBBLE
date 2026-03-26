@@ -2,6 +2,7 @@
 # Centralised DPG theme, colour palette, and font loading for WIIBBLE.
 # Call apply_global_theme() once after dpg.setup_dearpygui().
 
+import os
 import dearpygui.dearpygui as dpg
 from resources import FA_SOLID_FONT_PATH
 
@@ -10,8 +11,53 @@ from resources import FA_SOLID_FONT_PATH
 # ---------------------------------------------------------------------------
 ICON_COG = ""   # fa-cog (gear / settings)
 
-# Module-level handle — set by apply_global_theme(), used by callers
+# Module-level handles — set by load_fonts(), used by callers
 FA_ICON_FONT = None
+
+# ---------------------------------------------------------------------------
+# Crisp text font
+# ---------------------------------------------------------------------------
+# draw_text(size=N) upscales DPG's ~13px bitmap font to N pixels → blurry.
+# Loading a real font at 100px and binding it to every draw_text item means
+# ImGui downscales the 100px atlas glyph instead of upscaling a tiny one.
+# Downscaling always looks crisp; upscaling never does.
+TEXT_FONT = None
+
+# Candidate system font paths — first existing one wins.
+# Segoe UI (Windows 7+) is clean, neutral, and always present on Windows.
+_TEXT_FONT_CANDIDATES = [
+    # Bundled font (highest priority — drop any .ttf into assets/fonts/)
+    os.path.join(os.path.abspath("."), "assets", "fonts", "Roboto-Regular.ttf"),
+    os.path.join(os.path.abspath("."), "assets", "fonts", "OpenSans-Regular.ttf"),
+    # Windows system fonts
+    r"C:\Windows\Fonts\segoeui.ttf",
+    r"C:\Windows\Fonts\arial.ttf",
+    r"C:\Windows\Fonts\calibri.ttf",
+    # Linux / WSL fallbacks
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+]
+
+
+def _find_text_font():
+    """Return the path to the first available text font, or None."""
+    for p in _TEXT_FONT_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def bind_text_font(item_tag) -> None:
+    """
+    Bind TEXT_FONT to a draw_text (or any) item so it renders crisply.
+
+    Safe to call even if TEXT_FONT was not loaded (no-op in that case).
+    Call this immediately after every dpg.draw_text() that should be crisp.
+    """
+    if TEXT_FONT is not None and dpg.does_item_exist(item_tag):
+        dpg.bind_item_font(item_tag, TEXT_FONT)
+
 
 # ---------------------------------------------------------------------------
 # Colour palette
@@ -38,26 +84,23 @@ CANVAS_CENTRE_R     = 6                      # centre dot radius
 BBOX_COLOR          = (150, 160, 175, 180)   # muted grey bounding box
 BBOX_THICKNESS      = 4
 
-# Weight bar colours — teal palette instead of red/green traffic lights
-
 # Stats bar dynamic colors
 BAR_GREY_COLOR        = (200, 210, 220, 255)
-BAR_DARK_GREY_COLOR = (120, 120, 120, 255)
-BAR_GREEN_COLOR     = ( 80, 200, 120, 255)
-BAR_ORANGE_COLOR    = (255, 165,  50, 255)
-BAR_RED_COLOR       = (220,  60,  60, 255)
+BAR_DARK_GREY_COLOR   = (120, 120, 120, 255)
+BAR_GREEN_COLOR       = ( 80, 200, 120, 255)
+BAR_ORANGE_COLOR      = (255, 165,  50, 255)
+BAR_RED_COLOR         = (220,  60,  60, 255)
 
 
 def get_stats_bar_color(percent: float):
     """
     Return the stats bar color based on percent of calibration weight.
     Discrete transitions:
-        - 0-10%: grey
-        - 10-25%: dark grey
-        - 25-50%: green
-        - 50-75%: orange
-        - 75-100%: red 
-        
+        - 0-10%:   grey
+        - 10-25%:  dark grey
+        - 25-50%:  green
+        - 50-75%:  orange
+        - 75-100%: red
     """
     if percent <= 0.1:
         return BAR_GREY_COLOR
@@ -67,10 +110,9 @@ def get_stats_bar_color(percent: float):
         return BAR_GREEN_COLOR
     elif percent <= 0.75:
         return BAR_ORANGE_COLOR
-    elif percent > 0.75:
-        return BAR_RED_COLOR
     else:
-        return BAR_GREY_COLOR
+        return BAR_RED_COLOR
+
 
 # Stats text
 STATS_TEXT_COLOR    = ( 40,  50,  60, 255)   # dark on white canvas
@@ -84,21 +126,39 @@ CALIB_BG_COLOR   = (110, 159, 168, 255)  # teal background for calibration scree
 def load_fonts() -> None:
     """
     Load custom fonts into DPG font registry.
-    MUST be called before dpg.setup_dearpygui() — DPG only uses the
-    first font registry it sees, and setup_dearpygui() finalises it.
+
+    Loads:
+      • FontAwesome 5 Solid (icon glyphs for toolbar)
+      • A system text font at 100px for crisp draw_text rendering
+
+    MUST be called before dpg.setup_dearpygui().
     """
-    global FA_ICON_FONT
-    import os
-    if os.path.exists(FA_SOLID_FONT_PATH):
-        with dpg.font_registry():
+    global FA_ICON_FONT, TEXT_FONT
+
+    text_font_path = _find_text_font()
+
+    with dpg.font_registry():
+        # --- FontAwesome icons ---
+        if os.path.exists(FA_SOLID_FONT_PATH):
             with dpg.font(FA_SOLID_FONT_PATH, 20) as fa_font:
-                # Only load FA5 icon range — keeps atlas small
                 dpg.add_font_range(0xF000, 0xF8FF)
-        FA_ICON_FONT = fa_font
-        print(f"[Theme] FontAwesome loaded from {FA_SOLID_FONT_PATH}")
-    else:
-        print(f"[WARN] FontAwesome not found at {FA_SOLID_FONT_PATH} — using ASCII fallback")
-        FA_ICON_FONT = None
+            FA_ICON_FONT = fa_font
+            print(f"[Theme] FontAwesome loaded from {FA_SOLID_FONT_PATH}")
+        else:
+            print(f"[WARN] FontAwesome not found at {FA_SOLID_FONT_PATH} — using ASCII fallback")
+            FA_ICON_FONT = None
+
+        # --- Crisp text font at 100px ---
+        # All draw_text calls use sizes ≤100px, so this is the ceiling.
+        # ImGui downscales from 100px → any smaller size looks sharp.
+        if text_font_path:
+            with dpg.font(text_font_path, 100) as text_font:
+                dpg.add_font_range_hint(dpg.mvFontRangeHint_Default)
+            TEXT_FONT = text_font
+            print(f"[Theme] Text font loaded: {os.path.basename(text_font_path)} @ 100px")
+        else:
+            print("[WARN] No system text font found — draw_text will use default (may be blurry)")
+            TEXT_FONT = None
 
 
 def apply_global_theme() -> None:

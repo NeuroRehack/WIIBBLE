@@ -7,7 +7,8 @@ import math
 import dearpygui.dearpygui as dpg
 from resources import IMAGE_PATHS, CONNECTION_PATH, PERSON_IMAGE_PATH
 from theme import (CANVAS_BG, CANVAS_LINE, CANVAS_LINE_W, CANVAS_CENTRE_DOT,
-                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS, CURSOR_COLOR, TRAIL_COLOR_BASE, CALIB_BG_COLOR
+                   CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS, CURSOR_COLOR, TRAIL_COLOR_BASE, CALIB_BG_COLOR,
+                   bind_text_font,
                    )
 
 # ---------------------------------------------------------------------------
@@ -31,6 +32,23 @@ CALIB_ARC_CENTRE_Y  = 0.45
 CALIB_ARC_RADIUS    = 0.22
 CALIB_ARC_THICKNESS = 5
 CALIB_ARC_SEGMENTS  = 40
+
+
+# ---------------------------------------------------------------------------
+# Crisp draw_text helper
+# ---------------------------------------------------------------------------
+
+def _crisp_text(pos, text: str, color: tuple, size: int, parent) -> int:
+    """
+    Drop-in replacement for dpg.draw_text() that binds TEXT_FONT to the
+    created item so ImGui downscales the 100px atlas glyph instead of
+    upscaling the default ~13px bitmap font.
+
+    Returns the item tag (same as dpg.draw_text).
+    """
+    tag = dpg.draw_text(pos, text, color=color, size=size, parent=parent)
+    bind_text_font(tag)
+    return tag
 
 
 # ---------------------------------------------------------------------------
@@ -110,16 +128,16 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
     text_y    = int(sh * CALIB_TEXT_TOP)
     line_h    = int(font_size * CALIB_TEXT_LINE_H)
 
-    dpg.draw_text((text_x, text_y),            "Step",
-                  color=(250, 250, 250, 255), size=font_size, parent=dl)
-    dpg.draw_text((text_x, text_y + line_h),   "ON" if step == "on" else "OFF",
-                  color=(0, 250, 0, 255) if step == "on" else (250, 0, 0, 255),
-                  size=font_size, parent=dl)
-    dpg.draw_text((text_x, text_y + line_h*2), "the board",
-                  color=(250, 250, 250, 255), size=font_size, parent=dl)
+    _crisp_text((text_x, text_y),            "Step",
+                color=(250, 250, 250, 255), size=font_size, parent=dl)
+    _crisp_text((text_x, text_y + line_h),   "ON" if step == "on" else "OFF",
+                color=(0, 250, 0, 255) if step == "on" else (250, 0, 0, 255),
+                size=font_size, parent=dl)
+    _crisp_text((text_x, text_y + line_h*2), "the board",
+                color=(250, 250, 250, 255), size=font_size, parent=dl)
     if step == "on":
-        dpg.draw_text((text_x, text_y + line_h*4), "and stand still",
-                      color=(250, 250, 250, 255), size=font_size, parent=dl)
+        _crisp_text((text_x, text_y + line_h*4), "and stand still",
+                    color=(250, 250, 250, 255), size=font_size, parent=dl)
 
     _draw_arc(dl, sw, sh, counter, max_count, step)
 
@@ -157,8 +175,8 @@ def draw_connection_screen(dl, app_state) -> None:
     font_size = int(sh * 0.06)
     mid_x = sw / 2.5
     mid_y = sh / 2.9
-    dpg.draw_text((mid_x, mid_y), "Trying to connect...",
-                  color=(250, 250, 250, 255), size=font_size, parent=dl)
+    _crisp_text((mid_x, mid_y), "Trying to connect...",
+                color=(250, 250, 250, 255), size=font_size, parent=dl)
 
 
 def draw_connection_failed_screen(dl, app_state) -> None:
@@ -188,15 +206,13 @@ def draw_connection_failed_screen(dl, app_state) -> None:
         ("Press Enter to try again",                      (250, 250, 250, 255)),
     ]
     for i, (text, color) in enumerate(lines):
-        dpg.draw_text((mx, my + i * font_size * 1.4), text,
-                      color=color, size=font_size, parent=dl)
+        _crisp_text((mx, my + i * font_size * 1.4), text,
+                    color=color, size=font_size, parent=dl)
 
 
 # ---------------------------------------------------------------------------
 # Main balance screen
 # ---------------------------------------------------------------------------
-
-
 
 def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
                      curr_weight: float, max_x, max_y, min_x, min_y,
@@ -296,17 +312,22 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
 
     # Weight bar and stats text are both drawn on stats_dl in app.py
     # so they render above the canvas layer in the correct order.
+
     # --- Overlays: Countdown, Recording Indicator, and Stopwatch Timer ---
-    # Draw countdown overlay (centered text)
+    # Draw countdown overlay (centered text) — crisp large number
     if getattr(app_state, "is_countdown", False):
-        dpg.draw_text((sw//2-30, sh//2-60), f"{getattr(app_state, 'countdown_value', '')}", color=(255,0,0,255), size=100, parent=dl)
+        _crisp_text((sw//2-30, sh//2-60), f"{getattr(app_state, 'countdown_value', '')}",
+                    color=(255, 0, 0, 255), size=100, parent=dl)
+
     # Draw recording indicator (red dot + REC) and stopwatch timer
     if getattr(app_state, "recording_indicator", False):
-        dpg.draw_circle((sw*0.95, 20), 18, color=(255,0,0,255), fill=(255,0,0,200), parent=dl)
-        dpg.draw_text((sw*0.95 + 25, 4), "REC", color=(255,0,0,255), size=32, parent=dl)
-        # Draw stopwatch timer (mm:ss)
+        dpg.draw_circle((sw*0.95, 20), 18, color=(255, 0, 0, 255), fill=(255, 0, 0, 200), parent=dl)
+        _crisp_text((sw*0.95 + 25, 4), "REC",
+                    color=(255, 0, 0, 255), size=32, parent=dl)
+        # Stopwatch timer (mm:ss.t)
         elapsed = getattr(app_state, "stopwatch_elapsed", 0.0)
         mins = int(elapsed // 60)
         secs = elapsed % 60
         timer_str = f"{mins:02d}:{secs:04.1f}"
-        dpg.draw_text((sw*0.95 - 150, 4), timer_str, color=(255,0,0,255), size=32, parent=dl)
+        _crisp_text((sw*0.95 - 150, 4), timer_str,
+                    color=(255, 0, 0, 255), size=32, parent=dl)

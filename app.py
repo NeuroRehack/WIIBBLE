@@ -18,7 +18,7 @@ from ui              import (draw_main_screen, draw_connection_screen,
                              STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
 import theme as _theme_module
 from theme           import (BAR_GREY_COLOR, STATS_TEXT_COLOR,
-                              ICON_COG, get_stats_bar_color)
+                              ICON_COG, get_stats_bar_color, bind_text_font)
 from mock_board      import MockHIDDevice
 
 
@@ -456,10 +456,14 @@ def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float, c
     dpg.draw_rectangle((x0, bar_top), (x1, bar_bot),
                        fill=bar_color, color=bar_color, parent="stats_dl")
 
-    # Text above the bar
-    dpg.draw_text((10,                  y), f"{left_val}%",     color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
-    dpg.draw_text((sw // 2 - 40,        y), f"{weight_val} kg", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
-    dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    # Text above the bar — bind crisp font so ImGui downscales the 100px atlas
+    # glyph rather than upscaling the ~13px default bitmap font.
+    t = dpg.draw_text((10,                  y), f"{left_val}%",     color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    bind_text_font(t)
+    t = dpg.draw_text((sw // 2 - 40,        y), f"{weight_val} kg", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    bind_text_font(t)
+    t = dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    bind_text_font(t)
 
 
 def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:

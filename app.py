@@ -9,7 +9,10 @@ from board_connection import try_connection
 
 from constants       import (VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH,
                               ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE, ZOOM_SCALE,
-                              SENSITIVITY_MIN, SENSITIVITY_MAX, PAN_SPEED, ZOOM_SPEED)
+                              SENSITIVITY_MIN, SENSITIVITY_MAX, PAN_SPEED, ZOOM_SPEED, TOOLBAR_FULL_H,
+                                CURSOR_HIT_RADIUS_CIRCLE, CURSOR_HIT_FRACTION,
+                                GEAR_BTN_SIZE, TOOLBAR_BTN_H, TOOLBAR_BTN_W_SM, TOOLBAR_BTN_W_MD, TOOLBAR_SLIDER_W, TOOLBAR_COMBO_W, TOOLBAR_SPACER_SM, TOOLBAR_SPACER_MD
+                                )
 from resources       import ICON_PATH, resource_path
 from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter, calculate_force_deviation_kg
 from calibration     import wait_for_tare, sensitivity_calibration
@@ -83,22 +86,7 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 # UI control panel
 # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# UI layout constants — all widget sizes in one place
-# ---------------------------------------------------------------------------
-TOOLBAR_FULL_H      = 110    # toolbar window height in pixels
-GEAR_BTN_SIZE       = 40    # gear toggle button width and height
-TOOLBAR_BTN_H       = 40    # standard toolbar button height
-TOOLBAR_BTN_W_SM    = 110   # small button width (RESTART, Auto-Scale)
-TOOLBAR_BTN_W_MD    = 130   # medium button width (RESET SCREEN)
-TOOLBAR_SLIDER_W    = 140   # slider width (zoom, filter)
-TOOLBAR_COMBO_W     = 90    # combo box width (trail)
-TOOLBAR_SPACER_SM   = 8     # small spacer between related items
-TOOLBAR_SPACER_MD   = 16    # medium spacer between groups
 
-# Click detection radii
-CURSOR_HIT_RADIUS_CIRCLE = 20   # px — circle cursor click detection radius
-CURSOR_HIT_FRACTION      = 0.05 # fraction of screen height for avatar cursor
 
 def _get_gear_label() -> str:
     # Access FA_ICON_FONT via module to get the live value, not the import-time None
@@ -833,6 +821,7 @@ def _run_session(app_state, settings, args) -> int:
 
             curr_weight = sum(smoothed.values())
 
+            toolbar_visible = session_state.get("toolbar_visible", False)
             # Redraw canvas
             dpg.delete_item(dl, children_only=True)
             draw_main_screen(
@@ -847,6 +836,7 @@ def _run_session(app_state, settings, args) -> int:
                 settings=settings,
                 pan_offset_x=app_state.pan_offset_x,
                 pan_offset_y=app_state.pan_offset_y,
+                toolbar_visible=toolbar_visible
             )
             # Update crisp stats bar (avoids blurry drawlist text)
             if app_state.weight > 0:

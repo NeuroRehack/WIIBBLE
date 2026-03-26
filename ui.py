@@ -10,7 +10,7 @@ from theme import (CANVAS_BG, CANVAS_LINE, CANVAS_LINE_W, CANVAS_CENTRE_DOT,
                    CANVAS_CENTRE_R, BBOX_COLOR, BBOX_THICKNESS, CURSOR_COLOR, TRAIL_COLOR_BASE, CALIB_BG_COLOR,
                    bind_text_font,
                    )
-
+from constants import (TOOLBAR_FULL_H) 
 # ---------------------------------------------------------------------------
 # Layout constants — all proportional to viewport dimensions.
 # Change a value here and it propagates everywhere.
@@ -218,7 +218,7 @@ def draw_connection_failed_screen(dl, app_state) -> None:
 def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
                      curr_weight: float, max_x, max_y, min_x, min_y,
                      app_state, settings,
-                     pan_offset_x: float = 0.0, pan_offset_y: float = 0.0) -> None:
+                     pan_offset_x: float = 0.0, pan_offset_y: float = 0.0, toolbar_visible: bool = False) -> None:
     """
     Draw one frame of the main balance display onto drawlist dl.
 
@@ -317,18 +317,41 @@ def draw_main_screen(dl, corners: dict, ball_x: int, ball_y: int,
     # --- Overlays: Countdown, Recording Indicator, and Stopwatch Timer ---
     # Draw countdown overlay (centered text) — crisp large number
     if getattr(app_state, "is_countdown", False):
-        _crisp_text((sw//2-30, sh//2-60), f"{getattr(app_state, 'countdown_value', '')}",
+        _crisp_text((sw*0.49, sh*0.4), f"{getattr(app_state, 'countdown_value', '')}",
                     color=(255, 0, 0, 255), size=100, parent=dl)
 
-    # Draw recording indicator (red dot + REC) and stopwatch timer
+    # Draw recording indicator group (timer, dot, REC) anchored to right edge
     if getattr(app_state, "recording_indicator", False):
-        dpg.draw_circle((sw*0.95, 20), 18, color=(255, 0, 0, 255), fill=(255, 0, 0, 200), parent=dl)
-        _crisp_text((sw*0.95 + 25, 4), "REC",
-                    color=(255, 0, 0, 255), size=32, parent=dl)
+        right_margin = 20
+        dot_radius = 18
+        dot_diameter = dot_radius * 2
+        spacing = 12
+        font_size = 32
+
         # Stopwatch timer (mm:ss.t)
         elapsed = getattr(app_state, "stopwatch_elapsed", 0.0)
         mins = int(elapsed // 60)
         secs = elapsed % 60
         timer_str = f"{mins:02d}:{secs:04.1f}"
-        _crisp_text((sw*0.95 - 150, 4), timer_str,
-                    color=(255, 0, 0, 255), size=32, parent=dl)
+
+        # Estimate text widths (approximate, since DPG doesn't provide get_text_size)
+        timer_width = font_size * 3  # e.g., "00:00.0"
+        rec_width = font_size * 2    # e.g., "REC"
+
+
+        # Displace indicator group down if toolbar is visible
+        y = TOOLBAR_FULL_H + 8 if toolbar_visible else 8
+        # Compute starting x position for timer (leftmost)
+        x_timer = sw - right_margin - (timer_width + spacing + dot_diameter + spacing + rec_width)
+
+        # Draw timer
+        _crisp_text((x_timer, y), timer_str, color=(255, 0, 0, 255), size=font_size, parent=dl)
+
+        # Draw dot (centered vertically with text)
+        x_dot = x_timer + timer_width + spacing + dot_radius
+        y_dot = y + font_size // 2
+        dpg.draw_circle((x_dot, y_dot), dot_radius, color=(255, 0, 0, 255), fill=(255, 0, 0, 200), parent=dl)
+
+        # Draw "REC"
+        x_rec = x_dot + dot_radius + spacing
+        _crisp_text((x_rec, y), "REC", color=(255, 0, 0, 255), size=font_size, parent=dl)

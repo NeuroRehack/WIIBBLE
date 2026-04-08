@@ -22,7 +22,7 @@
  - [x] Add slider to adjust the sensitivity, which is calculated during the calibration phase. This would allow users to fine-tune the cursor movement to their preference or needs.
  - [x] change stat bar coulour back to dinamic colour range based on amount of weight on the board
  - [ ] Add option to manually recalibrate the board. Currently, we use a constant SCALE_FACTOR to convert raw sensor values to weight, but this can vary between boards and over time. A manual calibration option would allow users to adjust the scale factor based on known weights for improved accuracy.
- - [ ] migrate the blurry draw text to a custom font rendering system
+ - [x] migrate the blurry draw text to a custom font rendering system
  - [x] allow resizing of target spots
 
 ## 🔴 Bugs

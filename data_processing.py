@@ -1,6 +1,9 @@
 # data_processing.py
+import logging
 import numpy as np
 from constants import SCALE_FACTOR, TARE_MAX_WEIGHT, COORD_SCALE
+
+log = logging.getLogger(__name__)
 
 def calculate_force_deviation_kg(top_left: float, top_right: float, bottom_left: float, bottom_right: float) -> tuple:
     """
@@ -20,7 +23,7 @@ def read_data(device):
     try:
         return device.read(32)
     except Exception as e:
-        print(f"Failed to read data: {e}")
+        log.error("Failed to read data: %s", e)
         return None
 
 
@@ -47,7 +50,7 @@ def tare(device, data_struct: dict) -> None:
     Averages 10 readings to reduce noise.
     Board must be empty (no weight) when this is called.
     """
-    print("Taring...")
+    log.debug("Taring...")
     for val in data_struct.values():
         val["tare"] = 0
 
@@ -59,11 +62,11 @@ def tare(device, data_struct: dict) -> None:
             for val in data_struct.values():
                 val["tare"] += data[val["rawIndex"]] + data[val["rawIndex"] + 1] / 255
             i += 1
-            print("*" * i)
+            log.debug("Tare reading %d/10", i)
 
     for val in data_struct.values():
         val["tare"] /= 10
-    print(f"Tare complete: {data_struct}")
+    log.debug("Tare complete: %s", data_struct)
 
 
 def measure_weight(device, data_struct: dict) -> float:

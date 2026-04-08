@@ -1,8 +1,10 @@
 import time
+import logging
 import math
 import random
+from constants import SCALE_FACTOR
 
-SCALE_FACTOR = 2.6441910428028423
+log = logging.getLogger(__name__)
 
 class MockHIDDevice:
     """
@@ -63,13 +65,12 @@ class MockHIDDevice:
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
 
     def open(self, vendor_id, product_id):
-        #print(f"[MOCK] Opened mock HID device (scenario='{self.scenario}')")
         self._phase = "tare"
         self._stable_until = None
         self.start_time = time.time()
 
     def close(self):
-        print("[MOCK] Closed mock HID device.")
+        log.debug("Mock HID device closed.")
 
     def trigger_step_on(self):
         """
@@ -77,7 +78,6 @@ class MockHIDDevice:
         Switches to stable weight for 3 seconds then normal running mode.
         """
         if self._phase == "tare":
-            #print("[MOCK] trigger_step_on() -- switching to step_on_stable phase")
             self._phase = "step_on_stable"
             self._stable_until = time.time() + 3.0
             self.start_time = time.time()
@@ -111,7 +111,6 @@ class MockHIDDevice:
                 base = self._scenario_params["base"]
                 return [v + random.gauss(0, 0.02) for v in base]
             else:
-                #print("[MOCK] Stable phase complete -- switching to normal mode")
                 self._phase = "normal"
                 self.start_time = time.time()
 

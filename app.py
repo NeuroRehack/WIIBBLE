@@ -550,7 +550,7 @@ def _save_recording_csv(record_buffer):
         writer.writerow(["time (s)", "x (kg)", "y (kg)"])
         for row in record_buffer:
             writer.writerow([f"{row[0]:.3f}", f"{row[1]:.3f}", f"{row[2]:.3f}"])
-    print(f"[Recording] Saved to {path}")
+    log.info("Recording saved to %s", path)
 
 def _run_session(app_state, settings, args) -> int:
     """
@@ -623,7 +623,7 @@ def _run_session(app_state, settings, args) -> int:
         if not connected:
             return 1
     except Exception as e:
-        print(f"Connection failed: {e}")
+        log.exception("Connection failed")
         return 1
 
     device = connect_wii_board(use_mock=args.mock, mock_scenario=args.mock_scenario)
@@ -648,7 +648,7 @@ def _run_session(app_state, settings, args) -> int:
     try:
         tare(device, app_state.data_struct)
     except Exception as e:
-        print(f"Failed to tare: {e}")
+        log.exception("Failed to tare")
         device.close()
         return 1
 

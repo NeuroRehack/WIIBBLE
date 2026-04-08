@@ -49,16 +49,16 @@ changing the screen size (windowed mode and full-screen mode )
 
 
 ### Add Logging Framework
-All feedback is via `print()`.
-- [ ] Replace `print()` calls with Python's `logging` module
-- [ ] Use `DEBUG` for sensor data, `INFO` for state changes, `ERROR` for failures
+- [x] Replace `print()` calls with Python's `logging` module
+- [x] Use `DEBUG` for sensor data, `INFO` for state changes, `ERROR` for failures
+- [x] Log to file at `~/.wiibble/wiibble.log` and stdout
 
 ### Add GitHub Actions CI Pipeline
 No automated checks exist.
 - [ ] Add workflow to lint Python (`ruff` or `flake8`)
 - [ ] Add workflow to build the C# DLL (`dotnet build`)
 - [ ] Add workflow to run Python unit tests (`pytest`)
-- [ ] Add workflow to build PyInstaller executable and archive as artifact
+- [ ] Add workflow to build Nuitka executable and archive as artifact
 
 ###  Add Unit Tests
 No tests exist.

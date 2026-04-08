@@ -148,6 +148,30 @@ The short version:
 uv run python main.py
 ```
 
+---
+
+## Step 8 — Build a standalone executable (optional)
+
+This produces a self-contained `outputBuild\WIIBBLE\` folder that can be
+copied to a clinical machine without Python installed.
+
+> Requires dev dependencies: `uv sync --extra dev`
+
+```powershell
+.\compiler.bat
+```
+
+The compiled exe is placed in `outputBuild\WIIBBLE\WIIBBLE.exe`.
+Mock mode works with the compiled exe too:
+
+```powershell
+outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
+```
+
+The build tool is [Nuitka](https://nuitka.net/). It compiles Python to C and
+bundles all dependencies, including the native DearPyGui extension, without
+the DLL path issues that affected PyInstaller.
+
 3. Follow the on-screen instructions:
    - **Connection screen** — app searches for the board automatically.
    - **Tare screen** — board must be empty. App measures the baseline.

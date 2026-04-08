@@ -149,6 +149,13 @@ WIIBBLE is a real-time visualization and recording tool for the Wii Balance Boar
 - If the board does not connect, ensure Bluetooth is enabled, the board is paired, and powered on.
 - Use the mock mode (`--mock`) for testing without hardware.
 
+**Cursor is very jittery**
+- Increase the **Filter** slider in the settings toolbar.
+
+**Font shows as `[=]` instead of a gear icon**
+- Confirm `assets/fonts/fa-solid-900.ttf` exists in the project folder.
+- This file is vendored in the repository — if it is missing, re-clone or copy it from another machine.
+
 ---
 
 ## Command-Line Options
@@ -157,5 +164,7 @@ WIIBBLE is a real-time visualization and recording tool for the Wii Balance Boar
   Run with simulated data (no hardware required).
 - `--mock-scenario sway|still|lean_left|lean_right|hands|step_on_off`  
   Choose the mock data scenario.
+
+> Note: these same flags also work with the compiled executable in `outputBuild\WIIBBLE\WIIBBLE.exe`.
 
 

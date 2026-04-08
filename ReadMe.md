@@ -23,7 +23,7 @@ This project integrates the Wii Balance Board with custom software to measure we
     - [💻 Compiling to an executable ](#-compiling-to-an-executable-)
   - [📄 Usage ](#-usage-)
   - [🚑 Troubleshooting ](#-troubleshooting-)
-  - [📝 To-Do:](#-to-do)
+  - [📝 To-Do](Docs/TODO.md)
   - [🙏 Acknowledgements: ](#-acknowledgements-)
 
 
@@ -36,7 +36,7 @@ This project integrates the Wii Balance Board with custom software to measure we
 - **Recording feature:** Record weight and balance data for a set duration or stop manually, with export to CSV for further analysis
 
 
--## 📝 Prerequisites <a name="prerequisites"></a>
+## 📝 Prerequisites <a name="prerequisites"></a>
 
 ## 🧑‍💻 Development Without Hardware
 
@@ -51,6 +51,7 @@ WIIBBLE can be developed and tested **without a physical Wii Balance Board** usi
   - `lean_left` — weight shifted left
   - `lean_right` — weight shifted right
   - `hands` — very light weight (simulating hand use)
+  - `step_on_off` — step on/off pressure changes
 
 
 - Wii Balance Board
@@ -92,24 +93,42 @@ The board should now be permanently paired with the computer.
 You can still pair the board to your computer, but you will have to do it from "`Control Panel\Hardware and Sound\Devices and Printers`" (Windows settings do not allow you to skip the pin). That is annoying on its own, but the board will also need to be removed and paired again every time you switch the Bluetooth adapter or the computer off and on.
 
 ## 🔨 Installation from Source <a name="installation-from-source"></a>
-1. **Clone the repository, navigate to the directory, and install the required packages:**
-   ```bash
-   uv venv .venv
-   .venv\Scripts\activate
-   uv pip install -r requirements.txt
+1. **Clone the repository and install dependencies:**
+   ```powershell
+   git clone https://github.com/NeuroRehack/WIIBBLE.git
+   cd WIIBBLE
+   uv sync
    ```
-   You may need to install each dependency one at a time. I have noticed some compatibility issues with the `pygame` and `pygame_gui` packages.
+
+   To install development tools used for building the executable and running checks:
+   ```powershell
+   uv sync --extra dev
+   ```
 
 2. **Build the C# library:**
-   
-      Navigate to the `WiiBalanceBoardLibrary` directory and build the C# library using the following commands:
-   
-      ```bash
-      cd WiiBalanceBoardLibrary
-      dotnet build
-      ```
-### 💻 Compiling to an executable <a name="compiling"></a>
-To compile the python script, you can run the `compiler.bat` file. This will create a folder called `outputBuild` with the executable inside.
+
+   Navigate to the `WiiBalanceBoardLibrary` directory and build the C# library using the following commands:
+
+   ```powershell
+   cd WiiBalanceBoardLibrary
+   dotnet build
+   cd ..
+   ```
+
+### 💻 Compiling to an executable <a name="compiling">
+After installing dev dependencies via `uv sync --extra dev`, run:
+
+```powershell
+.\compiler.bat
+```
+
+This creates an executable under `outputBuild\WIIBBLE\WIIBBLE.exe`.
+
+Mock mode works with the compiled exe too:
+
+```powershell
+outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
+```
 
 ## 📄 Usage <a name="usage"></a>
 
@@ -141,25 +160,6 @@ To compile the python script, you can run the `compiler.bat` file. This will cre
 
 ---
 
-### Recording Feature
-
-The WIIBBLE application allows you to record weight and balance data for a set duration or stop the recording manually at any time.
-
-**How to use:**
-
-1. In the toolbar, set the desired recording duration (in seconds).
-2. Click the **Start Recording** button. A short countdown will begin before recording starts.
-3. While recording, the button changes to **Stop Recording**. You can:
-  - Let the timer run out (recording will stop automatically), or
-  - Click **Stop Recording** at any time to end the recording early.
-4. After recording stops, a CSV file is automatically saved in the `recordings/` folder. The file contains timestamped weight data for further analysis.
-
-**Notes:**
-- The recording feature works in both real and mock modes.
-- Each recording is saved with a timestamped filename (e.g., `recording_YYYYMMDD_HHMMSS.csv`).
-
----
-
 3. **Application Flow:**
 
   - The application will attempt to connect to the Wii Balance Board.
@@ -176,12 +176,7 @@ The WIIBBLE application allows you to record weight and balance data for a set d
   
 - **DLL Loading Issues:** Ensure that the `WiiBalanceBoardLibrary.dll` file is built and located in the correct path as specified in `board_connection.py`.
 
-## 📝 To-Do:
-- [ ] Add permanent pin generation to facilitate board pairing.
-- [ ] Add battery level indicator.
-- [ ] Improve button graphics.
-- [ ] Implement a compensation mechanism to better reflect the user's actual weight distribution
-  - at the moment, the application shows the weight distribution directly as measured from the corners sensors. This can be misleading if the user is standing on one leg, as the board platform is a single piece and weight applied to one side will be distributed to the other side. This can be improved by implementing a compensation mechanism to reflect the user's actual weight distribution.
+See [Docs/TODO.md](Docs/TODO.md) for the full roadmap.
 
 ## 🙏 Acknowledgements: <a name="acknowledgements"></a>
 - This project was developed as part of the **EPIC-Tech study** in collaboration with **The University of Queensland**, **Griffith University**, and **Metro South Princess Alexandra Hospital**.

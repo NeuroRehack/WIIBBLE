@@ -169,38 +169,14 @@ outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
 ```
 
 The build tool is [Nuitka](https://nuitka.net/). It compiles Python to C and
-bundles all dependencies, including the native DearPyGui extension, without
-the DLL path issues that affected PyInstaller.
-
-3. Follow the on-screen instructions:
-   - **Connection screen** — app searches for the board automatically.
-   - **Tare screen** — board must be empty. App measures the baseline.
-   - **Calibration screen** — step onto the board and stand still when prompted.
-
-    - **Main canvas** — live cursor, weight stats, and balance bar are now active.
-    - **Recording:**
-       - Set the desired recording duration in the toolbar.
-       - Click **Start Recording** to begin. A short countdown will start.
-       - The button changes to **Stop Recording** while recording is active. Click it to stop early, or let the timer run out.
-       - After recording, a CSV file is saved automatically in the `recordings/` folder (e.g., `recording_YYYYMMDD_HHMMSS.csv`).
-       - The recording feature works in both real and mock modes.
+bundles all dependencies, including the native DearPyGui extension. This
+avoids the DLL path issues that previously affected PyInstaller.
 
 ---
 
 ## Application controls
 
-| Control | Action |
-|---|---|
-| button (top-left) | Collapse / expand the settings toolbar |
-| **RESTART** | Return to the connection screen |
-| **RESET SCREEN** | Clear trail, targets, and bounding box |
-| **Start/Stop Recording** | Begin or end a recording session; saves data to CSV in `recordings/` |
-| **Trail** combo | Set trail length: None / Medium / Long |
-| **Filter** slider | Moving average smoothing (1 = off, 30 = max smooth) |
-| **Zoom** slider | Scale the cursor movement range |
-| **Auto-Scale** | Zoom to fit the recorded bounding box on screen |
-| Click on cursor | Toggle between avatar and circle cursor |
-| Click on canvas | Place a target circle |
+For controls and usage instructions, see [USER_MANUAL.md](USER_MANUAL.md).
 
 ---
 
@@ -220,18 +196,9 @@ the DLL path issues that affected PyInstaller.
 - Try removing and re-pairing the board.
 - Check battery level — low batteries cause connection failures.
 
-**Cursor is very jittery**
-- Increase the **Filter** slider in the settings toolbar.
-- Values around 5–15 frames work well for most clinical scenarios.
-
 **Black screen / no canvas**
 - This can happen if the DPG window fails to initialise. Try closing and
   restarting. If it persists, check your graphics drivers are up to date.
-
-**Font shows as `[=]` instead of a gear icon**
-- Confirm `assets/fonts/fa-solid-900.ttf` exists in the project folder.
-- This file is vendored in the repository — if it is missing, re-clone or
-  copy it from another machine.
 
 ---
 
@@ -247,7 +214,7 @@ WIIBBLE/
 ├── calibration.py           # Tare and sensitivity calibration
 ├── state.py                 # AppState and Settings dataclasses
 ├── constants.py             # Hardware constants
-├── resources.py             # Path resolution (dev + PyInstaller)
+├── resources.py             # Path resolution (dev + Nuitka)
 ├── mock_board.py            # Hardware simulator for development
 ├── board_connection.py      # C# DLL bridge via pythonnet
 ├── assets/

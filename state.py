@@ -1,7 +1,10 @@
 # state.py
 import json
+import logging
 import os
 from dataclasses import dataclass, field, asdict
+
+log = logging.getLogger(__name__)
 
 
 # Settings are persisted to this file between sessions.
@@ -32,9 +35,9 @@ class Settings:
             os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
             with open(SETTINGS_PATH, "w") as f:
                 json.dump(asdict(self), f, indent=2)
-            print(f"[Settings] Saved to {SETTINGS_PATH}")
-        except Exception as e:
-            print(f"[Settings] Failed to save: {e}")
+            log.info("Settings saved to %s", SETTINGS_PATH)
+        except Exception:
+            log.exception("Failed to save settings")
 
     @classmethod
     def load(cls) -> "Settings":
@@ -44,7 +47,7 @@ class Settings:
         """
         defaults = cls()
         if not os.path.exists(SETTINGS_PATH):
-            print("[Settings] No saved settings found, using defaults.")
+            log.info("No saved settings found, using defaults.")
             return defaults
         try:
             with open(SETTINGS_PATH) as f:
@@ -56,10 +59,10 @@ class Settings:
             filtered = {k: v for k, v in data.items() if k in valid_fields}
 
             loaded = cls(**filtered)
-            print(f"[Settings] Loaded from {SETTINGS_PATH}")
+            log.info("Settings loaded from %s", SETTINGS_PATH)
             return loaded
         except Exception as e:
-            print(f"[Settings] Failed to load ({e}), using defaults.")
+            log.warning("Failed to load settings (%s), using defaults.", e)
             return defaults
 
 

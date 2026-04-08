@@ -1,9 +1,12 @@
 # app.py
+import logging
 import math
 import dearpygui.dearpygui as dpg
 import hid
 import time
 import os, csv, datetime
+
+log = logging.getLogger(__name__)
 
 from board_connection import try_connection
 
@@ -34,16 +37,16 @@ def connect_wii_board(use_mock: bool = False, mock_scenario: str = "sway"):
     if use_mock:
         device = MockHIDDevice.from_scenario(mock_scenario)
         device.open(VENDOR_ID, PRODUCT_ID)
-        print(f"[MOCK] Using MockHIDDevice (scenario: {mock_scenario})")
+        log.info("Using MockHIDDevice (scenario: %s)", mock_scenario)
         return device
     try:
-        print("Connecting to Wii Balance Board...")
+        log.info("Connecting to Wii Balance Board...")
         device = hid.device()
         device.open(VENDOR_ID, PRODUCT_ID)
-        print("Connected successfully!")
+        log.info("Connected successfully!")
         return device
     except IOError as e:
-        print(f"Failed to connect: {e}")
+        log.error("Failed to connect: %s", e)
         return None
 
 
@@ -54,7 +57,7 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
     Skipped entirely in mock mode.
     """
     if use_mock:
-        print("[MOCK] Skipping connection screen.")
+        log.debug("Skipping connection screen (mock mode).")
         return True
 
     while dpg.is_dearpygui_running():

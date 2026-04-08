@@ -1,8 +1,11 @@
 import clr
+import logging
 import os
 import sys
 import time
 from System import AppDomain, Activator
+
+log = logging.getLogger(__name__)
 
 
 # Cross-platform DLL path
@@ -15,7 +18,7 @@ def get_dll_path():
     dll_path = os.path.abspath(DLL_RELATIVE_PATH)
     if not os.path.exists(dll_path):
         raise FileNotFoundError(f"DLL file not found at {dll_path}")
-    print(f"Full path to DLL: {dll_path}")
+    log.debug("Full path to DLL: %s", dll_path)
     return dll_path
 
 def load_dll(dll_path):
@@ -28,7 +31,7 @@ def get_class_types(assembly):
     try:
         BalanceBoardManager = assembly.GetType("WiiBalanceBoardLibrary.BalanceBoardManager")
         BalanceBoardDataEventArgs = assembly.GetType("WiiBalanceBoardLibrary.BalanceBoardDataEventArgs")
-        print("Successfully accessed BalanceBoardManager and BalanceBoardDataEventArgs classes.")
+        log.debug("Successfully accessed BalanceBoardManager and BalanceBoardDataEventArgs classes.")
         return BalanceBoardManager, BalanceBoardDataEventArgs
     except Exception as e:
         raise Exception(f"Error accessing classes: {e}")
@@ -37,7 +40,7 @@ def create_balance_board_manager(BalanceBoardManager):
     """Create an instance of the BalanceBoardManager class."""
     try:
         manager_instance = Activator.CreateInstance(BalanceBoardManager)
-        print("Instance of BalanceBoardManager created.")
+        log.debug("Instance of BalanceBoardManager created.")
         return manager_instance
     except Exception as e:
         raise Exception(f"Error creating instance of BalanceBoardManager: {e}")
@@ -46,7 +49,7 @@ def connect_balance_board(manager_instance):
     """Attempt to connect to the Wii Balance Board."""
     try:
         manager_instance.Connect()
-        print("Connected to the balance board. Waiting for data...")
+        log.info("Connected to the balance board. Waiting for data...")
     except Exception as e:
         raise Exception(f"Error connecting to the balance board: {e}")
 
@@ -54,30 +57,30 @@ def disconnect_balance_board(manager_instance):
     """Safely disconnect from the Wii Balance Board."""
     try:
         manager_instance.Disconnect()
-        print("Disconnected from the balance board.")
+        log.info("Disconnected from the balance board.")
     except Exception as e:
-        print(f"Error disconnecting from the balance board: {e}")
+        log.error("Error disconnecting from the balance board: %s", e)
 
 # Event Handlers
 def on_balance_board_data_received(sender, event_args):
     """Handle the balance board data received event."""
-    print(f"Weight: {event_args.Weight:.2f} kg")
-    print(f"Top Right: {event_args.TopRight:.2f} kg")
-    print(f"Top Left: {event_args.TopLeft:.2f} kg")
-    print(f"Bottom Right: {event_args.BottomRight:.2f} kg")
-    print(f"Bottom Left: {event_args.BottomLeft:.2f} kg")
-    
+    log.debug("Weight: %.2f kg", event_args.Weight)
+    log.debug("Top Right: %.2f kg", event_args.TopRight)
+    log.debug("Top Left: %.2f kg", event_args.TopLeft)
+    log.debug("Bottom Right: %.2f kg", event_args.BottomRight)
+    log.debug("Bottom Left: %.2f kg", event_args.BottomLeft)
+
     # Attempt to retrieve battery level
     try:
         battery_level = manager_instance.BatteryLevel
-        print(f"Battery Level: {battery_level:.2f}%")
+        log.debug("Battery Level: %.2f%%", battery_level)
     except AttributeError:
-        print("Battery level information is not available.")
-        
+        log.debug("Battery level information is not available.")
+
 def try_connection(dll_path=None, mock_mode=False):
     """ Try to connect to the Wii Balance Board. Returns 0 if successful, 1 if failed. In mock mode, returns 0 immediately. """
     if mock_mode:
-        print("[MOCK] Skipping DLL connection in mock mode.")
+        log.debug("Skipping DLL connection in mock mode.")
         return 0
     try:
         dll_path = get_dll_path() if dll_path is None else dll_path
@@ -87,7 +90,7 @@ def try_connection(dll_path=None, mock_mode=False):
         connect_balance_board(manager_instance)
         return 0
     except Exception as e:
-        print(f"An error occurred: {e}")
+        log.exception("An error occurred in try_connection")
         return 1
     finally:
         try:
@@ -111,10 +114,10 @@ if __name__ == "__main__":
         while not manager_instance.IsDataRead:
             time.sleep(SLEEP_INTERVAL)
 
-        print("Data received. Exiting...")
+        log.info("Data received. Exiting...")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        log.exception("An error occurred in main")
         sys.exit(1)
 
     finally:

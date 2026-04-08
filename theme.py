@@ -2,9 +2,12 @@
 # Centralised DPG theme, colour palette, and font loading for WIIBBLE.
 # Call apply_global_theme() once after dpg.setup_dearpygui().
 
+import logging
 import os
 import dearpygui.dearpygui as dpg
-from resources import FA_SOLID_FONT_PATH
+from resources import FA_SOLID_FONT_PATH, resource_path
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # FontAwesome 5 Solid icon codepoints used in the UI
@@ -27,16 +30,8 @@ TEXT_FONT = None
 # Segoe UI (Windows 7+) is clean, neutral, and always present on Windows.
 _TEXT_FONT_CANDIDATES = [
     # Bundled font (highest priority — drop any .ttf into assets/fonts/)
-    os.path.join(os.path.abspath("."), "assets", "fonts", "Roboto-Regular.ttf"),
-    os.path.join(os.path.abspath("."), "assets", "fonts", "OpenSans-Regular.ttf"),
-    # Windows system fonts
-    r"C:\Windows\Fonts\segoeui.ttf",
-    r"C:\Windows\Fonts\arial.ttf",
-    r"C:\Windows\Fonts\calibri.ttf",
-    # Linux / WSL fallbacks
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+    resource_path("assets/fonts/Roboto-Regular.ttf"),
+    resource_path("assets/fonts/OpenSans-Regular.ttf")
 ]
 
 
@@ -143,9 +138,9 @@ def load_fonts() -> None:
             with dpg.font(FA_SOLID_FONT_PATH, 20) as fa_font:
                 dpg.add_font_range(0xF000, 0xF8FF)
             FA_ICON_FONT = fa_font
-            print(f"[Theme] FontAwesome loaded from {FA_SOLID_FONT_PATH}")
+            log.debug("FontAwesome loaded from %s", FA_SOLID_FONT_PATH)
         else:
-            print(f"[WARN] FontAwesome not found at {FA_SOLID_FONT_PATH} — using ASCII fallback")
+            log.warning("FontAwesome not found at %s — using ASCII fallback", FA_SOLID_FONT_PATH)
             FA_ICON_FONT = None
 
         # --- Crisp text font at 100px ---
@@ -155,9 +150,9 @@ def load_fonts() -> None:
             with dpg.font(text_font_path, 100) as text_font:
                 dpg.add_font_range_hint(dpg.mvFontRangeHint_Default)
             TEXT_FONT = text_font
-            print(f"[Theme] Text font loaded: {os.path.basename(text_font_path)} @ 100px")
+            log.debug("Text font loaded: %s @ 100px", os.path.basename(text_font_path))
         else:
-            print("[WARN] No system text font found — draw_text will use default (may be blurry)")
+            log.warning("No system text font found — draw_text will use default (may be blurry)")
             TEXT_FONT = None
 
 

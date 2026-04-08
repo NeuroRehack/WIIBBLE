@@ -5,7 +5,26 @@
 # are safe to import in tests without side effects.
 
 import argparse
-import tkinter
+import ctypes
+import logging
+import os
+import sys
+from pathlib import Path
+
+# ── Configure logging before any application imports ──────────────────────
+_log_dir = Path.home() / ".wiibble"
+_log_dir.mkdir(exist_ok=True)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)-8s %(name)-20s %(message)s",
+    handlers=[
+        logging.FileHandler(_log_dir / "wiibble.log", encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+
+log = logging.getLogger(__name__)
+
 import dearpygui.dearpygui as dpg
 
 from state import AppState, Settings
@@ -29,44 +48,50 @@ def parse_args():
 
 def get_screen_size() -> tuple:
     """
-    Get the primary monitor resolution using tkinter (stdlib, no extra deps).
-    Used to size the DPG viewport to fill the screen on startup.
+    Get the primary monitor resolution using ctypes (no window creation,
+    no Win32 message-loop side-effects that could interfere with DearPyGui).
     """
-    root = tkinter.Tk()
-    root.withdraw()  # hide the tkinter window immediately
-    w = root.winfo_screenwidth()
-    h = root.winfo_screenheight()
-    root.destroy()
+    user32 = ctypes.windll.user32
+    # SM_CXSCREEN=0, SM_CYSCREEN=1
+    w = user32.GetSystemMetrics(0)
+    h = user32.GetSystemMetrics(1)
+    log.debug("get_screen_size via ctypes: %dx%d", w, h)
     return w, h
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    log.info("Starting WIIBBLE main entry point.")
+    try:
+        args = parse_args()
+        log.debug("Args: %s", args)
 
-    dpg.create_context()
+        dpg.create_context()
+        settings = Settings.load()
+        screen_w, screen_h = get_screen_size()
 
-    settings  = Settings.load()
+        app_state = AppState(
+            screen_width=screen_w,
+            screen_height=screen_h * 0.9,  # leave room for taskbar
+            historical_coords=[(0, 0)] * settings.trail_length,
+        )
 
-    screen_w, screen_h = get_screen_size()
-    app_state = AppState(
-        screen_width=screen_w,
-        screen_height=screen_h * 0.9,  # leave room for taskbar
-        historical_coords=[(0, 0)] * settings.trail_length,
-    )
+        # DPG init order: create_context → load_fonts → setup_dearpygui → create_viewport → show_viewport
+        load_fonts()
+        dpg.setup_dearpygui()
+        apply_global_theme()
 
-    dpg.create_viewport(
-        title="WIIBBLE - Wii Balance Board Live Environment",
-        width=screen_w,
-        height=screen_h,
-        x_pos=0,
-        y_pos=0,
-    )
-    load_fonts()          # must happen before setup_dearpygui()
-    dpg.setup_dearpygui()
-    apply_global_theme()  # colours/styles after setup
-    dpg.show_viewport()
-    dpg.maximize_viewport()
+        dpg.create_viewport(
+            title="WIIBBLE - Wii Balance Board Live Environment",
+            width=screen_w,
+            height=screen_h,
+            x_pos=0,
+            y_pos=0,
+        )
+        dpg.show_viewport()
+        dpg.maximize_viewport()
 
-    run(app_state, settings, args)
-
-    dpg.destroy_context()
+        run(app_state, settings, args)
+    except Exception:
+        log.exception("Fatal exception in main")
+    finally:
+        dpg.destroy_context()

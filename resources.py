@@ -1,21 +1,28 @@
 # resources.py
+import logging
 import os
 import sys
+
+log = logging.getLogger(__name__)
 
 
 def resource_path(relative_path: str) -> str:
     """
     Resolve a path to a bundled resource.
-    Works both in development (relative to repo root) and when packaged
-    with PyInstaller (which extracts resources to sys._MEIPASS).
+    Works in development (relative to repo root) and when compiled with
+    Nuitka standalone (resources sit alongside the exe).
     """
-    try:
-        base = sys._MEIPASS
-    except AttributeError:
+    if getattr(sys, "frozen", False):
+        base = os.path.dirname(sys.executable)
+        log.debug("resource_path: frozen (Nuitka), using exe dir = %s", base)
+    else:
         base = os.path.abspath(".")
+        log.debug("resource_path: dev mode, using cwd = %s", base)
     path = os.path.join(base, relative_path)
     if not os.path.exists(path):
-        print(f"[WARN] Resource not found: {path}")
+        log.warning("Resource not found: %s", path)
+    else:
+        log.debug("Resource found: %s", path)
     return path
 
 

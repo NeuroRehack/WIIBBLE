@@ -209,6 +209,7 @@ WIIBBLE/
 ├── main.py                  # Entry point
 ├── app.py                   # Session lifecycle and main loop
 ├── ui.py                    # All canvas and screen rendering
+├── input.py                 # Mouse and canvas interaction handlers
 ├── theme.py                 # Colours, DPG theme, font loading
 ├── data_processing.py       # Sensor reading, filtering, coordinates
 ├── calibration.py           # Tare and sensitivity calibration
@@ -222,7 +223,6 @@ WIIBBLE/
 │       └── fa-solid-900.ttf # FontAwesome 5 Solid (OFL-1.1, vendored)
 ├── WiiBalanceBoardLibrary/  # C# project — must be built before running
 ├── pyproject.toml           # Dependencies and tooling config
-├── CHANGELOG.md             # Full history of changes
 └── ReadMe.md                # Project overview and board pairing guide
 ```
 

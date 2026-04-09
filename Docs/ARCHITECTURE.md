@@ -8,7 +8,8 @@ WIIBBLE is a desktop application built on Python and DearPyGui, with optional ha
 
 - `main.py` — entry point: sets up logging, DearPyGui, argument parsing, app state, and starts the main run loop.
 - `app.py` — application lifecycle and main rendering/logic loop.
-- `ui.py` — all UI layout, screen rendering, canvas drawing, and input handling.
+- `ui.py` — all UI layout, screen rendering, and canvas drawing.
+- `input.py` — mouse/canvas interaction handlers and input callbacks.
 - `theme.py` — colors, global styling, font loading, and icon support.
 - `data_processing.py` — sensor parsing, filtering, coordinate calculations, and weight computation.
 - `calibration.py` — tare and sensitivity calibration workflows.
@@ -91,7 +92,7 @@ This supports the compiled executable in `outputBuild\WIIBBLE`.
 
 ## 8. Key design notes
 
-- The UI and data pipeline are separated: `app.py` orchestrates, `ui.py` renders, and `data_processing.py` computes values.
+- The UI and data pipeline are separated: `app.py` orchestrates, `ui.py` renders, `input.py` handles canvas interactions, and `data_processing.py` computes values.
 - Runtime state is centralized in `AppState` and persisted via `Settings`.
 - Logging is configured in `main.py` before importing application modules.
 - Fonts are loaded before `dpg.setup_dearpygui()` in `theme.py`.

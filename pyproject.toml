@@ -20,6 +20,7 @@ dependencies = [
 dev = [
     "nuitka>=2.0",
     "pytest>=7.0",
+    "pytest-cov>=5.0",
     "ruff>=0.4",
 ]
 
@@ -43,3 +44,23 @@ ignore = ["E501"]               # line length handled separately
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = [
+    "--cov=data_processing",
+    "--cov=state",
+    "--cov=recording",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+]
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
+    "main.py",
+    "app.py",
+    "ui.py",
+    "theme.py",
+    "calibration.py",
+    "board_connection.py",
+    "mock_board.py",
+    "resources.py",
+]

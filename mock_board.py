@@ -1,10 +1,12 @@
-import time
 import logging
 import math
 import random
+import time
+
 from constants import SCALE_FACTOR
 
 log = logging.getLogger(__name__)
+
 
 class MockHIDDevice:
     """
@@ -46,20 +48,20 @@ class MockHIDDevice:
         if scenario == "still":
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.03, "sway": 0.0}
         elif scenario == "lean_left":
-            self._scenario_params = {"base": [12.0, 12.0, 24.0, 24.0], "noise": 0.1,  "sway": 0.5}
+            self._scenario_params = {"base": [12.0, 12.0, 24.0, 24.0], "noise": 0.1, "sway": 0.5}
         elif scenario == "lean_right":
-            self._scenario_params = {"base": [24.0, 24.0, 12.0, 12.0], "noise": 0.1,  "sway": 0.5}
+            self._scenario_params = {"base": [24.0, 24.0, 12.0, 12.0], "noise": 0.1, "sway": 0.5}
         elif scenario == "hands":
-            self._scenario_params = {"base": [1.5,  1.5,  1.5,  1.5],  "noise": 0.03, "sway": 0.05}
+            self._scenario_params = {"base": [1.5, 1.5, 1.5, 1.5], "noise": 0.03, "sway": 0.05}
         elif scenario == "step_on_off":
             # Parameters for step on/off: base weight, noise, cycle duration
             self._scenario_params = {
                 "base": [18.0, 18.0, 18.0, 18.0],
                 "noise": 0.05,
                 "step_weight": 18.0,  # weight per sensor when on
-                "off_weight": 0.0,    # weight per sensor when off
-                "step_duration": 2.0, # seconds on
-                "off_duration": 2.0   # seconds off
+                "off_weight": 0.0,  # weight per sensor when off
+                "step_duration": 2.0,  # seconds on
+                "off_duration": 2.0,  # seconds off
             }
         else:  # "sway" default
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
@@ -90,7 +92,7 @@ class MockHIDDevice:
             raw = max(0.0, kg) / SCALE_FACTOR
             int_part = int(raw)
             frac_part = int((raw - int_part) * 255)
-            data[idx]     = int_part
+            data[idx] = int_part
             data[idx + 1] = frac_part
 
         # Slow down calibration phases so the clinician can read the screen.
@@ -119,7 +121,7 @@ class MockHIDDevice:
     def _simulate_normal(self):
         t = time.time() - self.start_time
         p = self._scenario_params
-        base  = p["base"]
+        base = p["base"]
         noise = p["noise"]
 
         if self.scenario == "still":
@@ -159,15 +161,15 @@ class MockHIDDevice:
             return [weight + random.gauss(0, noise) for _ in range(4)]
 
         else:  # sway
-            sway  = p["sway"]
-            amp      = sway * 2.5
-            lateral  = math.sin(t / 2.0) * amp
+            sway = p["sway"]
+            amp = sway * 2.5
+            lateral = math.sin(t / 2.0) * amp
             fore_aft = math.sin(t / 3.5) * amp * 0.6
-            n        = random.gauss(0, noise)
+            n = random.gauss(0, noise)
             vals = [
-                base[0] + lateral  + fore_aft + n,
-                base[1] + lateral  - fore_aft + n,
-                base[2] - lateral  + fore_aft + n,
-                base[3] - lateral  - fore_aft + n,
+                base[0] + lateral + fore_aft + n,
+                base[1] + lateral - fore_aft + n,
+                base[2] - lateral + fore_aft + n,
+                base[3] - lateral - fore_aft + n,
             ]
             return [max(5.0, min(35.0, v)) for v in vals]

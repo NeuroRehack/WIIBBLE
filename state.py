@@ -2,13 +2,13 @@
 import json
 import logging
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 
 log = logging.getLogger(__name__)
 
 
 # Settings are persisted to this file between sessions.
-SETTINGS_PATH = os.path.join( ".wiibble", "settings.json")
+SETTINGS_PATH = os.path.join(".wiibble", "settings.json")
 
 
 @dataclass
@@ -17,12 +17,13 @@ class Settings:
     User-adjustable values. Start as defaults, can change during a session.
     Persisted to ~/.wiibble/settings.json between sessions.
     """
-    trail_length:    int   = 100       # S2: number of historical positions shown
-    zoom_factor:     float = 1.0       # S3: display scale multiplier
-    filter_window:   int   = 1         # S4: moving average window (1 = no smoothing)
-    record_duration: int   = 10        # S5: CSV recording duration in seconds
-    cursor_mode:     str   = "avatar"  # S1: "avatar" | "circle"
-    sensitivity:     float = 1.0       # S6: cursor movement sensitivity multiplier
+
+    trail_length: int = 100  # S2: number of historical positions shown
+    zoom_factor: float = 1.0  # S3: display scale multiplier
+    filter_window: int = 1  # S4: moving average window (1 = no smoothing)
+    record_duration: int = 10  # S5: CSV recording duration in seconds
+    cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
+    sensitivity: float = 1.0  # S6: cursor movement sensitivity multiplier
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""
@@ -73,9 +74,10 @@ class AppState:
     Reset on RESTART. Screen dimensions and weight are NOT reset
     (they reflect hardware/calibration, not session data).
     """
-    screen_width:  float = 1280
+
+    screen_width: float = 1280
     screen_height: float = 720
-    weight:        float = 0.1    # calibrated body weight from sensitivity_calibration()
+    weight: float = 0.1  # calibrated body weight from sensitivity_calibration()
 
     # Current cursor position in screen pixels — updated every frame.
     # Stored here so click handlers can access it without frame-ordering issues.
@@ -87,23 +89,25 @@ class AppState:
     clicked_locations: list = field(default_factory=list)
     # Temporary state for a target being created (None or dict with 'center' and 'radius')
     target_in_progress: dict = None
-    data_struct: dict = field(default_factory=lambda: {
-        "top_right":    {"rawIndex": 3, "tare": 0},
-        "bottom_right": {"rawIndex": 5, "tare": 0},
-        "top_left":     {"rawIndex": 7, "tare": 0},
-        "bottom_left":  {"rawIndex": 9, "tare": 0},
-    })
-    is_recording:  bool  = False  # S5
-    record_start:  float = 0.0   # S5
-    record_buffer: list  = field(default_factory=list)  # S5
+    data_struct: dict = field(
+        default_factory=lambda: {
+            "top_right": {"rawIndex": 3, "tare": 0},
+            "bottom_right": {"rawIndex": 5, "tare": 0},
+            "top_left": {"rawIndex": 7, "tare": 0},
+            "bottom_left": {"rawIndex": 9, "tare": 0},
+        }
+    )
+    is_recording: bool = False  # S5
+    record_start: float = 0.0  # S5
+    record_buffer: list = field(default_factory=list)  # S5
     # Stopwatch timer for recording
     stopwatch_elapsed: float = 0.0  # Elapsed time in seconds (for UI)
 
     # S5: Timed Data Recording to CSV — countdown and status
-    is_countdown: bool = False   # True if countdown is active
-    countdown_value: int = 0     # 3, 2, 1, 0 (seconds left)
-    record_duration: float = 10.0 # Duration in seconds (copied from settings at start)
-    recording_indicator: bool = False # For UI (e.g. red dot/REC)
+    is_countdown: bool = False  # True if countdown is active
+    countdown_value: int = 0  # 3, 2, 1, 0 (seconds left)
+    record_duration: float = 10.0  # Duration in seconds (copied from settings at start)
+    recording_indicator: bool = False  # For UI (e.g. red dot/REC)
 
     # Moving average filter buffer — stores last N raw corner kg dicts.
     # Averaging happens before calculate_coordinates() so noise is suppressed
@@ -137,10 +141,10 @@ class AppState:
         self.historical_coords = [(0, 0)] * 100
         self.clicked_locations = []
         self.data_struct = {
-            "top_right":    {"rawIndex": 3, "tare": 0},
+            "top_right": {"rawIndex": 3, "tare": 0},
             "bottom_right": {"rawIndex": 5, "tare": 0},
-            "top_left":     {"rawIndex": 7, "tare": 0},
-            "bottom_left":  {"rawIndex": 9, "tare": 0},
+            "top_left": {"rawIndex": 7, "tare": 0},
+            "bottom_left": {"rawIndex": 9, "tare": 0},
         }
         self.is_recording = False
         self.record_buffer = []

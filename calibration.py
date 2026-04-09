@@ -1,6 +1,7 @@
 # calibration.py
 import dearpygui.dearpygui as dpg
-from constants import TARE_MAX_WEIGHT, CALIB_MIN_WEIGHT_DELTA
+
+from constants import CALIB_MIN_WEIGHT_DELTA, TARE_MAX_WEIGHT
 from data_processing import measure_weight
 from ui import draw_step_instruction, ensure_textures_loaded
 
@@ -13,9 +14,9 @@ def wait_for_tare(device, dl, app_state) -> float:
     below TARE_MAX_WEIGHT. Returns stable empty weight.
     """
     ensure_textures_loaded()
-    baseline  = measure_weight(device, app_state.data_struct)
-    last_w    = baseline
-    counter   = 0
+    baseline = measure_weight(device, app_state.data_struct)
+    last_w = baseline
+    counter = 0
     max_count = 20
 
     while counter < max_count:
@@ -28,7 +29,7 @@ def wait_for_tare(device, dl, app_state) -> float:
             counter += 1
         else:
             counter = 0
-            last_w  = weight
+            last_w = weight
 
         # Redraw calibration screen
         dpg.delete_item(dl, children_only=True)
@@ -52,8 +53,8 @@ def sensitivity_calibration(device, dl, app_state, on_start=None) -> float:
     if on_start:
         on_start()
 
-    last_w    = baseline
-    counter   = 0
+    last_w = baseline
+    counter = 0
     max_count = 20
 
     while counter < max_count:
@@ -66,7 +67,7 @@ def sensitivity_calibration(device, dl, app_state, on_start=None) -> float:
             counter += 1
         else:
             counter = 0
-            last_w  = weight
+            last_w = weight
 
         dpg.delete_item(dl, children_only=True)
         draw_step_instruction(dl, "on", counter, max_count, app_state)

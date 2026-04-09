@@ -4,8 +4,8 @@ import os
 # ---------------------------------------------------------------------------
 # Hardware identifiers
 # ---------------------------------------------------------------------------
-VENDOR_ID  = 0x057e   # Nintendo Co., Ltd
-PRODUCT_ID = 0x0306   # Wii Balance Board
+VENDOR_ID = 0x057E  # Nintendo Co., Ltd
+PRODUCT_ID = 0x0306  # Wii Balance Board
 
 # ---------------------------------------------------------------------------
 # HID report byte indices for each corner sensor
@@ -13,10 +13,10 @@ PRODUCT_ID = 0x0306   # Wii Balance Board
 # These offsets are fixed by the WiiBalanceBoardLibrary HID report format.
 # ---------------------------------------------------------------------------
 SENSOR_INDICES = {
-    "top_right":    3,
+    "top_right": 3,
     "bottom_right": 5,
-    "top_left":     7,
-    "bottom_left":  9,
+    "top_left": 7,
+    "bottom_left": 9,
 }
 
 # ---------------------------------------------------------------------------
@@ -45,26 +45,26 @@ CALIB_MIN_WEIGHT_DELTA = 5
 # Zoom slider range
 # ---------------------------------------------------------------------------
 ZOOM_SCALE = 1.01  # base of exponential zoom scaling (1.01^x)
-ZOOM_MIN = -200     # minimum zoom factor (most zoomed out)
+ZOOM_MIN = -200  # minimum zoom factor (most zoomed out)
 ZOOM_MAX = 600  # maximum zoom factor (most zoomed in)
 
 # ---------------------------------------------------------------------------
 # Sensitivity slider range
 # ---------------------------------------------------------------------------
-SENSITIVITY_MIN = 0.1   # minimum sensitivity (reduces cursor movement)
-SENSITIVITY_MAX = 3.0   # maximum sensitivity (amplifies cursor movement)
+SENSITIVITY_MIN = 0.1  # minimum sensitivity (reduces cursor movement)
+SENSITIVITY_MAX = 3.0  # maximum sensitivity (amplifies cursor movement)
 
 # ---------------------------------------------------------------------------
 # Pan (Ctrl+Scroll) settings
 # ---------------------------------------------------------------------------
-PAN_SPEED = 250          # pixels per mouse-wheel tick when panning
+PAN_SPEED = 250  # pixels per mouse-wheel tick when panning
 ZOOM_SPEED = 10
 
 # ---------------------------------------------------------------------------
 # Moving average filter range
 # ---------------------------------------------------------------------------
-FILTER_MIN = 1     # no smoothing (pass-through)
-FILTER_MAX = 100    # maximum smoothing window in frames (~500ms at 60fps)
+FILTER_MIN = 1  # no smoothing (pass-through)
+FILTER_MAX = 100  # maximum smoothing window in frames (~500ms at 60fps)
 
 # ---------------------------------------------------------------------------
 # Coordinate scaling factor — fraction of screen used for the movement range.
@@ -76,19 +76,19 @@ COORD_SCALE = 0.9
 # ---------------------------------------------------------------------------
 # UI layout constants — all widget sizes in one place
 # ---------------------------------------------------------------------------
-TOOLBAR_FULL_H      = 110    # toolbar window height in pixels
-GEAR_BTN_SIZE       = 40    # gear toggle button width and height
-TOOLBAR_BTN_H       = 40    # standard toolbar button height
-TOOLBAR_BTN_W_SM    = 110   # small button width (RESTART, Auto-Scale)
-TOOLBAR_BTN_W_MD    = 130   # medium button width (RESET SCREEN)
-TOOLBAR_SLIDER_W    = 140   # slider width (zoom, filter)
-TOOLBAR_COMBO_W     = 90    # combo box width (trail)
-TOOLBAR_SPACER_SM   = 8     # small spacer between related items
-TOOLBAR_SPACER_MD   = 16    # medium spacer between groups
+TOOLBAR_FULL_H = 110  # toolbar window height in pixels
+GEAR_BTN_SIZE = 40  # gear toggle button width and height
+TOOLBAR_BTN_H = 40  # standard toolbar button height
+TOOLBAR_BTN_W_SM = 110  # small button width (RESTART, Auto-Scale)
+TOOLBAR_BTN_W_MD = 130  # medium button width (RESET SCREEN)
+TOOLBAR_SLIDER_W = 140  # slider width (zoom, filter)
+TOOLBAR_COMBO_W = 90  # combo box width (trail)
+TOOLBAR_SPACER_SM = 8  # small spacer between related items
+TOOLBAR_SPACER_MD = 16  # medium spacer between groups
 
 # Click detection radii
-CURSOR_HIT_RADIUS_CIRCLE = 20   # px — circle cursor click detection radius
-CURSOR_HIT_FRACTION      = 0.05 # fraction of screen height for avatar cursor
+CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius
+CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
 
 # ---------------------------------------------------------------------------
 # C# board library DLL — built by: cd WiiBalanceBoardLibrary && dotnet build

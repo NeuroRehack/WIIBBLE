@@ -1,36 +1,70 @@
 # app.py
+import csv
+import datetime
 import logging
 import math
+import os
+import time
+
 import dearpygui.dearpygui as dpg
 import hid
-import time
-import os, csv, datetime
+
+import theme as _theme_module
+from board_connection import try_connection
+from calibration import sensitivity_calibration, wait_for_tare
+from constants import (
+    COORD_SCALE,
+    CURSOR_HIT_FRACTION,
+    CURSOR_HIT_RADIUS_CIRCLE,
+    DLL_RELATIVE_PATH,
+    FILTER_MAX,
+    FILTER_MIN,
+    GEAR_BTN_SIZE,
+    PRODUCT_ID,
+    SENSITIVITY_MAX,
+    SENSITIVITY_MIN,
+    TOOLBAR_BTN_H,
+    TOOLBAR_BTN_W_MD,
+    TOOLBAR_BTN_W_SM,
+    TOOLBAR_COMBO_W,
+    TOOLBAR_FULL_H,
+    TOOLBAR_SLIDER_W,
+    TOOLBAR_SPACER_MD,
+    TOOLBAR_SPACER_SM,
+    VENDOR_ID,
+    ZOOM_MAX,
+    ZOOM_MIN,
+    ZOOM_SCALE,
+    ZOOM_SPEED,
+)
+from data_processing import (
+    apply_filter,
+    calculate_coordinates,
+    calculate_force_deviation_kg,
+    parse_data,
+    read_data,
+    tare,
+)
+from mock_board import MockHIDDevice
+from resources import resource_path
+from theme import BAR_GREY_COLOR, ICON_COG, STATS_TEXT_COLOR, bind_text_font, get_stats_bar_color
+from ui import (
+    STATS_FONT_MIN,
+    STATS_FONT_SCALE,
+    STATS_STRIP_H,
+    draw_connection_failed_screen,
+    draw_connection_screen,
+    draw_main_screen,
+    ensure_textures_loaded,
+)
 
 log = logging.getLogger(__name__)
-
-from board_connection import try_connection
-
-from constants       import (VENDOR_ID, PRODUCT_ID, DLL_RELATIVE_PATH,
-                              ZOOM_MIN, ZOOM_MAX, FILTER_MIN, FILTER_MAX, COORD_SCALE, ZOOM_SCALE,
-                              SENSITIVITY_MIN, SENSITIVITY_MAX, PAN_SPEED, ZOOM_SPEED, TOOLBAR_FULL_H,
-                                CURSOR_HIT_RADIUS_CIRCLE, CURSOR_HIT_FRACTION,
-                                GEAR_BTN_SIZE, TOOLBAR_BTN_H, TOOLBAR_BTN_W_SM, TOOLBAR_BTN_W_MD, TOOLBAR_SLIDER_W, TOOLBAR_COMBO_W, TOOLBAR_SPACER_SM, TOOLBAR_SPACER_MD
-                                )
-from resources       import ICON_PATH, resource_path
-from data_processing import read_data, parse_data, tare, calculate_coordinates, apply_filter, calculate_force_deviation_kg
-from calibration     import wait_for_tare, sensitivity_calibration
-from ui              import (draw_main_screen, draw_connection_screen,
-                             draw_connection_failed_screen, ensure_textures_loaded,
-                             STATS_STRIP_H, STATS_FONT_SCALE, STATS_FONT_MIN)
-import theme as _theme_module
-from theme           import (BAR_GREY_COLOR, STATS_TEXT_COLOR,
-                              ICON_COG, get_stats_bar_color, bind_text_font)
-from mock_board      import MockHIDDevice
 
 
 # ---------------------------------------------------------------------------
 # Board connection
 # ---------------------------------------------------------------------------
+
 
 def connect_wii_board(use_mock: bool = False, mock_scenario: str = "sway"):
     """Return an open HID device (real or mock)."""
@@ -90,7 +124,6 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 # ---------------------------------------------------------------------------
 
 
-
 def _get_gear_label() -> str:
     # Access FA_ICON_FONT via module to get the live value, not the import-time None
     return ICON_COG if _theme_module.FA_ICON_FONT is not None else "[=]"
@@ -113,21 +146,26 @@ def _toggle_toolbar(session_state: dict) -> None:
             dpg.configure_item("gear_btn_window", show=True)
     session_state["action"] = "toolbar_toggled"
 
+
 # --- Cursor toggle helpers (top-level) ---
 def _cursor_label(settings):
     return f"Cursor: {'Avatar' if settings.cursor_mode == 'avatar' else 'Circle'}"
 
+
 def update_cursor_toggle_label(settings):
     dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
+
 
 def _on_cursor_toggle(settings):
     settings.toggle_cursor_mode()
     update_cursor_toggle_label(settings)
-    
+
+
 def _on_record_duration_change(value: int, settings, app_state) -> None:
     settings.record_duration = value
     app_state.record_duration = value
     settings.save()
+
 
 def _on_start_recording(app_state, settings) -> None:
     if app_state.is_recording or app_state.is_countdown:
@@ -144,7 +182,7 @@ def _on_start_recording(app_state, settings) -> None:
     app_state.stopwatch_elapsed = 0.0
     # change label of start button to "stop recording"
     dpg.set_item_label("start_recording_btn", "Stop Recording")
-    
+
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """
@@ -160,31 +198,39 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
     # --- Full toolbar ---
     with dpg.window(
         tag="control_panel",
-        no_title_bar=True, no_resize=True, no_move=True,
-        no_scrollbar=False,          # allow horizontal scroll on small screens
+        no_title_bar=True,
+        no_resize=True,
+        no_move=True,
+        no_scrollbar=False,  # allow horizontal scroll on small screens
         no_collapse=True,
-        no_scroll_with_mouse=True,   # don't hijack mouse wheel on canvas
+        no_scroll_with_mouse=True,  # don't hijack mouse wheel on canvas
         horizontal_scrollbar=True,
-        pos=(0, 0), width=sw, height=TOOLBAR_FULL_H,
+        pos=(0, 0),
+        width=sw,
+        height=TOOLBAR_FULL_H,
         show=False,
     ):
         with dpg.group(horizontal=True):
             dpg.add_button(
-                tag="toggle_btn", label=_get_gear_label(),
+                tag="toggle_btn",
+                label=_get_gear_label(),
                 callback=lambda: _toggle_toolbar(session_state),
-                width=GEAR_BTN_SIZE, height=GEAR_BTN_SIZE,
+                width=GEAR_BTN_SIZE,
+                height=GEAR_BTN_SIZE,
             )
             dpg.add_spacer(width=8)
             with dpg.group(tag="settings_group", horizontal=True):
                 dpg.add_button(
                     label="RESTART",
                     callback=lambda: session_state.update({"action": "restart"}),
-                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                    width=TOOLBAR_BTN_W_SM,
+                    height=TOOLBAR_BTN_H,
                 )
                 dpg.add_button(
                     label="RESET SCREEN",
                     callback=lambda: session_state.update({"action": "reset"}),
-                    width=TOOLBAR_BTN_W_MD, height=TOOLBAR_BTN_H,
+                    width=TOOLBAR_BTN_W_MD,
+                    height=TOOLBAR_BTN_H,
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 # --- S5: Recording duration input and Start Recording button ---
@@ -192,14 +238,17 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 dpg.add_input_int(
                     tag="record_duration_input",
                     default_value=int(settings.record_duration),
-                    min_value=1, max_value=120, width=80,
+                    min_value=1,
+                    max_value=120,
+                    width=80,
                     callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_SM)
                 dpg.add_button(
                     tag="start_recording_btn",
                     label="Start Recording",
-                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                    width=TOOLBAR_BTN_W_SM,
+                    height=TOOLBAR_BTN_H,
                     callback=lambda: _on_start_recording(app_state, settings),
                     enabled=not app_state.is_recording and not app_state.is_countdown,
                 )
@@ -209,19 +258,22 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                     tag="cursor_toggle_btn",
                     label=_cursor_label(settings),
                     callback=lambda: _on_cursor_toggle(settings),
-                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                    width=TOOLBAR_BTN_W_SM,
+                    height=TOOLBAR_BTN_H,
                 )
                 # Expose label update function for use elsewhere
                 app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 dpg.add_text("Trail:")
-                trail_items   = ["None", "Medium", "Long"]
-                trail_map     = {"None": 0, "Medium": 30, "Long": 100}
-                trail_rmap    = {0: "None", 30: "Medium", 100: "Long"}
+                trail_items = ["None", "Medium", "Long"]
+                trail_map = {"None": 0, "Medium": 30, "Long": 100}
+                trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
                 current_label = trail_rmap.get(settings.trail_length, "Long")
                 dpg.add_combo(
-                    tag="trail_combo", items=trail_items,
-                    default_value=current_label, width=TOOLBAR_COMBO_W,
+                    tag="trail_combo",
+                    items=trail_items,
+                    default_value=current_label,
+                    width=TOOLBAR_COMBO_W,
                     callback=lambda s, v: _on_trail_change(trail_map[v], settings),
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
@@ -229,7 +281,8 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 dpg.add_slider_int(
                     tag="filter_slider",
                     default_value=settings.filter_window,
-                    min_value=FILTER_MIN, max_value=FILTER_MAX,
+                    min_value=FILTER_MIN,
+                    max_value=FILTER_MAX,
                     width=TOOLBAR_SLIDER_W,
                     format="%d frames",
                     callback=lambda s, v: _on_filter_change(v, settings, app_state),
@@ -239,16 +292,19 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 dpg.add_slider_float(
                     tag="zoom_slider",
                     default_value=settings.zoom_factor,
-                    min_value=ZOOM_MIN, max_value=ZOOM_MAX,
+                    min_value=ZOOM_MIN,
+                    max_value=ZOOM_MAX,
                     width=TOOLBAR_SLIDER_W,
                     format="%.2fx",
                     callback=lambda s, v: _on_zoom_change(v, settings, app_state),
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_SM)
                 dpg.add_button(
-                    label="Auto-Scale", tag="zoom_to_bbox_btn",
+                    label="Auto-Scale",
+                    tag="zoom_to_bbox_btn",
                     callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
-                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                    width=TOOLBAR_BTN_W_SM,
+                    height=TOOLBAR_BTN_H,
                 )
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 # --- S6: Sensitivity slider ---
@@ -256,7 +312,8 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 dpg.add_slider_float(
                     tag="sensitivity_slider",
                     default_value=settings.sensitivity,
-                    min_value=SENSITIVITY_MIN, max_value=SENSITIVITY_MAX,
+                    min_value=SENSITIVITY_MIN,
+                    max_value=SENSITIVITY_MAX,
                     width=TOOLBAR_SLIDER_W,
                     format="%.2fx",
                     callback=lambda s, v: _on_sensitivity_change(v, settings),
@@ -264,31 +321,39 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
                 dpg.add_spacer(width=TOOLBAR_SPACER_MD)
                 # --- Pan: Reset Pan button ---
                 dpg.add_button(
-                    label="Reset Pan", tag="reset_pan_btn",
+                    label="Reset Pan",
+                    tag="reset_pan_btn",
                     callback=lambda: session_state.update({"action": "reset_pan"}),
-                    width=TOOLBAR_BTN_W_SM, height=TOOLBAR_BTN_H,
+                    width=TOOLBAR_BTN_W_SM,
+                    height=TOOLBAR_BTN_H,
                 )
     # no_background=True means zero DPG chrome — just the button pixel-perfect
     if dpg.does_item_exist("gear_btn_window"):
         dpg.delete_item("gear_btn_window")
     with dpg.window(
         tag="gear_btn_window",
-        no_title_bar=True, no_resize=True, no_move=True,
-        no_scrollbar=True, no_collapse=True,
+        no_title_bar=True,
+        no_resize=True,
+        no_move=True,
+        no_scrollbar=True,
+        no_collapse=True,
         no_background=True,
         pos=(4, 4),
-        width=GEAR_BTN_SIZE + 4, height=GEAR_BTN_SIZE + 4,
+        width=GEAR_BTN_SIZE + 4,
+        height=GEAR_BTN_SIZE + 4,
         show=True,
     ):
         dpg.add_button(
-            tag="gear_float_btn", label=_get_gear_label(),
+            tag="gear_float_btn",
+            label=_get_gear_label(),
             callback=lambda: _toggle_toolbar(session_state),
-            width=GEAR_BTN_SIZE, height=GEAR_BTN_SIZE,
+            width=GEAR_BTN_SIZE,
+            height=GEAR_BTN_SIZE,
         )
 
     # Bind icon font to gear buttons if FontAwesome loaded successfully
     if _theme_module.FA_ICON_FONT is not None:
-        dpg.bind_item_font("toggle_btn",     _theme_module.FA_ICON_FONT)
+        dpg.bind_item_font("toggle_btn", _theme_module.FA_ICON_FONT)
         dpg.bind_item_font("gear_float_btn", _theme_module.FA_ICON_FONT)
 
 
@@ -322,7 +387,7 @@ def _on_sensitivity_change(value: float, settings) -> None:
     settings.save()
 
 
-def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -> None:
+def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:
     """
     Ctrl+Scroll: pan and zoomthe canvas so users can focus on off-centre regions.
     Plain scroll (no Ctrl): ignored here — reserved for future use.
@@ -330,7 +395,7 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -
     wheel_delta is computed by measuring dx and dy between mouse position and center of the screen
     scrolll up (away from user) is positive, scroll down (toward user) is negative. zooms in when scrolling up, out when scrolling down.
     """
-    ctrl_held  = dpg.is_key_down(dpg.mvKey_LControl)
+    ctrl_held = dpg.is_key_down(dpg.mvKey_LControl)
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
     if not ctrl_held:
         return  # plain scroll — do nothing
@@ -349,11 +414,9 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -
         slider_value = 0
     slider_value += wheel_delta * ZOOM_SPEED  # adjust by wheel delta
     slider_value = max(ZOOM_MIN, min(ZOOM_MAX, slider_value))
-    new_zoom = ZOOM_SCALE ** slider_value
+    new_zoom = ZOOM_SCALE**slider_value
 
     # 3. Update pan offset so the logical point under the mouse stays under the mouse
-    new_cx = app_state.screen_width // 2 + app_state.pan_offset_x
-    new_cy = app_state.screen_height // 2 + app_state.pan_offset_y
     new_pan_offset_x = mouse_x - (logical_x * new_zoom + app_state.screen_width // 2)
     new_pan_offset_y = mouse_y - (logical_y * new_zoom + app_state.screen_height // 2)
     app_state.pan_offset_x = new_pan_offset_x
@@ -368,17 +431,18 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state,settings) -
 # Click handling — cursor toggle vs target circle
 # ---------------------------------------------------------------------------
 
+
 def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings) -> None:
     bbox_w = max(abs(raw_max_x), abs(raw_min_x)) * 2
     bbox_h = max(abs(raw_max_y), abs(raw_min_y)) * 2
-    base_w = app_state.screen_width  * COORD_SCALE
+    base_w = app_state.screen_width * COORD_SCALE
     base_h = app_state.screen_height * COORD_SCALE
     if bbox_w < 1 or bbox_h < 1:
         return
     new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 10)
     new_zoom = max(ZOOM_MIN, min(ZOOM_MAX, new_zoom))
     settings.zoom_factor = new_zoom
-    new_zoom = math.log(new_zoom)/math.log(ZOOM_SCALE)  # convert back to slider value
+    new_zoom = math.log(new_zoom) / math.log(ZOOM_SCALE)  # convert back to slider value
     dpg.set_value("zoom_slider", new_zoom)
     settings.save()
 
@@ -396,64 +460,85 @@ def _build_stats_bar(app_state) -> None:
     # Clear any content from a previous session
     dpg.delete_item("stats_dl", children_only=True)
     # Reset cache to force a full redraw on first frame
-    _stats_cache["left"]   = -1
+    _stats_cache["left"] = -1
     _stats_cache["weight"] = -1
-    _stats_cache["right"]  = -1
+    _stats_cache["right"] = -1
 
 
-def _update_stats_bar(perc_left: float, perc_right: float, curr_weight: float, calib_weight: float) -> None:
-    left_val   = int(perc_left   * 100)
+def _update_stats_bar(
+    perc_left: float, perc_right: float, curr_weight: float, calib_weight: float
+) -> None:
+    left_val = int(perc_left * 100)
     weight_val = int(curr_weight)
-    right_val  = int(perc_right  * 100)
+    right_val = int(perc_right * 100)
 
     # Only redraw if values actually changed
-    if (left_val   == _stats_cache["left"] and
-        weight_val == _stats_cache["weight"] and
-        right_val  == _stats_cache["right"]):
+    if (
+        left_val == _stats_cache["left"]
+        and weight_val == _stats_cache["weight"]
+        and right_val == _stats_cache["right"]
+    ):
         return
 
-    _stats_cache["left"]   = left_val
+    _stats_cache["left"] = left_val
     _stats_cache["weight"] = weight_val
-    _stats_cache["right"]  = right_val
+    _stats_cache["right"] = right_val
 
     sw = dpg.get_viewport_width()
     vh = dpg.get_viewport_height()
     font_size = max(STATS_FONT_MIN, int(vh * STATS_FONT_SCALE))
-    bar_top   = vh - STATS_STRIP_H
-    bar_bot   = vh
-    y         = bar_top - font_size - 6
+    bar_top = vh - STATS_STRIP_H
+    bar_bot = vh
+    y = bar_top - font_size - 6
 
     dpg.delete_item("stats_dl", children_only=True)
 
     # Draw static background bar (light grey)
-    dpg.draw_rectangle((0, bar_top), (sw, bar_bot),
-                       fill=BAR_GREY_COLOR, color=BAR_GREY_COLOR, parent="stats_dl")
+    dpg.draw_rectangle(
+        (0, bar_top), (sw, bar_bot), fill=BAR_GREY_COLOR, color=BAR_GREY_COLOR, parent="stats_dl"
+    )
 
     # Dynamic central stats bar color based on weight percentage
     percent = curr_weight / calib_weight if calib_weight > 0 else 0
     bar_color = get_stats_bar_color(percent)
-    
+
     # Draw left/right distribution overlays as before
     if _stats_cache["weight"] > 0:
-        pl = _stats_cache["left"]  / 100
+        pl = _stats_cache["left"] / 100
         pr = _stats_cache["right"] / 100
     else:
         pl = pr = 0.5
     x0 = sw // 2 - pl * sw // 2
-    dpg.draw_rectangle((x0, bar_top), (sw // 2, bar_bot),
-                       fill=bar_color, color=bar_color, parent="stats_dl")
+    dpg.draw_rectangle(
+        (x0, bar_top), (sw // 2, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
+    )
     x0 = sw // 2
     x1 = sw // 2 + pr * sw // 2
-    dpg.draw_rectangle((x0, bar_top), (x1, bar_bot),
-                       fill=bar_color, color=bar_color, parent="stats_dl")
+    dpg.draw_rectangle(
+        (x0, bar_top), (x1, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
+    )
 
     # Text above the bar — bind crisp font so ImGui downscales the 100px atlas
     # glyph rather than upscaling the ~13px default bitmap font.
-    t = dpg.draw_text((10,                  y), f"{left_val}%",     color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    t = dpg.draw_text(
+        (10, y), f"{left_val}%", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl"
+    )
     bind_text_font(t)
-    t = dpg.draw_text((sw // 2 - 40,        y), f"{weight_val} kg", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    t = dpg.draw_text(
+        (sw // 2 - 40, y),
+        f"{weight_val} kg",
+        color=STATS_TEXT_COLOR,
+        size=font_size,
+        parent="stats_dl",
+    )
     bind_text_font(t)
-    t = dpg.draw_text((sw - font_size * 3,  y), f"{right_val}%",    color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl")
+    t = dpg.draw_text(
+        (sw - font_size * 3, y),
+        f"{right_val}%",
+        color=STATS_TEXT_COLOR,
+        size=font_size,
+        parent="stats_dl",
+    )
     bind_text_font(t)
 
 
@@ -463,12 +548,17 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     otherwise add a target circle.
     Ignores clicks in the toolbar area.
     """
-    if (mx <= 50 and my <= 50) or \
-       (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False)) or \
-       dpg.is_key_down(dpg.mvKey_LControl):  # Ctrl+Click is reserved for panning — ignore to prevent misclicks
+    if (
+        (mx <= 50 and my <= 50)
+        or (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False))
+        or dpg.is_key_down(dpg.mvKey_LControl)
+    ):  # Ctrl+Click is reserved for panning — ignore to prevent misclicks
         return
-    cursor_radius = (int(CURSOR_HIT_FRACTION * app_state.screen_height)
-                     if settings.cursor_mode == "avatar" else CURSOR_HIT_RADIUS_CIRCLE)
+    cursor_radius = (
+        int(CURSOR_HIT_FRACTION * app_state.screen_height)
+        if settings.cursor_mode == "avatar"
+        else CURSOR_HIT_RADIUS_CIRCLE
+    )
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
         settings.toggle_cursor_mode()
@@ -482,8 +572,9 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
         logical_y = (my - cy) / settings.zoom_factor
         app_state.target_in_progress = {
             "center": (logical_x, logical_y),
-            "radius": 5.0  # default initial radius in logical units
+            "radius": 5.0,  # default initial radius in logical units
         }
+
 
 def _handle_target_drag(app_state, settings):
     # Called on mouse drag if a target is being created
@@ -498,15 +589,18 @@ def _handle_target_drag(app_state, settings):
     new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
     app_state.target_in_progress["radius"] = max(1.0, new_radius)
 
+
 def _handle_target_release(app_state):
     # Called on mouse release to finalize target
     if app_state.target_in_progress is not None:
         app_state.clicked_locations.append(app_state.target_in_progress)
         app_state.target_in_progress = None
 
+
 # --- Ctrl+Left Drag Pan Implementation ---
 def _handle_pan_drag(app_state, session_state):
     import dearpygui.dearpygui as dpg
+
     # Only pan if Ctrl is held
     if not dpg.is_key_down(dpg.mvKey_LControl):
         return
@@ -525,12 +619,16 @@ def _handle_pan_drag(app_state, session_state):
         app_state.pan_offset_y = offset_y + dy
         session_state["action"] = "pan_changed"
 
+
 def _handle_pan_release(app_state):
     if getattr(app_state, "is_panning", False):
         app_state.is_panning = False
+
+
 # ---------------------------------------------------------------------------
 # Main run loop
 # ---------------------------------------------------------------------------
+
 
 def run(app_state, settings, args) -> None:
     """Outer loop — restarts session on RESTART, exits on QUIT."""
@@ -538,6 +636,7 @@ def run(app_state, settings, args) -> None:
         result = _run_session(app_state, settings, args)
         if result != 0:
             break
+
 
 def _save_recording_csv(record_buffer):
     out_dir = os.path.join(os.getcwd(), "recordings")
@@ -552,6 +651,7 @@ def _save_recording_csv(record_buffer):
             writer.writerow([f"{row[0]:.3f}", f"{row[1]:.3f}", f"{row[2]:.3f}"])
     log.info("Recording saved to %s", path)
 
+
 def _run_session(app_state, settings, args) -> int:
     """
     One full session: connect → tare → calibrate → main loop.
@@ -560,7 +660,7 @@ def _run_session(app_state, settings, args) -> int:
     app_state.reset()
 
     # Update screen dimensions from current viewport
-    app_state.screen_width  = dpg.get_viewport_width()
+    app_state.screen_width = dpg.get_viewport_width()
     # During connect/tare/calibration toolbar is hidden — use full height.
     # After calibration it shows, and resize handler corrects screen_height.
     app_state.screen_height = dpg.get_viewport_height()
@@ -592,7 +692,10 @@ def _run_session(app_state, settings, args) -> int:
         dpg.add_mouse_click_handler(
             button=0,
             callback=lambda: _handle_canvas_click(
-                *dpg.get_mouse_pos(local=False), app_state, settings, session_state,
+                *dpg.get_mouse_pos(local=False),
+                app_state,
+                settings,
+                session_state,
             ),
         )
         dpg.add_mouse_wheel_handler(
@@ -616,13 +719,12 @@ def _run_session(app_state, settings, args) -> int:
             ),
         )
 
-
     # --- Step 1: Connect ---
     try:
         connected = _try_connection_loop(dl, app_state, use_mock=args.mock)
         if not connected:
             return 1
-    except Exception as e:
+    except Exception:
         log.exception("Connection failed")
         return 1
 
@@ -647,7 +749,7 @@ def _run_session(app_state, settings, args) -> int:
     wait_for_tare(device, dl, app_state)
     try:
         tare(device, app_state.data_struct)
-    except Exception as e:
+    except Exception:
         log.exception("Failed to tare")
         device.close()
         return 1
@@ -659,18 +761,19 @@ def _run_session(app_state, settings, args) -> int:
         return 1
     app_state.weight = calibrated_weight
 
-
     # --- Step 4: Main loop ---
     # Extents now stored in app_state so zoom callback can rescale them live.
     # app_state.reset() already zeroes these — nothing else needed here.
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
     app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
 
-
     last_countdown_tick = time.time()
-    record_start_time   = None
-    _last_frame_time    = time.perf_counter()
-    _TARGET_FRAME_S     = 1.0 / 120  # cap at 120fps to avoid spinning
+    record_start_time = None
+    _last_frame_time = time.perf_counter()
+    _TARGET_FRAME_S = 1.0 / 120  # cap at 120fps to avoid spinning
+    # Corner values — initialised here so recording logic can reference them
+    # even if the first data frame hasn't arrived yet.
+    top_left = top_right = bottom_left = bottom_right = 0.0
 
     while dpg.is_dearpygui_running():
         # --- S5: Countdown and Recording Logic ---
@@ -693,7 +796,9 @@ def _run_session(app_state, settings, args) -> int:
             elapsed = now - (record_start_time if record_start_time else app_state.record_start)
             app_state.stopwatch_elapsed = elapsed
             # Get x, y in kg for CSV
-            x_kg, y_kg = calculate_force_deviation_kg(top_left, top_right, bottom_left, bottom_right)
+            x_kg, y_kg = calculate_force_deviation_kg(
+                top_left, top_right, bottom_left, bottom_right
+            )
             # Timestamp is relative to recording start
             app_state.record_buffer.append((elapsed, x_kg, y_kg))
             # Cap at 100 Hz (skip frames if running faster)
@@ -707,7 +812,7 @@ def _run_session(app_state, settings, args) -> int:
                 _save_recording_csv(app_state.record_buffer)
                 # reset buffer and timers
                 app_state.record_buffer = []
-                
+
         # check if buffer is not empty and recording has stopped, then save the CSV
         elif not app_state.is_recording and app_state.record_buffer:
             _save_recording_csv(app_state.record_buffer)
@@ -715,8 +820,6 @@ def _run_session(app_state, settings, args) -> int:
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
         # Visual feedback overlays are now drawn in ui.draw_main_screen
-
-
 
         # Handle control panel actions
         action = session_state.get("action")
@@ -735,9 +838,14 @@ def _run_session(app_state, settings, args) -> int:
             app_state.pan_offset_y = 0.0
             session_state["action"] = None
         if action == "zoom_to_bbox":
-            _on_zoom_to_bbox(app_state.raw_max_x, app_state.raw_max_y,
-                             app_state.raw_min_x, app_state.raw_min_y,
-                             app_state, settings)
+            _on_zoom_to_bbox(
+                app_state.raw_max_x,
+                app_state.raw_max_y,
+                app_state.raw_min_x,
+                app_state.raw_min_y,
+                app_state,
+                settings,
+            )
             app_state.zoomed_max_x = app_state.raw_max_x * settings.zoom_factor
             app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
             app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
@@ -761,15 +869,13 @@ def _run_session(app_state, settings, args) -> int:
         vw = dpg.get_viewport_width()
         vh = dpg.get_viewport_height()
         if vw != app_state.screen_width or vh != app_state.screen_height:
-            app_state.screen_width  = vw
+            app_state.screen_width = vw
             app_state.screen_height = vh
             # Resize toolbar — preserve current visibility state
             toolbar_currently_visible = session_state.get("toolbar_visible", False)
-            dpg.configure_item("control_panel", width=vw,
-                               show=toolbar_currently_visible)
+            dpg.configure_item("control_panel", width=vw, show=toolbar_currently_visible)
             if dpg.does_item_exist("gear_btn_window"):
-                dpg.configure_item("gear_btn_window",
-                                   show=not toolbar_currently_visible)
+                dpg.configure_item("gear_btn_window", show=not toolbar_currently_visible)
             # stats_dl redraws itself at correct position on next value change
 
         # Read sensor data
@@ -778,20 +884,21 @@ def _run_session(app_state, settings, args) -> int:
             corners = parse_data(data, app_state.data_struct)
 
             # S4 — Moving average filter (see data_processing.apply_filter)
-            smoothed = apply_filter(
-                corners, app_state.filter_buffer, settings.filter_window
-            )
-            top_right    = smoothed["top_right"]
+            smoothed = apply_filter(corners, app_state.filter_buffer, settings.filter_window)
+            top_right = smoothed["top_right"]
             bottom_right = smoothed["bottom_right"]
-            top_left     = smoothed["top_left"]
-            bottom_left  = smoothed["bottom_left"]
+            top_left = smoothed["top_left"]
+            bottom_left = smoothed["bottom_left"]
 
             # Raw coords (zoom=1.0) — derived from smoothed sensor values.
             # Sensitivity (S6) divides the effective weight: a higher sensitivity
             # value reduces the divisor, making the cursor move more per kg shift.
             effective_weight = app_state.weight / max(settings.sensitivity, 0.01)
             raw_x, raw_y = calculate_coordinates(
-                top_left, top_right, bottom_left, bottom_right,
+                top_left,
+                top_right,
+                bottom_left,
+                bottom_right,
                 weight=effective_weight,
                 screen_width=app_state.screen_width,
                 screen_height=app_state.screen_height,
@@ -811,7 +918,7 @@ def _run_session(app_state, settings, args) -> int:
             app_state.zoomed_min_x = min(app_state.zoomed_min_x, x)
             app_state.zoomed_min_y = min(app_state.zoomed_min_y, y)
 
-            ball_x = int(app_state.screen_width  // 2 + x + app_state.pan_offset_x)
+            ball_x = int(app_state.screen_width // 2 + x + app_state.pan_offset_x)
             # ball_y: canvas centre is screen_height/2, no toolbar offset
             ball_y = int(app_state.screen_height // 2 + y + app_state.pan_offset_y)
 
@@ -833,17 +940,19 @@ def _run_session(app_state, settings, args) -> int:
                 ball_x=ball_x,
                 ball_y=ball_y,
                 curr_weight=curr_weight,
-                max_x=app_state.zoomed_max_x, max_y=app_state.zoomed_max_y,
-                min_x=app_state.zoomed_min_x, min_y=app_state.zoomed_min_y,
+                max_x=app_state.zoomed_max_x,
+                max_y=app_state.zoomed_max_y,
+                min_x=app_state.zoomed_min_x,
+                min_y=app_state.zoomed_min_y,
                 app_state=app_state,
                 settings=settings,
                 pan_offset_x=app_state.pan_offset_x,
                 pan_offset_y=app_state.pan_offset_y,
-                toolbar_visible=toolbar_visible
+                toolbar_visible=toolbar_visible,
             )
             # Update crisp stats bar (avoids blurry drawlist text)
             if app_state.weight > 0:
-                pl = (smoothed["top_left"]  + smoothed["bottom_left"])  / app_state.weight
+                pl = (smoothed["top_left"] + smoothed["bottom_left"]) / app_state.weight
                 pr = (smoothed["top_right"] + smoothed["bottom_right"]) / app_state.weight
             else:
                 pl = pr = 0.5

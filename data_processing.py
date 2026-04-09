@@ -1,11 +1,16 @@
 # data_processing.py
 import logging
+
 import numpy as np
-from constants import SCALE_FACTOR, TARE_MAX_WEIGHT, COORD_SCALE
+
+from constants import COORD_SCALE, SCALE_FACTOR
 
 log = logging.getLogger(__name__)
 
-def calculate_force_deviation_kg(top_left: float, top_right: float, bottom_left: float, bottom_right: float) -> tuple:
+
+def calculate_force_deviation_kg(
+    top_left: float, top_right: float, bottom_left: float, bottom_right: float
+) -> tuple:
     """
     Calculate x and y force deviations (in kg) from the four corner sensor readings.
     x: Net left-right force (kg), positive = more weight on right, negative = more on left
@@ -17,6 +22,7 @@ def calculate_force_deviation_kg(top_left: float, top_right: float, bottom_left:
     # y axis: front sensors (top) minus back sensors (bottom)
     y = (top_left + top_right) - (bottom_left + bottom_right)
     return x, y
+
 
 def read_data(device):
     """Read a raw 32-byte HID report from the device."""
@@ -37,10 +43,8 @@ def parse_data(data: list, data_struct: dict) -> dict:
     corners = {}
     for key, val in data_struct.items():
         raw_index = val["rawIndex"]
-        tare      = val["tare"]
-        corners[key] = round(
-            (data[raw_index] + data[raw_index + 1] / 255 - tare) * SCALE_FACTOR, 2
-        )
+        tare = val["tare"]
+        corners[key] = round((data[raw_index] + data[raw_index + 1] / 255 - tare) * SCALE_FACTOR, 2)
     return corners
 
 
@@ -108,10 +112,7 @@ def apply_filter(corners: dict, filter_buffer: list, filter_window: int) -> dict
     if len(filter_buffer) > filter_window:
         filter_buffer.pop(0)
     n = len(filter_buffer)
-    return {
-        key: sum(frame[key] for frame in filter_buffer) / n
-        for key in corners
-    }
+    return {key: sum(frame[key] for frame in filter_buffer) / n for key in corners}
 
 
 def calculate_coordinates(
@@ -134,14 +135,14 @@ def calculate_coordinates(
     if weight == 0:
         return 0.0, 0.0
 
-    top_left     /= -weight
-    top_right    /= -weight
-    bottom_left  /= -weight
+    top_left /= -weight
+    top_right /= -weight
+    bottom_left /= -weight
     bottom_right /= -weight
 
     x = (top_left + bottom_left) / 2 - (top_right + bottom_right) / 2
-    y = (top_left + top_right)   / 2 - (bottom_left + bottom_right) / 2
+    y = (top_left + top_right) / 2 - (bottom_left + bottom_right) / 2
 
-    x *= screen_width  * COORD_SCALE * zoom
+    x *= screen_width * COORD_SCALE * zoom
     y *= screen_height * COORD_SCALE * zoom
     return x, y

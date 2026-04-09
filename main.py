@@ -7,7 +7,6 @@
 import argparse
 import ctypes
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -25,21 +24,24 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 
-import dearpygui.dearpygui as dpg
+import dearpygui.dearpygui as dpg  # noqa: E402
 
-from state import AppState, Settings
-from app   import run
-from theme import load_fonts, apply_global_theme
+from app import run  # noqa: E402
+from state import AppState, Settings  # noqa: E402
+from theme import apply_global_theme, load_fonts  # noqa: E402
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="WIIBBLE - Wii Balance Board Live Environment")
     parser.add_argument(
-        "--mock", action="store_true",
+        "--mock",
+        action="store_true",
         help="Run without physical hardware using simulated sensor data",
     )
     parser.add_argument(
-        "--mock-scenario", type=str, default="sway",
+        "--mock-scenario",
+        type=str,
+        default="sway",
         choices=["sway", "still", "lean_left", "lean_right", "hands", "step_on_off"],
         help="Simulation scenario (default: sway)",
     )

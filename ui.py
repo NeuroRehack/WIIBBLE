@@ -7,7 +7,11 @@ import math
 
 import dearpygui.dearpygui as dpg
 
-from constants import TOOLBAR_FULL_H
+import theme as _theme_module
+from constants import (
+    GEAR_BTN_SIZE,
+    TOOLBAR_FULL_H,
+)
 from resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
 from theme import (
     BBOX_COLOR,
@@ -110,6 +114,73 @@ def get_wii_image_size(index: int) -> tuple:
 def get_person_image_size() -> tuple:
     cfg = dpg.get_item_configuration(_person_texture_tag)
     return cfg["width"], cfg["height"]
+
+
+def build_toolbar_window(
+    screen_width: int,
+    toggle_label: str,
+    toggle_callback,
+    settings_group_builder,
+) -> None:
+    """Create the expanded toolbar window and render the control group."""
+    with dpg.window(
+        tag="control_panel",
+        no_title_bar=True,
+        no_resize=True,
+        no_move=True,
+        no_scrollbar=False,
+        no_collapse=True,
+        no_scroll_with_mouse=True,
+        horizontal_scrollbar=True,
+        pos=(0, 0),
+        width=screen_width,
+        height=TOOLBAR_FULL_H,
+        show=False,
+    ):
+        with dpg.group(horizontal=True):
+            dpg.add_button(
+                tag="toggle_btn",
+                label=toggle_label,
+                callback=toggle_callback,
+                width=GEAR_BTN_SIZE,
+                height=GEAR_BTN_SIZE,
+            )
+            dpg.add_spacer(width=8)
+            with dpg.group(tag="settings_group", horizontal=True):
+                settings_group_builder()
+
+    if _theme_module.FA_ICON_FONT is not None:
+        dpg.bind_item_font("toggle_btn", _theme_module.FA_ICON_FONT)
+
+
+def build_gear_button_window(toolbar_enabled: bool, toggle_label: str, toggle_callback) -> None:
+    """Create the floating collapsed toolbar gear button window."""
+    if dpg.does_item_exist("gear_btn_window"):
+        dpg.delete_item("gear_btn_window")
+
+    with dpg.window(
+        tag="gear_btn_window",
+        no_title_bar=True,
+        no_resize=True,
+        no_move=True,
+        no_scrollbar=True,
+        no_collapse=True,
+        no_background=True,
+        pos=(4, 4),
+        width=GEAR_BTN_SIZE + 4,
+        height=GEAR_BTN_SIZE + 4,
+        show=toolbar_enabled,
+    ):
+        dpg.add_button(
+            tag="gear_float_btn",
+            label=toggle_label,
+            callback=toggle_callback,
+            width=GEAR_BTN_SIZE,
+            height=GEAR_BTN_SIZE,
+        )
+
+    if _theme_module.FA_ICON_FONT is not None:
+        dpg.bind_item_font("gear_float_btn", _theme_module.FA_ICON_FONT)
 
 
 # ---------------------------------------------------------------------------

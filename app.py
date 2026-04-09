@@ -22,7 +22,6 @@ from constants import (
     DLL_RELATIVE_PATH,
     FILTER_MAX,
     FILTER_MIN,
-    GEAR_BTN_SIZE,
     PRODUCT_ID,
     SENSITIVITY_MAX,
     SENSITIVITY_MIN,
@@ -56,6 +55,8 @@ from ui import (
     STATS_FONT_MIN,
     STATS_FONT_SCALE,
     STATS_STRIP_H,
+    build_gear_button_window,
+    build_toolbar_window,
     draw_connection_failed_screen,
     draw_connection_screen,
     draw_main_screen,
@@ -197,6 +198,17 @@ def _on_start_recording(app_state, settings) -> None:
 
 def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
     """Add the toolbar control widgets into the current DearPyGui context."""
+    _build_session_buttons(session_state)
+    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+    _build_recording_controls(app_state, settings)
+    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+    _build_cursor_and_trail_controls(app_state, settings, session_state)
+    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+    _build_zoom_sensitivity_controls(settings, app_state, session_state)
+
+
+def _build_session_buttons(session_state: dict) -> None:
+    """Add session-level toolbar buttons such as restart and reset."""
     dpg.add_button(
         label="RESTART",
         callback=lambda: session_state.update({"action": "restart"}),
@@ -209,8 +221,10 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
         width=TOOLBAR_BTN_W_MD,
         height=TOOLBAR_BTN_H,
     )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    # --- S5: Recording duration input and Start Recording button ---
+
+
+def _build_recording_controls(app_state, settings) -> None:
+    """Add recording controls and duration input to the toolbar."""
     dpg.add_text("Record Duration (s):")
     dpg.add_input_int(
         tag="record_duration_input",
@@ -230,7 +244,9 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
         enabled=not app_state.is_recording and not app_state.is_countdown,
     )
 
-    # --- Cursor toggle button ---
+
+def _build_cursor_and_trail_controls(app_state, settings, session_state: dict) -> None:
+    """Add cursor mode and trail/filter controls to the toolbar."""
     dpg.add_button(
         tag="cursor_toggle_btn",
         label=_cursor_label(settings),
@@ -238,7 +254,6 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
         width=TOOLBAR_BTN_W_SM,
         height=TOOLBAR_BTN_H,
     )
-    # Expose label update function for use elsewhere
     app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
     dpg.add_text("Trail:")
@@ -264,7 +279,10 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
         format="%d frames",
         callback=lambda s, v: _on_filter_change(v, settings, app_state),
     )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+
+
+def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -> None:
+    """Add zoom, sensitivity, and pan buttons to the toolbar."""
     dpg.add_text("Zoom:")
     dpg.add_slider_float(
         tag="zoom_slider",
@@ -284,7 +302,6 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
         height=TOOLBAR_BTN_H,
     )
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    # --- S6: Sensitivity slider ---
     dpg.add_text("Sensitivity:")
     dpg.add_slider_float(
         tag="sensitivity_slider",
@@ -296,7 +313,6 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
         callback=lambda s, v: _on_sensitivity_change(v, settings),
     )
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    # --- Pan: Reset Pan button ---
     dpg.add_button(
         label="Reset Pan",
         tag="reset_pan_btn",
@@ -307,70 +323,18 @@ def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
 
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
-    """
-    Builds two windows that are mutually exclusive:
-
-    control_panel     — full opaque toolbar (expanded state)
-    gear_btn_window   — tiny no_background floating button (collapsed state)
-
-    Canvas always fills full viewport. Toolbar windows float on top.
-    """
-    sw = app_state.screen_width
-
-    # --- Full toolbar ---
-    with dpg.window(
-        tag="control_panel",
-        no_title_bar=True,
-        no_resize=True,
-        no_move=True,
-        no_scrollbar=False,  # allow horizontal scroll on small screens
-        no_collapse=True,
-        no_scroll_with_mouse=True,  # don't hijack mouse wheel on canvas
-        horizontal_scrollbar=True,
-        pos=(0, 0),
-        width=sw,
-        height=TOOLBAR_FULL_H,
-        show=False,
-    ):
-        with dpg.group(horizontal=True):
-            dpg.add_button(
-                tag="toggle_btn",
-                label=_get_gear_label(),
-                callback=lambda: _toggle_toolbar(session_state),
-                width=GEAR_BTN_SIZE,
-                height=GEAR_BTN_SIZE,
-            )
-            dpg.add_spacer(width=8)
-            with dpg.group(tag="settings_group", horizontal=True):
-                _build_toolbar_controls(app_state, settings, session_state)
-    # no_background=True means zero DPG chrome — just the button pixel-perfect
-    if dpg.does_item_exist("gear_btn_window"):
-        dpg.delete_item("gear_btn_window")
-    with dpg.window(
-        tag="gear_btn_window",
-        no_title_bar=True,
-        no_resize=True,
-        no_move=True,
-        no_scrollbar=True,
-        no_collapse=True,
-        no_background=True,
-        pos=(4, 4),
-        width=GEAR_BTN_SIZE + 4,
-        height=GEAR_BTN_SIZE + 4,
-        show=session_state.get("toolbar_enabled", False),
-    ):
-        dpg.add_button(
-            tag="gear_float_btn",
-            label=_get_gear_label(),
-            callback=lambda: _toggle_toolbar(session_state),
-            width=GEAR_BTN_SIZE,
-            height=GEAR_BTN_SIZE,
-        )
-
-    # Bind icon font to gear buttons if FontAwesome loaded successfully
-    if _theme_module.FA_ICON_FONT is not None:
-        dpg.bind_item_font("toggle_btn", _theme_module.FA_ICON_FONT)
-        dpg.bind_item_font("gear_float_btn", _theme_module.FA_ICON_FONT)
+    """Build the full toolbar and the collapsed gear button overlay."""
+    build_toolbar_window(
+        app_state.screen_width,
+        _get_gear_label(),
+        lambda: _toggle_toolbar(session_state),
+        lambda: _build_toolbar_controls(app_state, settings, session_state),
+    )
+    build_gear_button_window(
+        session_state.get("toolbar_enabled", False),
+        _get_gear_label(),
+        lambda: _toggle_toolbar(session_state),
+    )
 
 
 def _on_trail_change(value: int, settings) -> None:
@@ -601,10 +565,65 @@ def _render_main_screen_frame(
     bottom_left: float,
     bottom_right: float,
 ):
-    """Read sensor data and render the main session canvas when data is available."""
+    """Render the main session frame when sensor data is available."""
+    frame_state = _process_frame_data(
+        device,
+        app_state,
+        settings,
+        top_left,
+        top_right,
+        bottom_left,
+        bottom_right,
+    )
+    if frame_state is None:
+        return top_left, top_right, bottom_left, bottom_right
+
+    dpg.delete_item(dl, children_only=True)
+    draw_main_screen(
+        dl=dl,
+        corners=frame_state["corners"],
+        ball_x=frame_state["ball_x"],
+        ball_y=frame_state["ball_y"],
+        curr_weight=frame_state["curr_weight"],
+        max_x=app_state.zoomed_max_x,
+        max_y=app_state.zoomed_max_y,
+        min_x=app_state.zoomed_min_x,
+        min_y=app_state.zoomed_min_y,
+        app_state=app_state,
+        settings=settings,
+        pan_offset_x=app_state.pan_offset_x,
+        pan_offset_y=app_state.pan_offset_y,
+        toolbar_visible=session_state.get("toolbar_visible", False),
+    )
+
+    _update_stats_bar(
+        frame_state["pl"],
+        frame_state["pr"],
+        frame_state["curr_weight"],
+        app_state.weight,
+    )
+
+    return (
+        frame_state["top_left"],
+        frame_state["top_right"],
+        frame_state["bottom_left"],
+        frame_state["bottom_right"],
+    )
+
+
+def _process_frame_data(
+    device,
+    app_state,
+    settings,
+    top_left: float,
+    top_right: float,
+    bottom_left: float,
+    bottom_right: float,
+):
+    """Read sensor data and update runtime cursor state for the current frame."""
     data = read_data(device)
     if not data:
-        return top_left, top_right, bottom_left, bottom_right
+        return None
 
     corners = parse_data(data, app_state.data_struct)
     smoothed = apply_filter(corners, app_state.filter_buffer, settings.filter_window)
@@ -647,33 +666,24 @@ def _render_main_screen_frame(
         app_state.historical_coords.pop(0)
 
     curr_weight = sum(smoothed.values())
-    toolbar_visible = session_state.get("toolbar_visible", False)
-    dpg.delete_item(dl, children_only=True)
-    draw_main_screen(
-        dl=dl,
-        corners=corners,
-        ball_x=ball_x,
-        ball_y=ball_y,
-        curr_weight=curr_weight,
-        max_x=app_state.zoomed_max_x,
-        max_y=app_state.zoomed_max_y,
-        min_x=app_state.zoomed_min_x,
-        min_y=app_state.zoomed_min_y,
-        app_state=app_state,
-        settings=settings,
-        pan_offset_x=app_state.pan_offset_x,
-        pan_offset_y=app_state.pan_offset_y,
-        toolbar_visible=toolbar_visible,
-    )
-
     if app_state.weight > 0:
         pl = (smoothed["top_left"] + smoothed["bottom_left"]) / app_state.weight
         pr = (smoothed["top_right"] + smoothed["bottom_right"]) / app_state.weight
     else:
         pl = pr = 0.5
-    _update_stats_bar(pl, pr, curr_weight, app_state.weight)
 
-    return top_left, top_right, bottom_left, bottom_right
+    return {
+        "corners": corners,
+        "ball_x": ball_x,
+        "ball_y": ball_y,
+        "curr_weight": curr_weight,
+        "pl": pl,
+        "pr": pr,
+        "top_left": top_left,
+        "top_right": top_right,
+        "bottom_left": bottom_left,
+        "bottom_right": bottom_right,
+    }
 
 
 def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:

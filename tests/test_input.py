@@ -111,8 +111,14 @@ def test_handle_mouse_wheel_performs_pan_and_zooms(monkeypatch):
 
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: True)
     monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (120, 60))
-    monkeypatch.setattr(input_module.dpg, "set_value", lambda tag, value: recorded.update({"value": value}))
-    monkeypatch.setattr(input_module, "_on_zoom_change", lambda slider_value, settings_, app_state_: recorded.update({"zoom_called": True}))
+    monkeypatch.setattr(
+        input_module.dpg, "set_value", lambda tag, value: recorded.update({"value": value})
+    )
+    monkeypatch.setattr(
+        input_module,
+        "_on_zoom_change",
+        lambda slider_value, settings_, app_state_: recorded.update({"zoom_called": True}),
+    )
 
     input_module._handle_mouse_wheel(1.0, app_state, session_state, settings)
 
@@ -130,11 +136,27 @@ def test_register_input_handlers_registers_mouse_handlers(monkeypatch):
 
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
     monkeypatch.setattr(input_module.dpg, "delete_item", lambda tag: calls.append(("delete", tag)))
-    monkeypatch.setattr(input_module.dpg, "handler_registry", lambda *args, **kwargs: DummyRegistry(*args, **kwargs))
-    monkeypatch.setattr(input_module.dpg, "add_mouse_click_handler", lambda **kwargs: calls.append(("click", kwargs)))
-    monkeypatch.setattr(input_module.dpg, "add_mouse_wheel_handler", lambda **kwargs: calls.append(("wheel", kwargs)))
-    monkeypatch.setattr(input_module.dpg, "add_mouse_drag_handler", lambda **kwargs: calls.append(("drag", kwargs)))
-    monkeypatch.setattr(input_module.dpg, "add_mouse_release_handler", lambda **kwargs: calls.append(("release", kwargs)))
+    monkeypatch.setattr(
+        input_module.dpg, "handler_registry", lambda *args, **kwargs: DummyRegistry(*args, **kwargs)
+    )
+    monkeypatch.setattr(
+        input_module.dpg,
+        "add_mouse_click_handler",
+        lambda **kwargs: calls.append(("click", kwargs)),
+    )
+    monkeypatch.setattr(
+        input_module.dpg,
+        "add_mouse_wheel_handler",
+        lambda **kwargs: calls.append(("wheel", kwargs)),
+    )
+    monkeypatch.setattr(
+        input_module.dpg, "add_mouse_drag_handler", lambda **kwargs: calls.append(("drag", kwargs))
+    )
+    monkeypatch.setattr(
+        input_module.dpg,
+        "add_mouse_release_handler",
+        lambda **kwargs: calls.append(("release", kwargs)),
+    )
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
     monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (0, 0))
 

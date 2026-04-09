@@ -1,3 +1,9 @@
+"""WIIBBLE application runtime.
+
+This module contains the main session lifecycle, device connection flow,
+DearPyGui UI glue code, and the primary render + recording loop.
+"""
+
 # app.py
 import logging
 import math
@@ -123,11 +129,13 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
 
 
 def _get_gear_label() -> str:
+    """Return the label used for the collapsed toolbar button."""
     # Access FA_ICON_FONT via module to get the live value, not the import-time None
     return ICON_COG if _theme_module.FA_ICON_FONT is not None else "[=]"
 
 
 def _toggle_toolbar(session_state: dict) -> None:
+    """Toggle the toolbar visibility state for the session."""
     visible = not session_state.get("toolbar_visible", False)
     session_state["toolbar_visible"] = visible
     if visible:
@@ -147,25 +155,30 @@ def _toggle_toolbar(session_state: dict) -> None:
 
 # --- Cursor toggle helpers (top-level) ---
 def _cursor_label(settings):
+    """Return the current cursor mode label for display in the toolbar."""
     return f"Cursor: {'Avatar' if settings.cursor_mode == 'avatar' else 'Circle'}"
 
 
 def update_cursor_toggle_label(settings):
+    """Update the toolbar cursor button label to reflect the current mode."""
     dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
 
 
 def _on_cursor_toggle(settings):
+    """Toggle the cursor display mode and update the toolbar label."""
     settings.toggle_cursor_mode()
     update_cursor_toggle_label(settings)
 
 
 def _on_record_duration_change(value: int, settings, app_state) -> None:
+    """Persist a new recording duration selection in settings and runtime state."""
     settings.record_duration = value
     app_state.record_duration = value
     settings.save()
 
 
 def _on_start_recording(app_state, settings) -> None:
+    """Start or stop a recording session from the controls toolbar."""
     if app_state.is_recording or app_state.is_countdown:
         app_state.is_recording = False
         dpg.set_item_label("start_recording_btn", "Start Recording")
@@ -356,11 +369,13 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
 
 
 def _on_trail_change(value: int, settings) -> None:
+    """Update the trail length setting used for the historical cursor path."""
     settings.trail_length = value
     settings.save()
 
 
 def _on_filter_change(value: int, settings, app_state) -> None:
+    """Update the moving average filter window and trim the current filter buffer."""
     settings.filter_window = value
     # Trim buffer immediately if window shrank
     if len(app_state.filter_buffer) > value:
@@ -369,6 +384,7 @@ def _on_filter_change(value: int, settings, app_state) -> None:
 
 
 def _on_zoom_change(value: float, settings, app_state) -> None:
+    """Apply a new zoom factor and immediately rescale runtime extents."""
     value = ZOOM_SCALE**value
     settings.zoom_factor = value
     # Immediately rescale zoomed extents so bounding box updates on slider drag
@@ -380,9 +396,90 @@ def _on_zoom_change(value: float, settings, app_state) -> None:
 
 
 def _on_sensitivity_change(value: float, settings) -> None:
-    """S6: Adjust cursor movement sensitivity (scales the effective weight divisor)."""
+    """Adjust cursor movement sensitivity by scaling the effective weight divisor."""
     settings.sensitivity = value
     settings.save()
+
+
+def _update_recording_frame(
+    now: float,
+    record_start_time,
+    app_state,
+    settings,
+    top_left: float,
+    top_right: float,
+    bottom_left: float,
+    bottom_right: float,
+):
+    """Advance recording state and append a CSV row for the current frame."""
+    if app_state.is_recording:
+        elapsed = now - (record_start_time if record_start_time else app_state.record_start)
+        app_state.stopwatch_elapsed = elapsed
+        x_kg, y_kg = calculate_force_deviation_kg(top_left, top_right, bottom_left, bottom_right)
+        app_state.record_buffer.append((elapsed, x_kg, y_kg))
+        if elapsed >= app_state.record_duration:
+            app_state.is_recording = False
+            app_state.recording_indicator = False
+            app_state.stopwatch_elapsed = 0.0
+            dpg.set_item_label("start_recording_btn", "Start Recording")
+            _save_recording_csv(app_state.record_buffer)
+            app_state.record_buffer = []
+    return record_start_time
+
+
+def _flush_record_buffer_if_complete(app_state) -> None:
+    """Save the remaining recording buffer if recording has stopped."""
+    if not app_state.is_recording and app_state.record_buffer:
+        _save_recording_csv(app_state.record_buffer)
+        app_state.record_buffer = []
+        app_state.recording_indicator = False
+        app_state.stopwatch_elapsed = 0.0
+
+
+def _handle_session_action(action, device, dl, app_state, settings, session_state):
+    """Process a toolbar action request and return a loop result if a session restart is needed."""
+    if action == "restart":
+        device.close()
+        dpg.delete_item(dl)
+        return 0
+    if action == "reset":
+        app_state.clicked_locations = []
+        app_state.historical_coords = [(0, 0)] * settings.trail_length
+        app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
+        app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
+        app_state.raw_max_x = app_state.raw_max_y = 0.0
+        app_state.raw_min_x = app_state.raw_min_y = 0.0
+        app_state.pan_offset_x = 0.0
+        app_state.pan_offset_y = 0.0
+        session_state["action"] = None
+        return None
+    if action == "zoom_to_bbox":
+        _on_zoom_to_bbox(
+            app_state.raw_max_x,
+            app_state.raw_max_y,
+            app_state.raw_min_x,
+            app_state.raw_min_y,
+            app_state,
+            settings,
+        )
+        app_state.zoomed_max_x = app_state.raw_max_x * settings.zoom_factor
+        app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
+        app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
+        app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
+        session_state["action"] = None
+        return None
+    if action == "reset_pan":
+        app_state.pan_offset_x = 0.0
+        app_state.pan_offset_y = 0.0
+        session_state["action"] = None
+        return None
+    if action == "pan_changed":
+        session_state["action"] = None
+        return None
+    if action == "toolbar_toggled":
+        session_state["action"] = None
+        return None
+    return None
 
 
 def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:
@@ -431,6 +528,7 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
 
 
 def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings) -> None:
+    """Auto-scale the viewport zoom so the cursor history fits the visible area."""
     bbox_w = max(abs(raw_max_x), abs(raw_min_x)) * 2
     bbox_h = max(abs(raw_max_y), abs(raw_min_y)) * 2
     base_w = app_state.screen_width * COORD_SCALE
@@ -451,6 +549,7 @@ _stats_cache = {"left": -1, "weight": -1, "right": -1}
 
 
 def _build_stats_bar(app_state) -> None:
+    """Create or reset the overlay stats drawlist for the main screen."""
     # Create or reuse a dedicated drawlist for stats (bar + text).
     # front=True ensures it draws above the canvas drawlist.
     if not dpg.does_item_exist("stats_dl"):
@@ -466,6 +565,7 @@ def _build_stats_bar(app_state) -> None:
 def _update_stats_bar(
     perc_left: float, perc_right: float, curr_weight: float, calib_weight: float
 ) -> None:
+    """Draw the live left/right distribution and weight stats overlay."""
     left_val = int(perc_left * 100)
     weight_val = int(curr_weight)
     right_val = int(perc_right * 100)
@@ -575,6 +675,7 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
 
 
 def _handle_target_drag(app_state, settings):
+    """Resize the target under construction while the mouse is dragged."""
     # Called on mouse drag if a target is being created
     if app_state.target_in_progress is None:
         return
@@ -589,6 +690,7 @@ def _handle_target_drag(app_state, settings):
 
 
 def _handle_target_release(app_state):
+    """Finalize the current target when the mouse button is released."""
     # Called on mouse release to finalize target
     if app_state.target_in_progress is not None:
         app_state.clicked_locations.append(app_state.target_in_progress)
@@ -597,6 +699,7 @@ def _handle_target_release(app_state):
 
 # --- Ctrl+Left Drag Pan Implementation ---
 def _handle_pan_drag(app_state, session_state):
+    """Handle Ctrl+drag panning of the main canvas."""
     import dearpygui.dearpygui as dpg
 
     # Only pan if Ctrl is held
@@ -619,6 +722,7 @@ def _handle_pan_drag(app_state, session_state):
 
 
 def _handle_pan_release(app_state):
+    """Stop panning when the mouse button is released."""
     if getattr(app_state, "is_panning", False):
         app_state.is_panning = False
 
@@ -782,78 +886,25 @@ def _run_session(app_state, settings, args) -> int:
                     app_state.record_start = now
                     app_state.record_buffer = []
                     app_state.stopwatch_elapsed = 0.0
-        # Recording phase
-        if app_state.is_recording:
-            elapsed = now - (record_start_time if record_start_time else app_state.record_start)
-            app_state.stopwatch_elapsed = elapsed
-            # Get x, y in kg for CSV
-            x_kg, y_kg = calculate_force_deviation_kg(
-                top_left, top_right, bottom_left, bottom_right
-            )
-            # Timestamp is relative to recording start
-            app_state.record_buffer.append((elapsed, x_kg, y_kg))
-            # Cap at 100 Hz (skip frames if running faster)
-            if elapsed >= app_state.record_duration:
-                app_state.is_recording = False
-                app_state.recording_indicator = False
-                app_state.stopwatch_elapsed = 0.0
-                # Reset button label to 'Start Recording' when recording ends automatically
-                dpg.set_item_label("start_recording_btn", "Start Recording")
-                # Save CSV file
-                _save_recording_csv(app_state.record_buffer)
-                # reset buffer and timers
-                app_state.record_buffer = []
 
-        # check if buffer is not empty and recording has stopped, then save the CSV
-        elif not app_state.is_recording and app_state.record_buffer:
-            _save_recording_csv(app_state.record_buffer)
-            app_state.record_buffer = []
-            app_state.recording_indicator = False
-            app_state.stopwatch_elapsed = 0.0
+        record_start_time = _update_recording_frame(
+            now,
+            record_start_time,
+            app_state,
+            settings,
+            top_left,
+            top_right,
+            bottom_left,
+            bottom_right,
+        )
+        _flush_record_buffer_if_complete(app_state)
         # Visual feedback overlays are now drawn in ui.draw_main_screen
 
         # Handle control panel actions
         action = session_state.get("action")
-        if action == "restart":
-            device.close()
-            dpg.delete_item(dl)
-            return 0
-        if action == "reset":
-            app_state.clicked_locations = []
-            app_state.historical_coords = [(0, 0)] * settings.trail_length
-            app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
-            app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
-            app_state.raw_max_x = app_state.raw_max_y = 0.0
-            app_state.raw_min_x = app_state.raw_min_y = 0.0
-            app_state.pan_offset_x = 0.0
-            app_state.pan_offset_y = 0.0
-            session_state["action"] = None
-        if action == "zoom_to_bbox":
-            _on_zoom_to_bbox(
-                app_state.raw_max_x,
-                app_state.raw_max_y,
-                app_state.raw_min_x,
-                app_state.raw_min_y,
-                app_state,
-                settings,
-            )
-            app_state.zoomed_max_x = app_state.raw_max_x * settings.zoom_factor
-            app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
-            app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
-            app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
-            session_state["action"] = None
-
-        if action == "reset_pan":
-            app_state.pan_offset_x = 0.0
-            app_state.pan_offset_y = 0.0
-            session_state["action"] = None
-
-        if action == "pan_changed":
-            session_state["action"] = None
-
-        # Toolbar toggle — just consume, canvas never resizes
-        if action == "toolbar_toggled":
-            session_state["action"] = None
+        result = _handle_session_action(action, device, dl, app_state, settings, session_state)
+        if result is not None:
+            return result
 
         # Canvas is always viewport_height - TOOLBAR_FULL_H.
         # Toolbar floats over canvas — toggling it never changes screen dimensions.
@@ -864,9 +915,13 @@ def _run_session(app_state, settings, args) -> int:
             app_state.screen_height = vh
             # Resize toolbar — preserve current visibility state
             toolbar_currently_visible = session_state.get("toolbar_visible", False)
+            toolbar_enabled = session_state.get("toolbar_enabled", False)
             dpg.configure_item("control_panel", width=vw, show=toolbar_currently_visible)
             if dpg.does_item_exist("gear_btn_window"):
-                dpg.configure_item("gear_btn_window", show=not toolbar_currently_visible)
+                dpg.configure_item(
+                    "gear_btn_window",
+                    show=toolbar_enabled and not toolbar_currently_visible,
+                )
             # stats_dl redraws itself at correct position on next value change
 
         # Read sensor data

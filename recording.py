@@ -1,3 +1,9 @@
+"""CSV recording utilities for WIIBBLE.
+
+This module is responsible for serializing recording buffers to timestamped
+CSV files under the recordings directory.
+"""
+
 # recording.py
 # CSV recording output — extracted from app.py to enable isolated unit testing.
 import csv
@@ -9,6 +15,7 @@ log = logging.getLogger(__name__)
 
 
 def _save_recording_csv(record_buffer):
+    """Save the provided recording buffer to a timestamped CSV file."""
     out_dir = os.path.join(os.getcwd(), "recordings")
     os.makedirs(out_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")

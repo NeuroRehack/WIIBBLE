@@ -32,6 +32,7 @@ from theme import apply_global_theme, load_fonts  # noqa: E402
 
 
 def parse_args():
+    """Parse command-line arguments for the WIIBBLE application."""
     parser = argparse.ArgumentParser(description="WIIBBLE - Wii Balance Board Live Environment")
     parser.add_argument(
         "--mock",

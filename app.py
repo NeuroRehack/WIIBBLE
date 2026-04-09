@@ -50,17 +50,16 @@ from data_processing import (
 from mock_board import MockHIDDevice
 from recording import _save_recording_csv
 from resources import resource_path
-from theme import BAR_GREY_COLOR, ICON_COG, STATS_TEXT_COLOR, bind_text_font, get_stats_bar_color
+from theme import ICON_COG
 from ui import (
-    STATS_FONT_MIN,
-    STATS_FONT_SCALE,
-    STATS_STRIP_H,
     build_gear_button_window,
+    build_stats_bar,
     build_toolbar_window,
     draw_connection_failed_screen,
     draw_connection_screen,
     draw_main_screen,
     ensure_textures_loaded,
+    update_stats_bar,
 )
 
 log = logging.getLogger(__name__)
@@ -596,7 +595,7 @@ def _render_main_screen_frame(
         toolbar_visible=session_state.get("toolbar_visible", False),
     )
 
-    _update_stats_bar(
+    update_stats_bar(
         frame_state["pl"],
         frame_state["pr"],
         frame_state["curr_weight"],
@@ -750,98 +749,6 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
 # Cached stats values — stats drawlist only redraws when these change.
 # This eliminates the sub-pixel jitter that caused blurry text.
 _stats_cache = {"left": -1, "weight": -1, "right": -1}
-
-
-def _build_stats_bar(app_state) -> None:
-    """Create or reset the overlay stats drawlist for the main screen."""
-    # Create or reuse a dedicated drawlist for stats (bar + text).
-    # front=True ensures it draws above the canvas drawlist.
-    if not dpg.does_item_exist("stats_dl"):
-        dpg.add_viewport_drawlist(tag="stats_dl", front=True)
-    # Clear any content from a previous session
-    dpg.delete_item("stats_dl", children_only=True)
-    # Reset cache to force a full redraw on first frame
-    _stats_cache["left"] = -1
-    _stats_cache["weight"] = -1
-    _stats_cache["right"] = -1
-
-
-def _update_stats_bar(
-    perc_left: float, perc_right: float, curr_weight: float, calib_weight: float
-) -> None:
-    """Draw the live left/right distribution and weight stats overlay."""
-    left_val = int(perc_left * 100)
-    weight_val = int(curr_weight)
-    right_val = int(perc_right * 100)
-
-    # Only redraw if values actually changed
-    if (
-        left_val == _stats_cache["left"]
-        and weight_val == _stats_cache["weight"]
-        and right_val == _stats_cache["right"]
-    ):
-        return
-
-    _stats_cache["left"] = left_val
-    _stats_cache["weight"] = weight_val
-    _stats_cache["right"] = right_val
-
-    sw = dpg.get_viewport_width()
-    vh = dpg.get_viewport_height()
-    font_size = max(STATS_FONT_MIN, int(vh * STATS_FONT_SCALE))
-    bar_top = vh - STATS_STRIP_H
-    bar_bot = vh
-    y = bar_top - font_size - 6
-
-    dpg.delete_item("stats_dl", children_only=True)
-
-    # Draw static background bar (light grey)
-    dpg.draw_rectangle(
-        (0, bar_top), (sw, bar_bot), fill=BAR_GREY_COLOR, color=BAR_GREY_COLOR, parent="stats_dl"
-    )
-
-    # Dynamic central stats bar color based on weight percentage
-    percent = curr_weight / calib_weight if calib_weight > 0 else 0
-    bar_color = get_stats_bar_color(percent)
-
-    # Draw left/right distribution overlays as before
-    if _stats_cache["weight"] > 0:
-        pl = _stats_cache["left"] / 100
-        pr = _stats_cache["right"] / 100
-    else:
-        pl = pr = 0.5
-    x0 = sw // 2 - pl * sw // 2
-    dpg.draw_rectangle(
-        (x0, bar_top), (sw // 2, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
-    )
-    x0 = sw // 2
-    x1 = sw // 2 + pr * sw // 2
-    dpg.draw_rectangle(
-        (x0, bar_top), (x1, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
-    )
-
-    # Text above the bar — bind crisp font so ImGui downscales the 100px atlas
-    # glyph rather than upscaling the ~13px default bitmap font.
-    t = dpg.draw_text(
-        (10, y), f"{left_val}%", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl"
-    )
-    bind_text_font(t)
-    t = dpg.draw_text(
-        (sw // 2 - 40, y),
-        f"{weight_val} kg",
-        color=STATS_TEXT_COLOR,
-        size=font_size,
-        parent="stats_dl",
-    )
-    bind_text_font(t)
-    t = dpg.draw_text(
-        (sw - font_size * 3, y),
-        f"{right_val}%",
-        color=STATS_TEXT_COLOR,
-        size=font_size,
-        parent="stats_dl",
-    )
-    bind_text_font(t)
 
 
 def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
@@ -1012,7 +919,7 @@ def _run_session(app_state, settings, args) -> int:
     if dpg.does_item_exist("gear_btn_window"):
         dpg.configure_item("gear_btn_window", show=False)
 
-    _build_stats_bar(app_state)
+    build_stats_bar(app_state)
 
     _register_input_handlers(app_state, settings, session_state)
 

@@ -14,6 +14,7 @@ from constants import (
 )
 from resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
 from theme import (
+    BAR_GREY_COLOR,
     BBOX_COLOR,
     BBOX_THICKNESS,
     CALIB_BG_COLOR,
@@ -23,8 +24,10 @@ from theme import (
     CANVAS_LINE,
     CANVAS_LINE_W,
     CURSOR_COLOR,
+    STATS_TEXT_COLOR,
     TRAIL_COLOR_BASE,
     bind_text_font,
+    get_stats_bar_color,
 )
 
 # ---------------------------------------------------------------------------
@@ -114,6 +117,93 @@ def get_wii_image_size(index: int) -> tuple:
 def get_person_image_size() -> tuple:
     cfg = dpg.get_item_configuration(_person_texture_tag)
     return cfg["width"], cfg["height"]
+
+
+# Cached stats values — stats drawlist only redraws when these change.
+# This eliminates the sub-pixel jitter that caused blurry text.
+_stats_cache = {"left": -1, "weight": -1, "right": -1}
+
+
+def build_stats_bar(app_state) -> None:
+    """Create or reset the overlay stats drawlist for the main screen."""
+    if not dpg.does_item_exist("stats_dl"):
+        dpg.add_viewport_drawlist(tag="stats_dl", front=True)
+    dpg.delete_item("stats_dl", children_only=True)
+    _stats_cache["left"] = -1
+    _stats_cache["weight"] = -1
+    _stats_cache["right"] = -1
+
+
+def update_stats_bar(
+    perc_left: float, perc_right: float, curr_weight: float, calib_weight: float
+) -> None:
+    """Draw the live left/right distribution and weight stats overlay."""
+    left_val = int(perc_left * 100)
+    weight_val = int(curr_weight)
+    right_val = int(perc_right * 100)
+
+    if (
+        left_val == _stats_cache["left"]
+        and weight_val == _stats_cache["weight"]
+        and right_val == _stats_cache["right"]
+    ):
+        return
+
+    _stats_cache["left"] = left_val
+    _stats_cache["weight"] = weight_val
+    _stats_cache["right"] = right_val
+
+    sw = dpg.get_viewport_width()
+    vh = dpg.get_viewport_height()
+    font_size = max(STATS_FONT_MIN, int(vh * STATS_FONT_SCALE))
+    bar_top = vh - STATS_STRIP_H
+    bar_bot = vh
+    y = bar_top - font_size - 6
+
+    dpg.delete_item("stats_dl", children_only=True)
+
+    dpg.draw_rectangle(
+        (0, bar_top), (sw, bar_bot), fill=BAR_GREY_COLOR, color=BAR_GREY_COLOR, parent="stats_dl"
+    )
+
+    percent = curr_weight / calib_weight if calib_weight > 0 else 0
+    bar_color = get_stats_bar_color(percent)
+
+    if _stats_cache["weight"] > 0:
+        pl = _stats_cache["left"] / 100
+        pr = _stats_cache["right"] / 100
+    else:
+        pl = pr = 0.5
+    x0 = sw // 2 - pl * sw // 2
+    dpg.draw_rectangle(
+        (x0, bar_top), (sw // 2, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
+    )
+    x0 = sw // 2
+    x1 = sw // 2 + pr * sw // 2
+    dpg.draw_rectangle(
+        (x0, bar_top), (x1, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
+    )
+
+    t = dpg.draw_text(
+        (10, y), f"{left_val}%", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl"
+    )
+    bind_text_font(t)
+    t = dpg.draw_text(
+        (sw // 2 - 40, y),
+        f"{weight_val} kg",
+        color=STATS_TEXT_COLOR,
+        size=font_size,
+        parent="stats_dl",
+    )
+    bind_text_font(t)
+    t = dpg.draw_text(
+        (sw - font_size * 3, y),
+        f"{right_val}%",
+        color=STATS_TEXT_COLOR,
+        size=font_size,
+        parent="stats_dl",
+    )
+    bind_text_font(t)
 
 
 def build_toolbar_window(

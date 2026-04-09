@@ -5,6 +5,12 @@ import sys
 
 log = logging.getLogger(__name__)
 
+# Nuitka standalone sets __compiled__ at module level; PyInstaller sets sys.frozen.
+try:
+    _compiled = bool(__compiled__)  # type: ignore[name-defined]  # noqa: F821
+except NameError:
+    _compiled = False
+
 
 def resource_path(relative_path: str) -> str:
     """
@@ -12,9 +18,9 @@ def resource_path(relative_path: str) -> str:
     Works in development (relative to repo root) and when compiled with
     Nuitka standalone (resources sit alongside the exe).
     """
-    if getattr(sys, "frozen", False):
+    if getattr(sys, "frozen", False) or _compiled:
         base = os.path.dirname(sys.executable)
-        log.debug("resource_path: frozen (Nuitka), using exe dir = %s", base)
+        log.debug("resource_path: standalone build, using exe dir = %s", base)
     else:
         base = os.path.abspath(".")
         log.debug("resource_path: dev mode, using cwd = %s", base)

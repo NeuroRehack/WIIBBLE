@@ -1,7 +1,13 @@
-@REM build c# project
-@REM cd WiiBalanceBoardLibrary
-@REM dotnet build
-@REM cd ..
+@echo off
+
+echo [compiler] Building C# library...
+cd WiiBalanceBoardLibrary
+dotnet build
+if errorlevel 1 (
+    echo [compiler] C# BUILD FAILED.
+    exit /b 1
+)
+cd ..
 
 if not exist outputBuild\ mkdir outputBuild\
 call .venv\Scripts\activate.bat
@@ -15,7 +21,8 @@ python -m nuitka --standalone --follow-imports ^
     --include-package=hid ^
     --include-data-dir=images=images ^
     --include-data-dir=assets\fonts=assets\fonts ^
-    --include-data-dir=WiiBalanceBoardLibrary=WiiBalanceBoardLibrary ^
+    --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.dll=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
+    --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.pdb=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
     main.py
 if errorlevel 1 (
     echo [compiler] BUILD FAILED.

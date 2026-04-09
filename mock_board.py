@@ -1,3 +1,10 @@
+"""Mock Wii Balance Board hardware support.
+
+This module provides a fake HID device implementation that simulates Wii
+Balance Board weight data in configurable scenarios. It is used for local
+mock mode so the UI and calibration flow can be exercised without hardware.
+"""
+
 import logging
 import math
 import random
@@ -42,9 +49,11 @@ class MockHIDDevice:
 
     @classmethod
     def from_scenario(cls, scenario):
+        """Create a mock device configured for the given scenario."""
         return cls(scenario)
 
     def _set_scenario(self, scenario):
+        """Configure the simulated weight pattern for a named scenario."""
         if scenario == "still":
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.03, "sway": 0.0}
         elif scenario == "lean_left":
@@ -67,11 +76,13 @@ class MockHIDDevice:
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
 
     def open(self, vendor_id, product_id):
+        """Initialize the mock device and reset its calibration phase."""
         self._phase = "tare"
         self._stable_until = None
         self.start_time = time.time()
 
     def close(self):
+        """Close the mock device and release any simulated resources."""
         log.debug("Mock HID device closed.")
 
     def trigger_step_on(self):
@@ -85,6 +96,7 @@ class MockHIDDevice:
             self.start_time = time.time()
 
     def read(self, size):
+        """Return a raw HID byte array for the current simulated board state."""
         kg_vals = self._get_kg_values()
         data = [0] * size
         indices = [3, 5, 7, 9]  # top_right, bottom_right, top_left, bottom_left
@@ -105,6 +117,7 @@ class MockHIDDevice:
         return data
 
     def _get_kg_values(self):
+        """Return the current simulated kg values for each board corner."""
         if self._phase == "tare":
             return [0.0, 0.0, 0.0, 0.0]
 
@@ -119,6 +132,7 @@ class MockHIDDevice:
         return self._simulate_normal()
 
     def _simulate_normal(self):
+        """Simulate a normal running scenario, including sway and noise."""
         t = time.time() - self.start_time
         p = self._scenario_params
         base = p["base"]

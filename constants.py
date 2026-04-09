@@ -1,4 +1,10 @@
-# constants.py
+"""Application constants and hardware configuration for WIIBBLE.
+
+This module centralizes all fixed values used by the app, including hardware
+identifiers, sensor layout mapping, calibration thresholds, and UI layout
+constants.
+"""
+
 import os
 
 # ---------------------------------------------------------------------------

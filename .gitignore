@@ -14,3 +14,8 @@
 *.exe
 .wiibble
 \recordings
+.coverage
+.vscode/
+.pytest_cache/
+.ruff_cache/
+Backup/

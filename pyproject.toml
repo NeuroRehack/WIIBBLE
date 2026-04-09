@@ -44,6 +44,7 @@ ignore = ["E501"]               # line length handled separately
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = [
     "--cov=data_processing",
     "--cov=state",

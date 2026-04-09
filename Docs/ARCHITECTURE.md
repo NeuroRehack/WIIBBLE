@@ -13,6 +13,7 @@ WIIBBLE is a desktop application built on Python and DearPyGui, with optional ha
 - `data_processing.py` — sensor parsing, filtering, coordinate calculations, and weight computation.
 - `calibration.py` — tare and sensitivity calibration workflows.
 - `state.py` — `Settings` persistence and runtime `AppState`.
+- `recording.py` — CSV recording logic (`_save_recording_csv`).
 - `resources.py` — resource path resolution for dev and standalone builds.
 - `mock_board.py` — simulated balance board input for development.
 - `board_connection.py` — hardware bridge via `pythonnet` to the C# DLL.
@@ -44,7 +45,8 @@ WIIBBLE is a desktop application built on Python and DearPyGui, with optional ha
 
 7. **Recording**
    - During recording, the app buffers timestamps and coordinates.
-   - `_save_recording_csv()` writes CSV files to `recordings/`.
+   - `_save_recording_csv()` in `recording.py` writes CSV files to `recordings/`.
+   - `recording.py` is imported by `app.py` but can be tested independently.
 
 ## 3. Main runtime flow
 

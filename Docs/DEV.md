@@ -77,23 +77,56 @@ The app also logs to stdout in normal development runs.
 
 ## 6. Code formatting and linting
 
-Run the formatter/linter via `uv` if configured:
+Ruff is configured in `pyproject.toml` (rules: E, F, W, I; `line-length = 100`).
 
 ```powershell
+# Check for violations
 uv run ruff check .
-```
 
-If `ruff` is installed through `uv sync --extra dev`, it will use the repo's `pyproject.toml` configuration.
+# Auto-fix safe violations
+uv run ruff check . --fix
+
+# Verify formatting
+uv run ruff format --check .
+
+# Apply formatting
+uv run ruff format .
+```
 
 ## 7. Tests
 
-There are no tests yet in the repository. When tests are added, use:
+Tests live in `tests/` and use `pytest` with `pytest-cov`. Run them with:
 
 ```powershell
-uv run pytest
+uv run pytest -v
 ```
 
-## 8. Contribution workflow
+Coverage is measured over `data_processing.py`, `state.py`, and `recording.py`. A minimum of **80%** total coverage is enforced — the test run will fail if it drops below.
+
+Current coverage: **82%** (63 tests).
+
+| Module | Coverage |
+|---|---|
+| `recording.py` | 100% |
+| `state.py` | 98% |
+| `data_processing.py` | 55% (hardware paths excluded) |
+
+> Hardware-coupled modules (`app.py`, `ui.py`, `board_connection.py`, etc.) are excluded from coverage measurement. Use `--mock` mode to smoke-test the full app.
+
+## 8. CI
+
+GitHub Actions runs automatically on push to `develop`/`main` and on PRs to `main`.
+
+Two jobs defined in `.github/workflows/ci.yml`:
+
+| Job | What it does |
+|---|---|
+| `lint` | `ruff check .` + `ruff format --check .` |
+| `test` | `pytest -v` with coverage gate (≥80%) |
+
+`test` only runs after `lint` passes. Both jobs run on `windows-latest`.
+
+## 9. Contribution workflow
 
 1. Create a feature branch from `develop`.
 2. Make small, testable changes.

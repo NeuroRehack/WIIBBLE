@@ -40,7 +40,8 @@ changing the screen size (windowed mode and full-screen mode )
 
 ## 🟡 Code Quality
 
-- [ ] refactor large code blocks into smaller functions (e.g. recording logic in `app.py` is currently a bit tangled)
+- [x] Extract recording logic from `app.py` into `recording.py`
+- [ ] Refactor remaining large code blocks in `app.py` into smaller functions
 - [ ] add docstrings to all functions and classes for better maintainability
 
 ---
@@ -54,24 +55,24 @@ changing the screen size (windowed mode and full-screen mode )
 - [x] Log to file at `~/.wiibble/wiibble.log` and stdout
 
 ### Add GitHub Actions CI Pipeline
-No automated checks exist.
-- [ ] Add workflow to lint Python (`ruff` or `flake8`)
+- [x] Add workflow to lint Python (`ruff`) — runs on push to `develop`/`main`
 - [ ] Add workflow to build the C# DLL (`dotnet build`)
-- [ ] Add workflow to run Python unit tests (`pytest`)
+- [x] Add workflow to run Python unit tests (`pytest`) — runs with coverage gate (≥80%)
 - [ ] Add workflow to build Nuitka executable and archive as artifact
 
 ###  Add Unit Tests
-No tests exist.
-- [ ] Add tests for `parse_data()` using known raw byte arrays
-- [ ] Add tests for `calculate_coordinates()` with known inputs
-- [ ] Add tests for the moving average filter (S4) — fully testable without hardware
-- [ ] Add tests for CSV recording logic (S5) — fully testable without hardware
-- [ ] Use `pytest` as the test framework
+- [x] Add tests for `parse_data()` using known raw byte arrays
+- [x] Add tests for `calculate_coordinates()` with known inputs
+- [x] Add tests for the moving average filter — fully testable without hardware
+- [x] Add tests for CSV recording logic (`recording.py`) — fully testable without hardware
+- [x] Use `pytest` as the test framework
+- [x] Coverage gate enforced at ≥80% (currently 82%)
 
 ---
 
 ## 🟢 Project Structure
-- [ ] Consider splitting `app.py` into multiple modules (e.g. `recording.py`, `session.py`) for better separation of concerns
+- [x] Split `_save_recording_csv` from `app.py` into `recording.py` for better separation of concerns and testability
+- [ ] Further refactor `app.py` (e.g. `session.py`) for remaining logic
 - [ ] Move C# interop code from `board_connection.py` into a dedicated `hardware_interface.py` module
 - [ ] Add a `utils.py` for any shared helper functions that don't fit elsewhere
 - [ ] Organise assets into subfolders (e.g. `assets/fonts/`, `assets/images/`) for better clarity

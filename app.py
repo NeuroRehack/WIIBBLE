@@ -1,9 +1,6 @@
 # app.py
-import csv
-import datetime
 import logging
 import math
-import os
 import time
 
 import dearpygui.dearpygui as dpg
@@ -46,6 +43,7 @@ from data_processing import (
     tare,
 )
 from mock_board import MockHIDDevice
+from recording import _save_recording_csv
 from resources import resource_path
 from theme import BAR_GREY_COLOR, ICON_COG, STATS_TEXT_COLOR, bind_text_font, get_stats_bar_color
 from ui import (
@@ -636,20 +634,6 @@ def run(app_state, settings, args) -> None:
         result = _run_session(app_state, settings, args)
         if result != 0:
             break
-
-
-def _save_recording_csv(record_buffer):
-    out_dir = os.path.join(os.getcwd(), "recordings")
-    os.makedirs(out_dir, exist_ok=True)
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"recording_{timestamp}.csv"
-    path = os.path.join(out_dir, filename)
-    with open(path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["time (s)", "x (kg)", "y (kg)"])
-        for row in record_buffer:
-            writer.writerow([f"{row[0]:.3f}", f"{row[1]:.3f}", f"{row[2]:.3f}"])
-    log.info("Recording saved to %s", path)
 
 
 def _run_session(app_state, settings, args) -> int:

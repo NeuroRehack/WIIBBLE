@@ -441,6 +441,64 @@ def _flush_record_buffer_if_complete(app_state) -> None:
         app_state.stopwatch_elapsed = 0.0
 
 
+def _update_countdown_and_recording(
+    now,
+    last_countdown_tick,
+    record_start_time,
+    app_state,
+    settings,
+    top_left,
+    top_right,
+    bottom_left,
+    bottom_right,
+):
+    """Advance countdown and recording state for the current frame."""
+    if app_state.is_countdown:
+        if now - last_countdown_tick >= 1.0:
+            app_state.countdown_value -= 1
+            last_countdown_tick = now
+            if app_state.countdown_value <= 0:
+                app_state.is_countdown = False
+                app_state.is_recording = True
+                app_state.recording_indicator = True
+                record_start_time = now
+                app_state.record_start = now
+                app_state.record_buffer = []
+                app_state.stopwatch_elapsed = 0.0
+
+    record_start_time = _update_recording_frame(
+        now,
+        record_start_time,
+        app_state,
+        settings,
+        top_left,
+        top_right,
+        bottom_left,
+        bottom_right,
+    )
+    return record_start_time, last_countdown_tick
+
+
+def _handle_viewport_resize(app_state, session_state):
+    """Update app dimensions and toolbar visibility on viewport resize."""
+    vw = dpg.get_viewport_width()
+    vh = dpg.get_viewport_height()
+    if vw == app_state.screen_width and vh == app_state.screen_height:
+        return
+
+    app_state.screen_width = vw
+    app_state.screen_height = vh
+    toolbar_currently_visible = session_state.get("toolbar_visible", False)
+    toolbar_enabled = session_state.get("toolbar_enabled", False)
+    dpg.configure_item("control_panel", width=vw, show=toolbar_currently_visible)
+    if dpg.does_item_exist("gear_btn_window"):
+        dpg.configure_item(
+            "gear_btn_window",
+            show=toolbar_enabled and not toolbar_currently_visible,
+        )
+    # stats_dl redraws itself at correct position on next value change
+
+
 def _handle_session_action(action, device, dl, app_state, settings, session_state):
     """Process a toolbar action request and return a loop result if a session restart is needed."""
     if action == "restart":
@@ -485,6 +543,51 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         session_state["action"] = None
         return None
     return None
+
+
+def _prepare_session(dl, app_state, settings, session_state, args):
+    """Run connection, tare, and calibration startup steps before the main loop."""
+    try:
+        connected = _try_connection_loop(dl, app_state, use_mock=args.mock)
+        if not connected:
+            return None
+    except Exception:
+        log.exception("Connection failed")
+        return None
+
+    device = connect_wii_board(use_mock=args.mock, mock_scenario=args.mock_scenario)
+    if not device:
+        return None
+
+    try:
+        device.set_nonblocking(1)
+    except Exception:
+        pass
+
+    dpg.delete_item(dl, children_only=True)
+    draw_connection_screen(dl, app_state)
+    dpg.render_dearpygui_frame()
+
+    wait_for_tare(device, dl, app_state)
+    try:
+        tare(device, app_state.data_struct)
+    except Exception:
+        log.exception("Failed to tare")
+        device.close()
+        return None
+
+    on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
+    calibrated_weight = sensitivity_calibration(device, dl, app_state, on_start=on_start)
+    if calibrated_weight == -1:
+        device.close()
+        return None
+
+    app_state.weight = calibrated_weight
+    session_state["toolbar_enabled"] = True
+    if dpg.does_item_exist("gear_btn_window"):
+        dpg.configure_item("gear_btn_window", show=True)
+
+    return device
 
 
 def _render_main_screen_frame(
@@ -788,6 +891,42 @@ def _handle_target_release(app_state):
         app_state.target_in_progress = None
 
 
+def _register_input_handlers(app_state, settings, session_state):
+    """Register mouse interaction handlers for the main session canvas."""
+    if dpg.does_item_exist("click_handler"):
+        dpg.delete_item("click_handler")
+    with dpg.handler_registry(tag="click_handler"):
+        dpg.add_mouse_click_handler(
+            button=0,
+            callback=lambda: _handle_canvas_click(
+                *dpg.get_mouse_pos(local=False),
+                app_state,
+                settings,
+                session_state,
+            ),
+        )
+        dpg.add_mouse_wheel_handler(
+            callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
+        )
+        dpg.add_mouse_drag_handler(
+            button=0,
+            threshold=0,
+            callback=lambda s, d: (
+                _handle_pan_drag(app_state, session_state)
+                if dpg.is_key_down(dpg.mvKey_LControl)
+                else _handle_target_drag(app_state, settings)
+            ),
+        )
+        dpg.add_mouse_release_handler(
+            button=0,
+            callback=lambda: (
+                _handle_pan_release(app_state)
+                if getattr(app_state, "is_panning", False)
+                else _handle_target_release(app_state)
+            ),
+        )
+
+
 # --- Ctrl+Left Drag Pan Implementation ---
 def _handle_pan_drag(app_state, session_state):
     """Handle Ctrl+drag panning of the main canvas."""
@@ -865,89 +1004,19 @@ def _run_session(app_state, settings, args) -> int:
 
     _build_stats_bar(app_state)
 
-    # Register canvas click and drag handlers via a handler registry
-    if dpg.does_item_exist("click_handler"):
-        dpg.delete_item("click_handler")
-    with dpg.handler_registry(tag="click_handler"):
-        dpg.add_mouse_click_handler(
-            button=0,
-            callback=lambda: _handle_canvas_click(
-                *dpg.get_mouse_pos(local=False),
-                app_state,
-                settings,
-                session_state,
-            ),
-        )
-        dpg.add_mouse_wheel_handler(
-            callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
-        )
-        dpg.add_mouse_drag_handler(
-            button=0,
-            threshold=0,
-            callback=lambda s, d: (
-                _handle_pan_drag(app_state, session_state)
-                if dpg.is_key_down(dpg.mvKey_LControl)
-                else _handle_target_drag(app_state, settings)
-            ),
-        )
-        dpg.add_mouse_release_handler(
-            button=0,
-            callback=lambda: (
-                _handle_pan_release(app_state)
-                if getattr(app_state, "is_panning", False)
-                else _handle_target_release(app_state)
-            ),
-        )
+    _register_input_handlers(app_state, settings, session_state)
 
-    # --- Step 1: Connect ---
-    try:
-        connected = _try_connection_loop(dl, app_state, use_mock=args.mock)
-        if not connected:
-            return 1
-    except Exception:
-        log.exception("Connection failed")
+    device = _prepare_session(dl, app_state, settings, session_state, args)
+    if device is None:
         return 1
 
-    device = connect_wii_board(use_mock=args.mock, mock_scenario=args.mock_scenario)
-    if not device:
-        return 1
+    result = _run_main_loop(device, dl, app_state, settings, session_state)
+    device.close()
+    return result
 
-    # Non-blocking reads — read() returns None immediately if no data ready.
-    # This decouples the render rate from the HID poll rate, eliminating the
-    # one-poll-period latency that occurred when read() blocked the render loop.
-    try:
-        device.set_nonblocking(1)
-    except Exception:
-        pass  # mock device and some HID drivers don't support this; safe to ignore
 
-    # Show connecting screen while taring
-    dpg.delete_item(dl, children_only=True)
-    draw_connection_screen(dl, app_state)
-    dpg.render_dearpygui_frame()
-
-    # --- Step 2: Tare ---
-    wait_for_tare(device, dl, app_state)
-    try:
-        tare(device, app_state.data_struct)
-    except Exception:
-        log.exception("Failed to tare")
-        device.close()
-        return 1
-
-    # --- Step 3: Calibration ---
-    on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
-    calibrated_weight = sensitivity_calibration(device, dl, app_state, on_start=on_start)
-    if calibrated_weight == -1:
-        return 1
-    app_state.weight = calibrated_weight
-
-    # Enable the toolbar now that the app has completed calibration and is
-    # entering the main session screen.
-    session_state["toolbar_enabled"] = True
-    if dpg.does_item_exist("gear_btn_window"):
-        dpg.configure_item("gear_btn_window", show=True)
-
-    # --- Step 4: Main loop ---
+def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
+    """Execute the main session render loop and return a session result."""
     # Extents now stored in app_state so zoom callback can rescale them live.
     # app_state.reset() already zeroes these — nothing else needed here.
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
@@ -962,24 +1031,10 @@ def _run_session(app_state, settings, args) -> int:
     top_left = top_right = bottom_left = bottom_right = 0.0
 
     while dpg.is_dearpygui_running():
-        # --- S5: Countdown and Recording Logic ---
         now = time.time()
-        # Countdown phase
-        if app_state.is_countdown:
-            if now - last_countdown_tick >= 1.0:
-                app_state.countdown_value -= 1
-                last_countdown_tick = now
-                if app_state.countdown_value <= 0:
-                    app_state.is_countdown = False
-                    app_state.is_recording = True
-                    app_state.recording_indicator = True
-                    record_start_time = now
-                    app_state.record_start = now
-                    app_state.record_buffer = []
-                    app_state.stopwatch_elapsed = 0.0
-
-        record_start_time = _update_recording_frame(
+        record_start_time, last_countdown_tick = _update_countdown_and_recording(
             now,
+            last_countdown_tick,
             record_start_time,
             app_state,
             settings,
@@ -991,29 +1046,12 @@ def _run_session(app_state, settings, args) -> int:
         _flush_record_buffer_if_complete(app_state)
         # Visual feedback overlays are now drawn in ui.draw_main_screen
 
-        # Handle control panel actions
         action = session_state.get("action")
         result = _handle_session_action(action, device, dl, app_state, settings, session_state)
         if result is not None:
             return result
 
-        # Canvas is always viewport_height - TOOLBAR_FULL_H.
-        # Toolbar floats over canvas — toggling it never changes screen dimensions.
-        vw = dpg.get_viewport_width()
-        vh = dpg.get_viewport_height()
-        if vw != app_state.screen_width or vh != app_state.screen_height:
-            app_state.screen_width = vw
-            app_state.screen_height = vh
-            # Resize toolbar — preserve current visibility state
-            toolbar_currently_visible = session_state.get("toolbar_visible", False)
-            toolbar_enabled = session_state.get("toolbar_enabled", False)
-            dpg.configure_item("control_panel", width=vw, show=toolbar_currently_visible)
-            if dpg.does_item_exist("gear_btn_window"):
-                dpg.configure_item(
-                    "gear_btn_window",
-                    show=toolbar_enabled and not toolbar_currently_visible,
-                )
-            # stats_dl redraws itself at correct position on next value change
+        _handle_viewport_resize(app_state, session_state)
 
         top_left, top_right, bottom_left, bottom_right = _render_main_screen_frame(
             device,
@@ -1037,5 +1075,4 @@ def _run_session(app_state, settings, args) -> int:
             time.sleep(_TARGET_FRAME_S - elapsed)
         _last_frame_time = time.perf_counter()
 
-    device.close()
     return 1

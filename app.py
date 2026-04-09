@@ -462,6 +462,45 @@ def _handle_viewport_resize(app_state, session_state):
     # stats_dl redraws itself at correct position on next value change
 
 
+def _clear_session_action(session_state):
+    """Clear the current session action from shared state."""
+    session_state["action"] = None
+
+
+def _reset_session_state(app_state, settings) -> None:
+    """Reset runtime session state after a toolbar reset action."""
+    app_state.clicked_locations = []
+    app_state.historical_coords = [(0, 0)] * settings.trail_length
+    app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
+    app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
+    app_state.raw_max_x = app_state.raw_max_y = 0.0
+    app_state.raw_min_x = app_state.raw_min_y = 0.0
+    app_state.pan_offset_x = 0.0
+    app_state.pan_offset_y = 0.0
+
+
+def _apply_zoom_to_bbox(app_state, settings) -> None:
+    """Update zoom extents and viewport scaling to fit the recorded cursor history."""
+    _on_zoom_to_bbox(
+        app_state.raw_max_x,
+        app_state.raw_max_y,
+        app_state.raw_min_x,
+        app_state.raw_min_y,
+        app_state,
+        settings,
+    )
+    app_state.zoomed_max_x = app_state.raw_max_x * settings.zoom_factor
+    app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
+    app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
+    app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
+
+
+def _reset_pan(app_state) -> None:
+    """Reset the current canvas pan offsets to the default centered position."""
+    app_state.pan_offset_x = 0.0
+    app_state.pan_offset_y = 0.0
+
+
 def _handle_session_action(action, device, dl, app_state, settings, session_state):
     """Process a toolbar action request and return a loop result if a session restart is needed."""
     if action == "restart":
@@ -469,41 +508,22 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         dpg.delete_item(dl)
         return 0
     if action == "reset":
-        app_state.clicked_locations = []
-        app_state.historical_coords = [(0, 0)] * settings.trail_length
-        app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
-        app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
-        app_state.raw_max_x = app_state.raw_max_y = 0.0
-        app_state.raw_min_x = app_state.raw_min_y = 0.0
-        app_state.pan_offset_x = 0.0
-        app_state.pan_offset_y = 0.0
-        session_state["action"] = None
+        _reset_session_state(app_state, settings)
+        _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox":
-        _on_zoom_to_bbox(
-            app_state.raw_max_x,
-            app_state.raw_max_y,
-            app_state.raw_min_x,
-            app_state.raw_min_y,
-            app_state,
-            settings,
-        )
-        app_state.zoomed_max_x = app_state.raw_max_x * settings.zoom_factor
-        app_state.zoomed_max_y = app_state.raw_max_y * settings.zoom_factor
-        app_state.zoomed_min_x = app_state.raw_min_x * settings.zoom_factor
-        app_state.zoomed_min_y = app_state.raw_min_y * settings.zoom_factor
-        session_state["action"] = None
+        _apply_zoom_to_bbox(app_state, settings)
+        _clear_session_action(session_state)
         return None
     if action == "reset_pan":
-        app_state.pan_offset_x = 0.0
-        app_state.pan_offset_y = 0.0
-        session_state["action"] = None
+        _reset_pan(app_state)
+        _clear_session_action(session_state)
         return None
     if action == "pan_changed":
-        session_state["action"] = None
+        _clear_session_action(session_state)
         return None
     if action == "toolbar_toggled":
-        session_state["action"] = None
+        _clear_session_action(session_state)
         return None
     return None
 

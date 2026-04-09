@@ -4,7 +4,6 @@ This module contains the main session lifecycle, device connection flow,
 DearPyGui UI glue code, and the primary render + recording loop.
 """
 
-# app.py
 import logging
 import math
 import time
@@ -17,27 +16,12 @@ from board_connection import try_connection
 from calibration import sensitivity_calibration, wait_for_tare
 from constants import (
     COORD_SCALE,
-    CURSOR_HIT_FRACTION,
-    CURSOR_HIT_RADIUS_CIRCLE,
     DLL_RELATIVE_PATH,
-    FILTER_MAX,
-    FILTER_MIN,
     PRODUCT_ID,
-    SENSITIVITY_MAX,
-    SENSITIVITY_MIN,
-    TOOLBAR_BTN_H,
-    TOOLBAR_BTN_W_MD,
-    TOOLBAR_BTN_W_SM,
-    TOOLBAR_COMBO_W,
-    TOOLBAR_FULL_H,
-    TOOLBAR_SLIDER_W,
-    TOOLBAR_SPACER_MD,
-    TOOLBAR_SPACER_SM,
     VENDOR_ID,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
-    ZOOM_SPEED,
 )
 from data_processing import (
     apply_filter,
@@ -47,6 +31,7 @@ from data_processing import (
     read_data,
     tare,
 )
+from input import register_input_handlers
 from mock_board import MockHIDDevice
 from recording import _save_recording_csv
 from resources import resource_path
@@ -54,6 +39,7 @@ from theme import ICON_COG
 from ui import (
     build_gear_button_window,
     build_stats_bar,
+    build_toolbar_controls,
     build_toolbar_window,
     draw_connection_failed_screen,
     draw_connection_screen,
@@ -153,220 +139,19 @@ def _toggle_toolbar(session_state: dict) -> None:
     session_state["action"] = "toolbar_toggled"
 
 
-# --- Cursor toggle helpers (top-level) ---
-def _cursor_label(settings):
-    """Return the current cursor mode label for display in the toolbar."""
-    return f"Cursor: {'Avatar' if settings.cursor_mode == 'avatar' else 'Circle'}"
-
-
-def update_cursor_toggle_label(settings):
-    """Update the toolbar cursor button label to reflect the current mode."""
-    dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
-
-
-def _on_cursor_toggle(settings):
-    """Toggle the cursor display mode and update the toolbar label."""
-    settings.toggle_cursor_mode()
-    update_cursor_toggle_label(settings)
-
-
-def _on_record_duration_change(value: int, settings, app_state) -> None:
-    """Persist a new recording duration selection in settings and runtime state."""
-    settings.record_duration = value
-    app_state.record_duration = value
-    settings.save()
-
-
-def _on_start_recording(app_state, settings) -> None:
-    """Start or stop a recording session from the controls toolbar."""
-    if app_state.is_recording or app_state.is_countdown:
-        app_state.is_recording = False
-        dpg.set_item_label("start_recording_btn", "Start Recording")
-        app_state.recording_indicator = False
-        app_state.stopwatch_elapsed = 0.0
-        return  # Prevent double start
-    app_state.is_countdown = True
-    app_state.countdown_value = 4
-    app_state.record_duration = settings.record_duration
-    app_state.record_buffer = []
-    app_state.recording_indicator = False
-    app_state.stopwatch_elapsed = 0.0
-    # change label of start button to "Stop Recording"
-    dpg.set_item_label("start_recording_btn", "Stop Recording")
-
-
-def _build_toolbar_controls(app_state, settings, session_state: dict) -> None:
-    """Add the toolbar control widgets into the current DearPyGui context."""
-    _build_session_buttons(session_state)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    _build_recording_controls(app_state, settings)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    _build_cursor_and_trail_controls(app_state, settings, session_state)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    _build_zoom_sensitivity_controls(settings, app_state, session_state)
-
-
-def _build_session_buttons(session_state: dict) -> None:
-    """Add session-level toolbar buttons such as restart and reset."""
-    dpg.add_button(
-        label="RESTART",
-        callback=lambda: session_state.update({"action": "restart"}),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-    )
-    dpg.add_button(
-        label="RESET SCREEN",
-        callback=lambda: session_state.update({"action": "reset"}),
-        width=TOOLBAR_BTN_W_MD,
-        height=TOOLBAR_BTN_H,
-    )
-
-
-def _build_recording_controls(app_state, settings) -> None:
-    """Add recording controls and duration input to the toolbar."""
-    dpg.add_text("Record Duration (s):")
-    dpg.add_input_int(
-        tag="record_duration_input",
-        default_value=int(settings.record_duration),
-        min_value=1,
-        max_value=120,
-        width=80,
-        callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_SM)
-    dpg.add_button(
-        tag="start_recording_btn",
-        label="Start Recording",
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-        callback=lambda: _on_start_recording(app_state, settings),
-        enabled=not app_state.is_recording and not app_state.is_countdown,
-    )
-
-
-def _build_cursor_and_trail_controls(app_state, settings, session_state: dict) -> None:
-    """Add cursor mode and trail/filter controls to the toolbar."""
-    dpg.add_button(
-        tag="cursor_toggle_btn",
-        label=_cursor_label(settings),
-        callback=lambda: _on_cursor_toggle(settings),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-    )
-    app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_text("Trail:")
-    trail_items = ["None", "Medium", "Long"]
-    trail_map = {"None": 0, "Medium": 30, "Long": 100}
-    trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
-    current_label = trail_rmap.get(settings.trail_length, "Long")
-    dpg.add_combo(
-        tag="trail_combo",
-        items=trail_items,
-        default_value=current_label,
-        width=TOOLBAR_COMBO_W,
-        callback=lambda s, v: _on_trail_change(trail_map[v], settings),
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_text("Filter:")
-    dpg.add_slider_int(
-        tag="filter_slider",
-        default_value=settings.filter_window,
-        min_value=FILTER_MIN,
-        max_value=FILTER_MAX,
-        width=TOOLBAR_SLIDER_W,
-        format="%d frames",
-        callback=lambda s, v: _on_filter_change(v, settings, app_state),
-    )
-
-
-def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -> None:
-    """Add zoom, sensitivity, and pan buttons to the toolbar."""
-    dpg.add_text("Zoom:")
-    dpg.add_slider_float(
-        tag="zoom_slider",
-        default_value=settings.zoom_factor,
-        min_value=ZOOM_MIN,
-        max_value=ZOOM_MAX,
-        width=TOOLBAR_SLIDER_W,
-        format="%.2fx",
-        callback=lambda s, v: _on_zoom_change(v, settings, app_state),
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_SM)
-    dpg.add_button(
-        label="Auto-Scale",
-        tag="zoom_to_bbox_btn",
-        callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_text("Sensitivity:")
-    dpg.add_slider_float(
-        tag="sensitivity_slider",
-        default_value=settings.sensitivity,
-        min_value=SENSITIVITY_MIN,
-        max_value=SENSITIVITY_MAX,
-        width=TOOLBAR_SLIDER_W,
-        format="%.2fx",
-        callback=lambda s, v: _on_sensitivity_change(v, settings),
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_button(
-        label="Reset Pan",
-        tag="reset_pan_btn",
-        callback=lambda: session_state.update({"action": "reset_pan"}),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-    )
-
-
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
     """Build the full toolbar and the collapsed gear button overlay."""
     build_toolbar_window(
         app_state.screen_width,
         _get_gear_label(),
         lambda: _toggle_toolbar(session_state),
-        lambda: _build_toolbar_controls(app_state, settings, session_state),
+        lambda: build_toolbar_controls(app_state, settings, session_state),
     )
     build_gear_button_window(
         session_state.get("toolbar_enabled", False),
         _get_gear_label(),
         lambda: _toggle_toolbar(session_state),
     )
-
-
-def _on_trail_change(value: int, settings) -> None:
-    """Update the trail length setting used for the historical cursor path."""
-    settings.trail_length = value
-    settings.save()
-
-
-def _on_filter_change(value: int, settings, app_state) -> None:
-    """Update the moving average filter window and trim the current filter buffer."""
-    settings.filter_window = value
-    # Trim buffer immediately if window shrank
-    if len(app_state.filter_buffer) > value:
-        app_state.filter_buffer = app_state.filter_buffer[-value:]
-    settings.save()
-
-
-def _on_zoom_change(value: float, settings, app_state) -> None:
-    """Apply a new zoom factor and immediately rescale runtime extents."""
-    value = ZOOM_SCALE**value
-    settings.zoom_factor = value
-    # Immediately rescale zoomed extents so bounding box updates on slider drag
-    app_state.zoomed_max_x = app_state.raw_max_x * value
-    app_state.zoomed_max_y = app_state.raw_max_y * value
-    app_state.zoomed_min_x = app_state.raw_min_x * value
-    app_state.zoomed_min_y = app_state.raw_min_y * value
-    settings.save()
-
-
-def _on_sensitivity_change(value: float, settings) -> None:
-    """Adjust cursor movement sensitivity by scaling the effective weight divisor."""
-    settings.sensitivity = value
-    settings.save()
 
 
 def _update_recording_frame(
@@ -705,46 +490,6 @@ def _process_frame_data(
     }
 
 
-def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:
-    """
-    Ctrl+Scroll: pan and zoomthe canvas so users can focus on off-centre regions.
-    Plain scroll (no Ctrl): ignored here — reserved for future use.
-
-    wheel_delta is computed by measuring dx and dy between mouse position and center of the screen
-    scrolll up (away from user) is positive, scroll down (toward user) is negative. zooms in when scrolling up, out when scrolling down.
-    """
-    ctrl_held = dpg.is_key_down(dpg.mvKey_LControl)
-    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
-    if not ctrl_held:
-        return  # plain scroll — do nothing
-
-    # --- Mouse-anchored zoom ---
-    # 1. Compute logical (content) coordinates under the mouse before zoom
-    cx = app_state.screen_width // 2 + app_state.pan_offset_x
-    cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    logical_x = (mouse_x - cx) / settings.zoom_factor
-    logical_y = (mouse_y - cy) / settings.zoom_factor
-
-    # 2. Compute new zoom factor
-    try:
-        slider_value = math.log(settings.zoom_factor) / math.log(ZOOM_SCALE)
-    except (ValueError, ZeroDivisionError):
-        slider_value = 0
-    slider_value += wheel_delta * ZOOM_SPEED  # adjust by wheel delta
-    slider_value = max(ZOOM_MIN, min(ZOOM_MAX, slider_value))
-    new_zoom = ZOOM_SCALE**slider_value
-
-    # 3. Update pan offset so the logical point under the mouse stays under the mouse
-    new_pan_offset_x = mouse_x - (logical_x * new_zoom + app_state.screen_width // 2)
-    new_pan_offset_y = mouse_y - (logical_y * new_zoom + app_state.screen_height // 2)
-    app_state.pan_offset_x = new_pan_offset_x
-    app_state.pan_offset_y = new_pan_offset_y
-
-    dpg.set_value("zoom_slider", slider_value)
-    _on_zoom_change(slider_value, settings, app_state)
-    session_state["action"] = "pan_changed"
-
-
 # ---------------------------------------------------------------------------
 # Click handling — cursor toggle vs target circle
 # ---------------------------------------------------------------------------
@@ -769,129 +514,6 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
 # Cached stats values — stats drawlist only redraws when these change.
 # This eliminates the sub-pixel jitter that caused blurry text.
 _stats_cache = {"left": -1, "weight": -1, "right": -1}
-
-
-def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
-    """
-    Left click on canvas: toggle cursor mode if clicking on cursor,
-    otherwise add a target circle.
-    Ignores clicks in the toolbar area.
-    """
-    if (
-        (mx <= 50 and my <= 50)
-        or (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False))
-        or dpg.is_key_down(dpg.mvKey_LControl)
-    ):  # Ctrl+Click is reserved for panning — ignore to prevent misclicks
-        return
-    cursor_radius = (
-        int(CURSOR_HIT_FRACTION * app_state.screen_height)
-        if settings.cursor_mode == "avatar"
-        else CURSOR_HIT_RADIUS_CIRCLE
-    )
-    dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
-    if dist <= cursor_radius:
-        settings.toggle_cursor_mode()
-        if hasattr(app_state, "update_cursor_toggle_label"):
-            app_state.update_cursor_toggle_label()
-    else:
-        # Start a new target-in-progress for drag-to-resize
-        cx = app_state.screen_width // 2 + app_state.pan_offset_x
-        cy = app_state.screen_height // 2 + app_state.pan_offset_y
-        logical_x = (mx - cx) / settings.zoom_factor
-        logical_y = (my - cy) / settings.zoom_factor
-        app_state.target_in_progress = {
-            "center": (logical_x, logical_y),
-            "radius": 5.0,  # default initial radius in logical units
-        }
-
-
-def _handle_target_drag(app_state, settings):
-    """Resize the target under construction while the mouse is dragged."""
-    # Called on mouse drag if a target is being created
-    if app_state.target_in_progress is None:
-        return
-    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
-    cx = app_state.screen_width // 2 + app_state.pan_offset_x
-    cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    logical_x = (mouse_x - cx) / settings.zoom_factor
-    logical_y = (mouse_y - cy) / settings.zoom_factor
-    x0, y0 = app_state.target_in_progress["center"]
-    new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
-    app_state.target_in_progress["radius"] = max(1.0, new_radius)
-
-
-def _handle_target_release(app_state):
-    """Finalize the current target when the mouse button is released."""
-    # Called on mouse release to finalize target
-    if app_state.target_in_progress is not None:
-        app_state.clicked_locations.append(app_state.target_in_progress)
-        app_state.target_in_progress = None
-
-
-def _register_input_handlers(app_state, settings, session_state):
-    """Register mouse interaction handlers for the main session canvas."""
-    if dpg.does_item_exist("click_handler"):
-        dpg.delete_item("click_handler")
-    with dpg.handler_registry(tag="click_handler"):
-        dpg.add_mouse_click_handler(
-            button=0,
-            callback=lambda: _handle_canvas_click(
-                *dpg.get_mouse_pos(local=False),
-                app_state,
-                settings,
-                session_state,
-            ),
-        )
-        dpg.add_mouse_wheel_handler(
-            callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
-        )
-        dpg.add_mouse_drag_handler(
-            button=0,
-            threshold=0,
-            callback=lambda s, d: (
-                _handle_pan_drag(app_state, session_state)
-                if dpg.is_key_down(dpg.mvKey_LControl)
-                else _handle_target_drag(app_state, settings)
-            ),
-        )
-        dpg.add_mouse_release_handler(
-            button=0,
-            callback=lambda: (
-                _handle_pan_release(app_state)
-                if getattr(app_state, "is_panning", False)
-                else _handle_target_release(app_state)
-            ),
-        )
-
-
-# --- Ctrl+Left Drag Pan Implementation ---
-def _handle_pan_drag(app_state, session_state):
-    """Handle Ctrl+drag panning of the main canvas."""
-    import dearpygui.dearpygui as dpg
-
-    # Only pan if Ctrl is held
-    if not dpg.is_key_down(dpg.mvKey_LControl):
-        return
-    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
-    if not getattr(app_state, "is_panning", False):
-        # Start panning
-        app_state.is_panning = True
-        app_state.pan_start_mouse = (mouse_x, mouse_y)
-        app_state.pan_start_offset = (app_state.pan_offset_x, app_state.pan_offset_y)
-    else:
-        start_x, start_y = app_state.pan_start_mouse
-        offset_x, offset_y = app_state.pan_start_offset
-        dx = mouse_x - start_x
-        dy = mouse_y - start_y
-        app_state.pan_offset_x = offset_x + dx
-        app_state.pan_offset_y = offset_y + dy
-        session_state["action"] = "pan_changed"
-
-
-def _handle_pan_release(app_state):
-    """Stop panning when the mouse button is released."""
-    if getattr(app_state, "is_panning", False):
-        app_state.is_panning = False
 
 
 # ---------------------------------------------------------------------------
@@ -941,7 +563,7 @@ def _run_session(app_state, settings, args) -> int:
 
     build_stats_bar(app_state)
 
-    _register_input_handlers(app_state, settings, session_state)
+    register_input_handlers(app_state, settings, session_state)
 
     device = _prepare_session(dl, app_state, settings, session_state, args)
     if device is None:

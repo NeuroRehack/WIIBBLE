@@ -40,6 +40,7 @@ class MockHIDDevice:
     """
 
     def __init__(self, scenario="sway"):
+        """Initialize the mock device with the selected scenario and starting phase."""
         self.scenario = scenario
         self._phase = "tare"
         self._stable_until = None

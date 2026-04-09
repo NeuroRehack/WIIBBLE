@@ -129,6 +129,7 @@ def get_wii_image_size(index: int) -> tuple:
 
 
 def get_person_image_size() -> tuple:
+    """Return the width and height of the person cursor texture."""
     cfg = dpg.get_item_configuration(_person_texture_tag)
     return cfg["width"], cfg["height"]
 

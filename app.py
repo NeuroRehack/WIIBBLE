@@ -339,7 +339,7 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
         pos=(4, 4),
         width=GEAR_BTN_SIZE + 4,
         height=GEAR_BTN_SIZE + 4,
-        show=True,
+        show=session_state.get("toolbar_enabled", False),
     ):
         dpg.add_button(
             tag="gear_float_btn",
@@ -654,7 +654,7 @@ def _run_session(app_state, settings, args) -> int:
     # viewport_drawlist draws directly onto the viewport background (full screen)
     dl = dpg.add_viewport_drawlist(front=False)
 
-    session_state = {"action": None, "toolbar_visible": False}
+    session_state = {"action": None, "toolbar_visible": False, "toolbar_enabled": False}
 
     # Clean up previous session widgets
     for _tag in ("control_panel", "gear_btn_window"):
@@ -662,10 +662,11 @@ def _run_session(app_state, settings, args) -> int:
             dpg.delete_item(_tag)
 
     _build_control_panel(app_state, settings, session_state)
-    # Show only the floating gear button (collapsed toolbar) at startup
+    # Toolbar is created at startup but remains disabled until the main session
+    # begins. Connection/calibration screens should not show settings controls.
     dpg.configure_item("control_panel", show=False)
     if dpg.does_item_exist("gear_btn_window"):
-        dpg.configure_item("gear_btn_window", show=True)
+        dpg.configure_item("gear_btn_window", show=False)
 
     _build_stats_bar(app_state)
 
@@ -744,6 +745,12 @@ def _run_session(app_state, settings, args) -> int:
     if calibrated_weight == -1:
         return 1
     app_state.weight = calibrated_weight
+
+    # Enable the toolbar now that the app has completed calibration and is
+    # entering the main session screen.
+    session_state["toolbar_enabled"] = True
+    if dpg.does_item_exist("gear_btn_window"):
+        dpg.configure_item("gear_btn_window", show=True)
 
     # --- Step 4: Main loop ---
     # Extents now stored in app_state so zoom callback can rescale them live.

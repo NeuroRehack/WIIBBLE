@@ -27,7 +27,7 @@
 
 ## 🔴 Bugs
 ### UI
-- [ ] Remove the settings button from any screen except the main session screen. It currently appears during tare, calibration, connction and failed connection screens, which is confusing since it doesn't do anything in those contexts.
+- [x] Remove the settings button from any screen except the main session screen. It currently appears during tare, calibration, connction and failed connection screens, which is confusing since it doesn't do anything in those contexts.
 - [x] Interface issue: Settings button and the whole bar disappears by
 changing the screen size (windowed mode and full-screen mode )
 - [x] Interface issue: on smaller screen the settings bar is cropped such that some buttons cannot be seen properly.
@@ -41,8 +41,7 @@ changing the screen size (windowed mode and full-screen mode )
 ## 🟡 Code Quality
 
 - [x] Extract recording logic from `app.py` into `recording.py`
-- [ ] Refactor remaining large code blocks in `app.py` into smaller functions
-- [ ] add docstrings to all functions and classes for better maintainability
+- [x] Refactor remaining large code blocks in `app.py` into smaller functions
 
 ---
 

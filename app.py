@@ -6,6 +6,7 @@ DearPyGui UI glue code, and the primary render + recording loop.
 
 import logging
 import math
+import threading
 import time
 
 import dearpygui.dearpygui as dpg
@@ -34,6 +35,7 @@ from data_processing import (
 from input import register_input_handlers
 from mock_board import MockHIDDevice
 from recording import _save_recording_csv
+from analysis import analyse_recording
 from resources import resource_path
 from theme import ICON_COG
 from ui import (
@@ -49,6 +51,51 @@ from ui import (
 )
 
 log = logging.getLogger(__name__)
+
+# Minimum recording duration (seconds) to qualify for automatic analysis.
+# Below this threshold the signal is too short for reliable posturographic
+# estimates (SWARII needs enough samples; 30 s is the research standard).
+_MIN_ANALYSIS_DURATION_S = 20.0
+
+
+def _save_and_analyse(
+    record_buffer: list, total_weight_kg: float, ui_filter_window: int
+) -> None:
+    """Save recording to CSV and, if long enough, trigger background analysis.
+
+    Analysis runs in a daemon thread so it never blocks the render loop.
+    Results are saved as a JSON file alongside the CSV
+    (``recordings/features_YYYYMMDD_HHMMSS.json``).
+    """
+    path = _save_recording_csv(record_buffer, total_weight_kg, ui_filter_window)
+    if path is None:
+        return
+    if not record_buffer:
+        return
+    duration_s = record_buffer[-1][0] - record_buffer[0][0]
+    if duration_s < _MIN_ANALYSIS_DURATION_S:
+        log.info(
+            "Recording %.1f s is shorter than %.0f s minimum — skipping auto-analysis.",
+            duration_s,
+            _MIN_ANALYSIS_DURATION_S,
+        )
+        return
+
+    def _run():
+        try:
+            import json
+            import os
+            features = analyse_recording(path, total_weight_kg=total_weight_kg)
+            stem = os.path.splitext(path)[0]
+            json_path = stem.replace("recording_", "features_") + ".json"
+            with open(json_path, "w") as f:
+                json.dump(features, f, indent=2, default=str)
+            log.info("Analysis saved to %s", json_path)
+        except Exception:
+            log.exception("Auto-analysis failed for %s", path)
+
+    thread = threading.Thread(target=_run, daemon=True, name="wiibble-analysis")
+    thread.start()
 
 
 # ---------------------------------------------------------------------------
@@ -168,14 +215,19 @@ def _update_recording_frame(
     if app_state.is_recording:
         elapsed = now - (record_start_time if record_start_time else app_state.record_start)
         app_state.stopwatch_elapsed = elapsed
-        x_kg, y_kg = calculate_force_deviation_kg(top_left, top_right, bottom_left, bottom_right)
+        # Always record raw (unfiltered) corner values so the UI filter
+        # setting does not affect the posturographic analysis data.
+        rc = app_state.raw_corners
+        x_kg, y_kg = calculate_force_deviation_kg(
+            rc["top_left"], rc["top_right"], rc["bottom_left"], rc["bottom_right"]
+        )
         app_state.record_buffer.append((elapsed, x_kg, y_kg))
         if elapsed >= app_state.record_duration:
             app_state.is_recording = False
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
             dpg.set_item_label("start_recording_btn", "Start Recording")
-            _save_recording_csv(app_state.record_buffer, app_state.weight, settings.filter_window)
+            _save_and_analyse(app_state.record_buffer, app_state.weight, settings.filter_window)
             app_state.record_buffer = []
     return record_start_time
 
@@ -184,7 +236,7 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
     """Save the remaining recording buffer if recording has stopped."""
     if not app_state.is_recording and app_state.record_buffer:
         fw = settings.filter_window if settings is not None else 1
-        _save_recording_csv(app_state.record_buffer, app_state.weight, fw)
+        _save_and_analyse(app_state.record_buffer, app_state.weight, fw)
         app_state.record_buffer = []
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
@@ -427,6 +479,7 @@ def _process_frame_data(
         return None
 
     corners = parse_data(data, app_state.data_struct)
+    app_state.raw_corners = corners  # store unfiltered values for recording
     smoothed = apply_filter(corners, app_state.filter_buffer, settings.filter_window)
     top_right = smoothed["top_right"]
     bottom_right = smoothed["bottom_right"]

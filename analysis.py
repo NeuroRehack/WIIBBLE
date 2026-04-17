@@ -17,12 +17,11 @@ CoP formula source:
         CoP_AP_cm = WBB_SENSOR_DIST_AP_CM × y_kg / total_weight_kg
 
 Recording filter note:
-    WIIBBLE's moving-average UI filter (filter_window) is applied BEFORE values
-    are saved to the CSV.  For research-quality recordings keep filter_window=1
-    (the default — no smoothing).  The Stabilogram's built-in Butterworth filter
-    (0–10 Hz, order 4) is the validated filter for posturographic analysis.
-    If filter_window > 1 at capture time the metadata comment in the CSV will
-    record it and this module will emit a warning during analysis.
+    WIIBBLE recordings always contain raw (unfiltered) force-deviation values.
+    The ``ui_filter_window`` metadata comment records what smoothing was applied
+    to the display cursor during the session — it does NOT describe the data.
+    The Stabilogram's own Butterworth filter (0–10 Hz, order 4) is the only
+    filter applied to the analysis signal.
 """
 
 import csv
@@ -151,7 +150,7 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
         ~80–90 posturographic features from
         ``code_descriptors_postural_control.descriptors.compute_all_features``
         plus provenance keys:
-        ``source_file``, ``total_weight_kg``, ``filter_window_at_capture``,
+        ``source_file``, ``total_weight_kg``, ``ui_filter_window``,
         ``n_samples_raw``, ``duration_s``.
 
     Raises
@@ -177,16 +176,8 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
             )
         weight_kg = float(raw)
 
-    # ---- warn about pre-filter ----------------------------------------------
-    fw = int(metadata.get("filter_window", 1))
-    if fw > 1:
-        log.warning(
-            "Recording '%s' was captured with filter_window=%d. "
-            "The WIIBBLE moving-average pre-filter compounds the Stabilogram's "
-            "Butterworth filter. For analysis, re-record with filter_window=1.",
-            os.path.basename(path),
-            fw,
-        )
+    # ---- ui filter window (provenance only — data is always raw) -----------
+    fw = int(metadata.get("ui_filter_window", metadata.get("filter_window", 1)))
 
     # ---- minimum duration check (30 s recommended for stable estimates) -----
     duration_s = float(data[-1, 0] - data[0, 0])
@@ -213,7 +204,7 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
     # ---- Provenance ---------------------------------------------------------
     features["source_file"] = os.path.basename(path)
     features["total_weight_kg"] = weight_kg
-    features["filter_window_at_capture"] = fw
+    features["ui_filter_window"] = fw
     features["n_samples_raw"] = len(data)
     features["duration_s"] = duration_s
 

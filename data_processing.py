@@ -79,13 +79,17 @@ def measure_weight(device, data_struct: dict) -> float:
     Tare offsets in data_struct are applied via parse_data().
     """
     weight_vals = [0.0, 0.0, 0.0, 0.0]
+    n = 0
     for _ in range(10):
         data = read_data(device)
         if data:
             corners = parse_data(data, data_struct)
             for i, key in enumerate(corners.keys()):
                 weight_vals[i] += corners[key]
-    weight_vals = [v / 10 for v in weight_vals]
+            n += 1
+    if n == 0:
+        return 0.0
+    weight_vals = [v / n for v in weight_vals]
     return sum(weight_vals)
 
 

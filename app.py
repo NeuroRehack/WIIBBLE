@@ -327,11 +327,6 @@ def _prepare_session(dl, app_state, settings, session_state, args):
     if not device:
         return None
 
-    try:
-        device.set_nonblocking(1)
-    except Exception:
-        pass
-
     dpg.delete_item(dl, children_only=True)
     draw_connection_screen(dl, app_state)
     dpg.render_dearpygui_frame()
@@ -580,6 +575,11 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     # app_state.reset() already zeroes these — nothing else needed here.
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
     app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
+
+    try:
+        device.set_nonblocking(1)
+    except Exception:
+        pass
 
     last_countdown_tick = time.time()
     record_start_time = None

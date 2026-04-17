@@ -175,15 +175,16 @@ def _update_recording_frame(
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
             dpg.set_item_label("start_recording_btn", "Start Recording")
-            _save_recording_csv(app_state.record_buffer)
+            _save_recording_csv(app_state.record_buffer, app_state.weight, settings.filter_window)
             app_state.record_buffer = []
     return record_start_time
 
 
-def _flush_record_buffer_if_complete(app_state) -> None:
+def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
     """Save the remaining recording buffer if recording has stopped."""
     if not app_state.is_recording and app_state.record_buffer:
-        _save_recording_csv(app_state.record_buffer)
+        fw = settings.filter_window if settings is not None else 1
+        _save_recording_csv(app_state.record_buffer, app_state.weight, fw)
         app_state.record_buffer = []
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
@@ -603,7 +604,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
             bottom_left,
             bottom_right,
         )
-        _flush_record_buffer_if_complete(app_state)
+        _flush_record_buffer_if_complete(app_state, settings)
         # Visual feedback overlays are now drawn in ui.draw_main_screen
 
         action = session_state.get("action")

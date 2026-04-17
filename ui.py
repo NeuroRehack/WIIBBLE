@@ -419,7 +419,7 @@ def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -
     dpg.add_button(
         label="Auto-Scale",
         tag="zoom_to_bbox_btn",
-        callback=lambda: session_state.update({"action": "zoom_to_bbox"}),
+        callback=lambda: session_state.update({"action": "zoom_to_bbox_and_reset_pan"}),
         width=TOOLBAR_BTN_W_SM,
         height=TOOLBAR_BTN_H,
     )
@@ -435,13 +435,7 @@ def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -
         callback=lambda s, v: _on_sensitivity_change(v, settings),
     )
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_button(
-        label="Reset Pan",
-        tag="reset_pan_btn",
-        callback=lambda: session_state.update({"action": "reset_pan"}),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-    )
+
 
 
 def build_toolbar_controls(app_state, settings, session_state: dict) -> None:

@@ -300,7 +300,8 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _apply_zoom_to_bbox(app_state, settings)
         _clear_session_action(session_state)
         return None
-    if action == "reset_pan":
+    if action == "zoom_to_bbox_and_reset_pan":
+        _apply_zoom_to_bbox(app_state, settings)
         _reset_pan(app_state)
         _clear_session_action(session_state)
         return None

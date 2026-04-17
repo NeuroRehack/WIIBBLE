@@ -14,6 +14,9 @@ from constants import SCALE_FACTOR
 
 log = logging.getLogger(__name__)
 
+# Real Wii Balance Board HID report rate
+_BOARD_REPORT_INTERVAL = 1.0 / 100  # 100 Hz
+
 
 class MockHIDDevice:
     """
@@ -46,6 +49,8 @@ class MockHIDDevice:
         self._stable_until = None
         self.start_time = time.time()
         self._scenario_params = {}
+        self._nonblocking = False
+        self._last_data_time = None
         self._set_scenario(scenario)
 
     @classmethod
@@ -81,6 +86,12 @@ class MockHIDDevice:
         self._phase = "tare"
         self._stable_until = None
         self.start_time = time.time()
+        self._nonblocking = False
+        self._last_data_time = None
+
+    def set_nonblocking(self, nonblocking):
+        """Mirror hid.device.set_nonblocking: when 1, read() returns [] if no new report."""
+        self._nonblocking = bool(nonblocking)
 
     def close(self):
         """Close the mock device and release any simulated resources."""
@@ -97,7 +108,16 @@ class MockHIDDevice:
             self.start_time = time.time()
 
     def read(self, size):
-        """Return a raw HID byte array for the current simulated board state."""
+        """Return a raw HID byte array for the current simulated board state.
+
+        In non-blocking mode, returns [] if called faster than the real board's
+        100 Hz report rate, matching hid.device behaviour.
+        """
+        if self._nonblocking and self._last_data_time is not None:
+            if time.time() - self._last_data_time < _BOARD_REPORT_INTERVAL:
+                return []
+        self._last_data_time = time.time()
+
         kg_vals = self._get_kg_values()
         data = [0] * size
         indices = [3, 5, 7, 9]  # top_right, bottom_right, top_left, bottom_left
@@ -181,10 +201,9 @@ class MockHIDDevice:
             lateral = math.sin(t / 2.0) * amp
             fore_aft = math.sin(t / 3.5) * amp * 0.6
             n = random.gauss(0, noise)
-            vals = [
+            return [
                 base[0] + lateral + fore_aft + n,
                 base[1] + lateral - fore_aft + n,
                 base[2] - lateral + fore_aft + n,
                 base[3] - lateral - fore_aft + n,
             ]
-            return [max(5.0, min(35.0, v)) for v in vals]

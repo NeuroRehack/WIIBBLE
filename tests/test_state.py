@@ -36,9 +36,6 @@ class TestSettingsDefaults:
     def test_cursor_mode_default(self):
         assert Settings().cursor_mode == "avatar"
 
-    def test_sensitivity_default(self):
-        assert Settings().sensitivity == 1.0
-
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file
@@ -72,7 +69,6 @@ class TestSettingsRoundTrip:
             filter_window=10,
             record_duration=30,
             cursor_mode="circle",
-            sensitivity=1.5,
         )
         original.save()
         loaded = Settings.load()
@@ -82,7 +78,6 @@ class TestSettingsRoundTrip:
         assert loaded.filter_window == 10
         assert loaded.record_duration == 30
         assert loaded.cursor_mode == "circle"
-        assert loaded.sensitivity == 1.5
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

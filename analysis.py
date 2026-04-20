@@ -24,12 +24,13 @@ Recording filter note:
     filter applied to the analysis signal.
 """
 
-import csv
 import logging
 import os
 
 import numpy as np
 
+from code_descriptors_postural_control.descriptors import compute_all_features
+from code_descriptors_postural_control.stabilogram.stato import Stabilogram
 from constants import WBB_SENSOR_DIST_AP_CM, WBB_SENSOR_DIST_ML_CM
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # CSV loading
 # ---------------------------------------------------------------------------
+
 
 def load_recording(path: str) -> tuple:
     """Read a WIIBBLE CSV and return ``(data, metadata)``.
@@ -90,6 +92,7 @@ def load_recording(path: str) -> tuple:
 # CoP conversion
 # ---------------------------------------------------------------------------
 
+
 def to_cop_array(data: np.ndarray, total_weight_kg: float) -> np.ndarray:
     """Convert WIIBBLE force deviations to Centre of Pressure in centimetres.
 
@@ -118,8 +121,8 @@ def to_cop_array(data: np.ndarray, total_weight_kg: float) -> np.ndarray:
         raise ValueError(f"total_weight_kg must be positive, got {total_weight_kg}")
 
     time_s = data[:, 0]
-    x_kg   = data[:, 1]
-    y_kg   = data[:, 2]
+    x_kg = data[:, 1]
+    y_kg = data[:, 2]
 
     ml_cm = WBB_SENSOR_DIST_ML_CM * x_kg / total_weight_kg
     ap_cm = WBB_SENSOR_DIST_AP_CM * y_kg / total_weight_kg
@@ -130,6 +133,7 @@ def to_cop_array(data: np.ndarray, total_weight_kg: float) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # End-to-end analysis
 # ---------------------------------------------------------------------------
+
 
 def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
     """Full pipeline: WIIBBLE CSV → CoP → Stabilogram → feature dictionary.
@@ -158,11 +162,6 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
     ValueError
         If body weight cannot be determined.
     """
-    # Lazy imports — keep the module importable without the research library
-    # on the path (e.g. during unit-testing of other modules).
-    from code_descriptors_postural_control.stabilogram.stato import Stabilogram
-    from code_descriptors_postural_control.descriptors import compute_all_features
-
     data, metadata = load_recording(path)
 
     # ---- resolve body weight ------------------------------------------------

@@ -437,7 +437,6 @@ def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
 
 
-
 def build_toolbar_controls(app_state, settings, session_state: dict) -> None:
     """Add the toolbar control widgets into the current DearPyGui context."""
     _build_session_buttons(session_state)

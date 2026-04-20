@@ -105,7 +105,7 @@ CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
 #   CoP_AP_cm = WBB_SENSOR_DIST_AP_CM * (F_T - F_B) / F_total
 # ---------------------------------------------------------------------------
 WBB_SENSOR_DIST_ML_CM = 21.65  # X/2 = 433 mm / 2, in cm (mediolateral half-distance)
-WBB_SENSOR_DIST_AP_CM = 11.9   # Y/2 = 238 mm / 2, in cm (anteroposterior half-distance)
+WBB_SENSOR_DIST_AP_CM = 11.9  # Y/2 = 238 mm / 2, in cm (anteroposterior half-distance)
 
 # ---------------------------------------------------------------------------
 # C# board library DLL — built by: cd WiiBalanceBoardLibrary && dotnet build

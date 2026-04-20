@@ -4,8 +4,10 @@ This module contains the main session lifecycle, device connection flow,
 DearPyGui UI glue code, and the primary render + recording loop.
 """
 
+import json
 import logging
 import math
+import os
 import threading
 import time
 
@@ -13,6 +15,7 @@ import dearpygui.dearpygui as dpg
 import hid
 
 import theme as _theme_module
+from analysis import analyse_recording
 from board_connection import try_connection
 from calibration import sensitivity_calibration, wait_for_tare
 from constants import (
@@ -35,7 +38,6 @@ from data_processing import (
 from input import register_input_handlers
 from mock_board import MockHIDDevice
 from recording import _save_recording_csv
-from analysis import analyse_recording
 from resources import resource_path
 from theme import ICON_COG
 from ui import (
@@ -58,9 +60,23 @@ log = logging.getLogger(__name__)
 _MIN_ANALYSIS_DURATION_S = 20.0
 
 
-def _save_and_analyse(
-    record_buffer: list, total_weight_kg: float, ui_filter_window: int
-) -> None:
+def _run_analysis(path: str, total_weight_kg: float) -> None:
+    """Run posturographic analysis on a saved recording and write a JSON sidecar.
+
+    Intended to be called from a background daemon thread only.
+    """
+    try:
+        features = analyse_recording(path, total_weight_kg=total_weight_kg)
+        stem = os.path.splitext(path)[0]
+        json_path = stem.replace("recording_", "features_") + ".json"
+        with open(json_path, "w") as f:
+            json.dump(features, f, indent=2, default=str)
+        log.info("Analysis saved to %s", json_path)
+    except Exception:
+        log.exception("Auto-analysis failed for %s", path)
+
+
+def _save_and_analyse(record_buffer: list, total_weight_kg: float, ui_filter_window: int) -> None:
     """Save recording to CSV and, if long enough, trigger background analysis.
 
     Analysis runs in a daemon thread so it never blocks the render loop.
@@ -81,20 +97,12 @@ def _save_and_analyse(
         )
         return
 
-    def _run():
-        try:
-            import json
-            import os
-            features = analyse_recording(path, total_weight_kg=total_weight_kg)
-            stem = os.path.splitext(path)[0]
-            json_path = stem.replace("recording_", "features_") + ".json"
-            with open(json_path, "w") as f:
-                json.dump(features, f, indent=2, default=str)
-            log.info("Analysis saved to %s", json_path)
-        except Exception:
-            log.exception("Auto-analysis failed for %s", path)
-
-    thread = threading.Thread(target=_run, daemon=True, name="wiibble-analysis")
+    thread = threading.Thread(
+        target=_run_analysis,
+        args=(path, total_weight_kg),
+        daemon=True,
+        name="wiibble-analysis",
+    )
     thread.start()
 
 

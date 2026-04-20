@@ -42,6 +42,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py38"
+exclude = ["code_descriptors_postural_control"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]  # pycodestyle, pyflakes, isort

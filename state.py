@@ -118,7 +118,14 @@ class AppState:
     # Latest unfiltered (raw) corner kg values from parse_data().
     # Recording always uses these so CSV data is never pre-smoothed by the UI
     # filter, regardless of the current filter_window setting.
-    raw_corners: dict = field(default_factory=lambda: {"top_right": 0.0, "bottom_right": 0.0, "top_left": 0.0, "bottom_left": 0.0})
+    raw_corners: dict = field(
+        default_factory=lambda: {
+            "top_right": 0.0,
+            "bottom_right": 0.0,
+            "top_left": 0.0,
+            "bottom_left": 0.0,
+        }
+    )
 
     # Pan offset — Ctrl+Scroll shifts the canvas centre so users can focus on
     # off-centre regions. Stored in pixels (viewport coords).

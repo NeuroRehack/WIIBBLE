@@ -184,3 +184,5 @@ See [Docs/TODO.md](Docs/TODO.md) for the full roadmap.
 
 - [WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) for the Wii Balance Board connection library.
 
+- [code_descriptors_postural_control](https://github.com/Jythen/code_descriptors_postural_control) by **Jythen** (MIT license) — vendored at `code_descriptors_postural_control/` and used for posturographic feature extraction. The original source and license are preserved; see [`code_descriptors_postural_control/VENDOR.md`](code_descriptors_postural_control/VENDOR.md) for the pinned upstream commit and details of local patches applied.
+

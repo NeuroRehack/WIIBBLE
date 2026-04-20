@@ -14,6 +14,8 @@ This project integrates the Wii Balance Board with custom software to measure we
 - [WIIBBLE - Wii Balance Board Live Environment](#wiibble---wii-balance-board-live-environment)
   - [💡 Features  ](#-features--)
   - [📝 Prerequisites ](#-prerequisites-)
+  - [🧑‍💻 Development Without Hardware](#-development-without-hardware)
+    - [Mock Mode](#mock-mode)
     - [⚙️ Requirements for running from source and/or compiling](#️-requirements-for-running-from-source-andor-compiling)
   - [🚀 Getting Started ](#-getting-started-)
   - [🔧 Board pairing ](#-board-pairing-)
@@ -22,8 +24,8 @@ This project integrates the Wii Balance Board with custom software to measure we
   - [🔨 Installation from Source ](#-installation-from-source-)
     - [💻 Compiling to an executable ](#-compiling-to-an-executable-)
   - [📄 Usage ](#-usage-)
+    - [Running in Mock Mode](#running-in-mock-mode)
   - [🚑 Troubleshooting ](#-troubleshooting-)
-  - [📝 To-Do](Docs/TODO.md)
   - [🙏 Acknowledgements: ](#-acknowledgements-)
 
 

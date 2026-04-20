@@ -33,6 +33,8 @@ graph TD
     app -->|"read / parse / filter"| dp
     app -->|"startup flow"| calib
     app -->|"save buffer"| rec
+    app -->|"trigger analysis"| ana
+    ana -->|"CoP features"| cdpc["code_descriptors_postural_control"]
     app -->|"read/write"| state
     calib -->|"measure_weight"| dp
     input -->|"session_state action"| app
@@ -59,7 +61,8 @@ sequenceDiagram
 
     HID->>dp: read_data() → 32 bytes
     dp->>dp: parse_data() → corners (kg each)
-    dp->>dp: apply_filter() → smoothed corners
+    Note over dp,app: Raw corners stored in app_state.raw_corners (used for recording)
+    dp->>dp: apply_filter() → smoothed corners (used for display only)
     dp->>dp: calculate_coordinates() → (raw_x, raw_y) px
     app->>app: apply zoom + pan offset → ball_x, ball_y
     app->>ui: draw_main_screen(ball_x, ball_y, trail, targets)
@@ -115,13 +118,24 @@ sequenceDiagram
     app->>app: is_recording=True, record_start=now
 
     loop Each frame while recording
-        dp->>dp: calculate_force_deviation_kg() → (x_kg, y_kg)
+        dp->>dp: parse_data() → raw corners (never filtered)
         app->>app: append (elapsed, x_kg, y_kg) to record_buffer
     end
 
     app->>app: elapsed >= record_duration → is_recording=False
-    app->>rec: _save_recording_csv(record_buffer)
+    app->>rec: _save_recording_csv(buffer, weight, ui_filter_window)
     rec->>rec: write recordings/recording_YYYYMMDD_HHMMSS.csv
+    Note over rec: # total_weight_kg, # ui_filter_window written as metadata comments
+
+    alt duration ≥ 20 s
+        app->>app: spawn background thread
+        app->>ana: analyse_recording(csv_path)
+        ana->>ana: load_recording() → parse CSV + metadata
+        ana->>ana: to_cop_array() → CoP in cm (Leach 2014 Eq.1)
+        ana->>cdpc: Stabilogram.from_array() → SWARII →25 Hz + Butterworth
+        cdpc->>ana: compute_all_features() → ~80-90 features
+        ana->>ana: save recordings/features_YYYYMMDD_HHMMSS.json
+    end
 ```
 
 ---
@@ -139,7 +153,8 @@ sequenceDiagram
 | `state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
 | `constants.py` | All magic numbers: hardware IDs, byte offsets, `SCALE_FACTOR`, thresholds, UI sizes | Single source of truth — never put literals in `app.py` or `ui.py` |
 | `theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
-| `recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV | Extracted from `app.py` specifically for testability |
+| `recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata | Extracted from `app.py` specifically for testability |
+| `analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Lazy-imports `code_descriptors_postural_control`; safe to use standalone. Auto-triggered by `app.py` for recordings ≥ 20 s. |
 | `mock_board.py` | `MockHIDDevice` — drop-in for `hid.device()`, six named scenarios | Phase model (tare → step_on_stable → normal) mirrors real board calibration flow |
 | `board_connection.py` | C# DLL loader via `pythonnet`; `try_connection()` triggers the Bluetooth handshake | Called once at startup then never again — all data flows through `hidapi` |
 | `resources.py` | `resource_path()` — resolves asset paths in dev and Nuitka standalone builds | Pre-resolves common paths at import time; use this for all asset access |

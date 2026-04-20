@@ -14,6 +14,8 @@ This project integrates the Wii Balance Board with custom software to measure we
 - [WIIBBLE - Wii Balance Board Live Environment](#wiibble---wii-balance-board-live-environment)
   - [💡 Features  ](#-features--)
   - [📝 Prerequisites ](#-prerequisites-)
+  - [🧑‍💻 Development Without Hardware](#-development-without-hardware)
+    - [Mock Mode](#mock-mode)
     - [⚙️ Requirements for running from source and/or compiling](#️-requirements-for-running-from-source-andor-compiling)
   - [🚀 Getting Started ](#-getting-started-)
   - [🔧 Board pairing ](#-board-pairing-)
@@ -22,8 +24,8 @@ This project integrates the Wii Balance Board with custom software to measure we
   - [🔨 Installation from Source ](#-installation-from-source-)
     - [💻 Compiling to an executable ](#-compiling-to-an-executable-)
   - [📄 Usage ](#-usage-)
+    - [Running in Mock Mode](#running-in-mock-mode)
   - [🚑 Troubleshooting ](#-troubleshooting-)
-  - [📝 To-Do](Docs/TODO.md)
   - [🙏 Acknowledgements: ](#-acknowledgements-)
 
 
@@ -183,4 +185,6 @@ See [Docs/TODO.md](Docs/TODO.md) for the full roadmap.
 - Thanks to the physiotherapists at the [Princess Alexandra Hospital - Geriatric And Rehabilitation Unit](https://www.healthdirect.gov.au/australian-health-services/healthcare-service/woolloongabba-4102-qld/princess-alexandra-hospital-geriatric-and-rehabilitation-unit/geriatric-medicine/efcf3c01-fc12-46fc-2912-691b09238616) for their feedback and guidance.
 
 - [WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) for the Wii Balance Board connection library.
+
+- [code_descriptors_postural_control](https://github.com/Jythen/code_descriptors_postural_control) by **Jythen** (MIT license) — vendored at `code_descriptors_postural_control/` and used for posturographic feature extraction. The original source and license are preserved; see [`code_descriptors_postural_control/VENDOR.md`](code_descriptors_postural_control/VENDOR.md) for the pinned upstream commit and details of local patches applied.
 

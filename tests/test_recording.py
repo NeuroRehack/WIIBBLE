@@ -18,8 +18,9 @@ def _find_csv(recordings_dir) -> str:
 
 
 def _read_csv(path) -> list:
+    """Return CSV rows, skipping metadata comment lines (lines starting with #)."""
     with open(path, newline="") as f:
-        return list(csv.reader(f))
+        return [row for row in csv.reader(f) if not (row and row[0].startswith("#"))]
 
 
 @pytest.fixture(autouse=True)

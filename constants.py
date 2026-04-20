@@ -97,6 +97,17 @@ CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius
 CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
 
 # ---------------------------------------------------------------------------
+# Wii Balance Board platform geometry
+# Source: Leach et al. (2014) Sensors 14:18244-18267, doi:10.3390/s141018244, Figure 3.
+# X = 433 mm (mediolateral sensor-to-sensor), Y = 238 mm (anteroposterior sensor-to-sensor)
+# Half-distances in cm are used in the CoP formula (Leach et al. 2014, Equation 1):
+#   CoP_ML_cm = WBB_SENSOR_DIST_ML_CM * (F_R - F_L) / F_total
+#   CoP_AP_cm = WBB_SENSOR_DIST_AP_CM * (F_T - F_B) / F_total
+# ---------------------------------------------------------------------------
+WBB_SENSOR_DIST_ML_CM = 21.65  # X/2 = 433 mm / 2, in cm (mediolateral half-distance)
+WBB_SENSOR_DIST_AP_CM = 11.9  # Y/2 = 238 mm / 2, in cm (anteroposterior half-distance)
+
+# ---------------------------------------------------------------------------
 # C# board library DLL — built by: cd WiiBalanceBoardLibrary && dotnet build
 # ---------------------------------------------------------------------------
 DLL_RELATIVE_PATH = os.path.join(

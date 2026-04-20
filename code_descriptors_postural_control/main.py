@@ -4,14 +4,12 @@
 # In[1]:
 
 
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
-import matplotlib.pyplot as plt
-
-from stabilogram.stato import Stabilogram
 from descriptors import compute_all_features
-
+from stabilogram.stato import Stabilogram
 
 # In[2]:
 

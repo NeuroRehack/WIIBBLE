@@ -7,11 +7,12 @@ Created on Fri Apr 15 10:25:45 2016
 
 import numpy as np
 from scipy.interpolate import interp1d
+
 #´from parsers import parse_wbb_acq_data
 
 
 
-        
+
 
 class Local_SWARII:
     """
@@ -65,7 +66,7 @@ class Local_SWARII:
             resampled_time : The time stamps of the signal after the resampling
             resampled_signal : The resampled signal.
         """
-        
+
         a_signal=np.array(signal)
         current_time = max(0.,time[0])
         #print current_time
@@ -84,35 +85,35 @@ class Local_SWARII:
             else :
                 if len(relevant_times) == 1:
                     value = a_signal[relevant_times[0]]
-                    
+
                 else :
                     value = 0
                     weight = 0
-            
+
                     for i, t in enumerate(relevant_times):
                         if i == 0 or t==0:
                             left_border = max(
                                 time[0], (current_time - self.window_size * 0.5))
-                            
+
                         else:
                             left_border = 0.5 * (time[t] + time[t - 1])
-                            
-                            
-    
+
+
+
                         if i == len(relevant_times) - 1:
                             right_border = min(
                                 time[-1], current_time + self.window_size * 0.5)
                         else:
                             right_border = 0.5 * (time[t + 1] + time[t])
-                            
+
                         w = right_border - left_border
-                            
-    
+
+
                         value += a_signal[t] * w
                         weight += w
-            
-                            
-          
+
+
+
                     value /= weight
                 output_time.append(current_time)
                 output_signal.append(value)
@@ -131,7 +132,7 @@ class Local_SWARII:
             else :
                 if self.verbose>0 :
                     print("no interpolation")
-                    
+
         if interpolate>=0 and self.options["count_interpolations"]:
             return np.array(output_time),np.array(output_signal), missing_windows
         else :
@@ -144,7 +145,7 @@ class Local_SWARII:
         nsignal=[]
         ntime=[]
         n_artefact=0
-        
+
         for t in range(1,len(time)-1):
             if time[t]<0.1:
                 pass
@@ -163,8 +164,8 @@ class Local_SWARII:
             if verbose >0:
                 print("skipped", n_artefact, "artefacts"               )
         return ntime,nsignal
-            
-        
+
+
 
 
 class SWARII :
@@ -178,11 +179,11 @@ class SWARII :
         t = data[:,0]
         signal = data[:,1:]
         #y = data.T[2]
-        nt,nsignal = Local_SWARII.purge_artefact(time=t,signal=signal, verbose=verbose)   
-        
+        nt,nsignal = Local_SWARII.purge_artefact(time=t,signal=signal, verbose=verbose)
+
         #t_close,x_close = swarii.resample(t,x)
         #t_close,y_close = swarii.resample(t,y)
-        
+
         if count_interpolations :
             nnt,nnsignal, missing_windows= swarii.resample( time =nt, signal= nsignal, interpolate=interpolate)
             return nnsignal[:,:2], missing_windows

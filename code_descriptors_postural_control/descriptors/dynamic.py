@@ -1,22 +1,22 @@
 import numpy as np
-from code_descriptors_postural_control.constants import labels
-import code_descriptors_postural_control.descriptors.positional as positional
 
+import code_descriptors_postural_control.descriptors.positional as positional
+from code_descriptors_postural_control.constants import labels
 
 
 def sway_length(signal, axis = labels.ML,only_value = False, normalized=False):
-    if not (axis in [labels.ML, labels.AP,labels.MLAP]):
+    if axis not in [labels.ML, labels.AP,labels.MLAP]:
         return {}
     feature_name = "sway_length"
-    
+
     sig = signal.get_signal(axis)
 
     dif = np.diff(sig, n=1, axis=0)
     dif = np.linalg.norm(dif, axis=1)
     feature = np.sum(dif)
-    
+
     if normalized:
-        feature = feature * (signal.frequency / len(sig)) 
+        feature = feature * (signal.frequency / len(sig))
 
     if only_value:
         return feature
@@ -26,15 +26,15 @@ def sway_length(signal, axis = labels.ML,only_value = False, normalized=False):
 
 
 def mean_velocity(signal, axis = labels.ML, only_value = False):
-    if not (axis in [labels.ML, labels.AP, labels.MLAP]):
+    if axis not in [labels.ML, labels.AP, labels.MLAP]:
         return {}
     feature_name = "mean_velocity"
-    
+
     sig = signal.get_signal(axis)
 
     sway = sway_length(signal, axis, only_value=True)
 
-    feature = sway * (signal.frequency / len(sig)) 
+    feature = sway * (signal.frequency / len(sig))
 
     if only_value:
         return feature
@@ -44,10 +44,10 @@ def mean_velocity(signal, axis = labels.ML, only_value = False):
 
 
 def sway_area_per_second(signal, axis = labels.MLAP):
-    if not (axis in [labels.MLAP]):
-        return {}  
+    if axis not in [labels.MLAP]:
+        return {}
     feature_name = "sway_area_per_second"
-    
+
     sig = signal.get_signal(axis)
 
     dt = 1/ signal.frequency
@@ -64,25 +64,25 @@ def sway_area_per_second(signal, axis = labels.MLAP):
 
 
 def phase_plane_parameter(signal, axis = labels.ML):
-    if not (axis in [labels.ML, labels.AP]):
+    if axis not in [labels.ML, labels.AP]:
         return {}
     feature_name = "phase_plane_parameter"
 
     std_sig = positional.rms(signal, axis=axis, only_value=True)
-    
+
     if axis == labels.ML:
         spd = signal.get_signal(labels.SPD_ML)
     elif axis == labels.AP:
         spd = signal.get_signal(labels.SPD_AP)
 
     feature = np.sqrt(std_sig**2 + np.var(spd))
-    
+
     return { feature_name+"_"+axis  : feature}
 
 
 
 def vfy(signal, axis = labels.SPD_MLAP):
-    if not (axis in [labels.SPD_MLAP]):
+    if axis not in [labels.SPD_MLAP]:
         return {}
     feature_name = "vfy"
 
@@ -102,28 +102,28 @@ def vfy(signal, axis = labels.SPD_MLAP):
 
 
 def length_over_area(signal, axis = labels.MLAP, normalized=False):
-    if not (axis in [labels.MLAP]):
+    if axis not in [labels.MLAP]:
         return {}
     feature_name = "LFS"
 
     length = sway_length(signal, axis = labels.MLAP, only_value = True)
     area = positional.confidence_ellipse_area(signal, axis = labels.MLAP, \
                                    only_value = True)
-    
+
     feature =  length/area
-    
+
     if normalized:
-        
+
         sig = signal.get_signal(axis)
 
-        feature = feature * (signal.frequency / len(sig)) 
+        feature = feature * (signal.frequency / len(sig))
 
     return { feature_name+"_"+axis  : feature}
 
 
 
 def fractal_dimension_ce(signal, axis = labels.MLAP, normalized=False):
-    if not (axis in [labels.MLAP]):
+    if axis not in [labels.MLAP]:
         return {}
     feature_name = "fractal_dimension"
 
@@ -133,16 +133,16 @@ def fractal_dimension_ce(signal, axis = labels.MLAP, normalized=False):
     d = np.sqrt((area * 4) / np.pi)
 
     N = len(signal)
-    
+
     sway = sway_length(signal,axis=axis,only_value = True)
 
     fd = np.log(N) / (np.log(N) + np.log(d) - np.log(sway))
 
     feature = fd
-    
-        
+
+
     if normalized:
-        feature = feature / np.log(N) 
+        feature = feature / np.log(N)
 
 
     return { feature_name+"_"+axis  : feature}
@@ -150,7 +150,7 @@ def fractal_dimension_ce(signal, axis = labels.MLAP, normalized=False):
 
 
 def velocity_peaks(signal, axis=labels.SPD_ML, normalized=False):
-    if not (axis in [labels.SPD_ML, labels.SPD_AP]):
+    if axis not in [labels.SPD_ML, labels.SPD_AP]:
         return {}
 
     sig = signal.get_signal(axis)
@@ -163,7 +163,7 @@ def velocity_peaks(signal, axis=labels.SPD_ML, normalized=False):
     positive_peaks_index = []
     current_side = np.sign(sig[sig!=0][0])
 
-    for index,value in enumerate(sig) : 
+    for index,value in enumerate(sig) :
 
         is_crossing_point = ( (value)*past_value <= 0 ) \
                             and (index != 0) \
@@ -173,7 +173,7 @@ def velocity_peaks(signal, axis=labels.SPD_ML, normalized=False):
         if is_crossing_point:
 
             if len(zero_crossing_index)>0:
-                
+
                 if value < 0:
                     positive_peaks_index.append(current_peak_index)
 
@@ -190,28 +190,28 @@ def velocity_peaks(signal, axis=labels.SPD_ML, normalized=False):
                 current_peak_index = index
 
         past_value=value
-   
+
     positive_peaks = sig[np.array(positive_peaks_index)]
     negative_peaks = np.abs(sig[np.array(negative_peaks_index)])
     all_peaks = np.abs(sig[np.array(positive_peaks_index + negative_peaks_index)])
-    
-    
+
+
     zero_crossing = int(len(zero_crossing_index)/2)
-    
+
     if normalized:
-        zero_crossing = zero_crossing * (signal.frequency / len(sig)) 
+        zero_crossing = zero_crossing * (signal.frequency / len(sig))
 
     return {'zero_crossing'+'_'+axis : zero_crossing,
             'peak_velocity_pos'+'_'+axis : np.mean(positive_peaks),
             'peak_velocity_neg'+'_'+axis : np.mean(negative_peaks),
             'peak_velocity_all'+'_'+axis : np.mean(all_peaks)}
-    
- 
+
+
 
 def swd_peaks(signal, axis=labels.SWAY_DENSITY, sway_density_radius=0.3):
-    
 
-    if not (axis in [labels.SWAY_DENSITY]):
+
+    if axis not in [labels.SWAY_DENSITY]:
         return {}
 
     sig = signal.get_signal(axis, **{"sway_density_radius":sway_density_radius})
@@ -219,7 +219,7 @@ def swd_peaks(signal, axis=labels.SWAY_DENSITY, sway_density_radius=0.3):
     rsig = signal.get_signal(labels.MLAP)
 
 #    crossing_border = np.median(sig)
-#    
+#
 #    #to avoid bugs to crossing_border = 0, when individual moves too much
 #    if crossing_border == 0:
 #        crossing_border = 0.0001
@@ -233,17 +233,17 @@ def swd_peaks(signal, axis=labels.SWAY_DENSITY, sway_density_radius=0.3):
 #    positive_peaks_index = []
 #    current_side = np.sign(sig[sig!=0][0])
 #
-#    for index,value in enumerate(sig) : 
-#        
+#    for index,value in enumerate(sig) :
+#
 #        is_crossing_point = ( (value)*past_value <= 0 ) and (index != 0)\
 #                            and ( value != 0 ) and ( np.sign(value) != current_side )
 #
 #        if is_crossing_point:
 #
 #            if len(zero_crossing_index)>0:
-#            
+#
 #                if value < 0:
-#                    
+#
 #                    positive_peaks_index.append(current_peak_index)
 #
 #            zero_crossing_index += [index-1, index]
@@ -256,7 +256,7 @@ def swd_peaks(signal, axis=labels.SWAY_DENSITY, sway_density_radius=0.3):
 #                current_peak_index = index
 #
 #        past_value=value
-    
+
     positive_peaks_index = np.where((sig[1:-1] > sig[:-2]) & (sig[1:-1] > sig[2:]))[0] + 1
 
 
@@ -273,28 +273,28 @@ def swd_peaks(signal, axis=labels.SWAY_DENSITY, sway_density_radius=0.3):
 
 
 def mean_frequency(signal, axis = labels.ML):
-    if not (axis in [labels.ML, labels.AP, labels.MLAP]):
-        return {}    
+    if axis not in [labels.ML, labels.AP, labels.MLAP]:
+        return {}
     feature_name = "mean_frequency"
 
     sig = signal.get_signal(axis)
 
     spd = np.linalg.norm(signal.frequency * ( np.diff(sig, n=1, axis=0)), axis=1,keepdims=True)
-        
+
     if axis==labels.MLAP:
         dist = positional.mean_distance(signal, axis = labels.RADIUS, \
                                         only_value = True)
         feature =  (1/(2 * np.pi)) * ( np.mean(spd)/dist)
-        
+
     else:
         dist = positional.mean_distance(signal, axis = axis, only_value = True)
         feature =  (1/(4*np.sqrt(2))) * ( np.mean(spd)/dist)
-        
+
     return { feature_name+"_"+axis  : feature}
 
 
 
-all_features = [mean_velocity, sway_area_per_second, phase_plane_parameter, 
+all_features = [mean_velocity, sway_area_per_second, phase_plane_parameter,
                 vfy, length_over_area, fractal_dimension_ce, velocity_peaks, \
                 swd_peaks, mean_frequency]
 

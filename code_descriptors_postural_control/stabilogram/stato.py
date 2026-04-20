@@ -3,14 +3,11 @@
 
 
 import numpy as np
-from numpy.core.defchararray import upper
-from scipy.signal import butter, filtfilt, periodogram, savgol_filter, welch
-
-from code_descriptors_postural_control.stabilogram.swarii import SWARII
-
-from scipy.fft import rfft, rfftfreq
+from scipy.signal import butter, filtfilt, savgol_filter, welch
 
 from code_descriptors_postural_control.constants import labels
+from code_descriptors_postural_control.stabilogram.swarii import SWARII
+
 
 class Stabilogram():
     def __init__(self):
@@ -18,13 +15,13 @@ class Stabilogram():
 
         self.raw_signal = None              # contains the raw signal
         self.signal = None                  # contain the processed signal
-        self.frequency = None               # frequency of the signal. Only if uniformly sampled  
+        self.frequency = None               # frequency of the signal. Only if uniformly sampled
 
         self._sampling_ok = None            # is the signal uniformly sampled ?
-        
+
 
         # Store the values of signal transformation, to avoid multiple computations
-        self._radius = None                 
+        self._radius = None
         self._power_spectrum = None
         self._sway_density = None
         self._diffusion_plot = None
@@ -46,7 +43,7 @@ class Stabilogram():
         filter_ : resample the signal to the values defined in the paper. See the function filter_ for more details
 
         """
-        
+
         signal = np.array(array)
 
         self.raw_signal = signal
@@ -56,15 +53,15 @@ class Stabilogram():
         assert n_columns in [2,3], "invalid number of columns in the array, should be 2 or 3"
 
 
-            
 
-            
+
+
 
         if n_columns == 2 :
             assert original_frequency is not None or time is not None, "Need to provide a frequency for the signal (parameter original frequency), or timestamps"
-            
+
             if original_frequency is not None:
-            
+
                 time = np.arange(len(signal))/original_frequency
                 time = time[:,None]
 
@@ -74,28 +71,28 @@ class Stabilogram():
 
             mean = np.mean(signal, axis=0, keepdims=True)
             self.mean_value = mean[0]
-                        
-            if center : 
+
+            if center :
                 signal = signal - mean
-                
+
 
             signal = np.concatenate([time, signal], axis = 1)
 
-        else : 
+        else :
             # time start from 0
             time = signal[:,0]
             time = time - time[0]
             signal[:,0] = time
-    
+
             mean = np.mean(signal[:,1:], axis=0, keepdims=True)
             self.mean_value = mean[0]
-            
-            #center signal 
-            if center : 
+
+            #center signal
+            if center :
                 csignal = signal[:,1:]
                 csignal = csignal - np.mean(csignal, axis=0, keepdims=True)
                 signal[:,1:] = csignal
-                
+
 
         self.signal = signal
         assert not np.isnan(signal).any(), "error, NaN values"
@@ -109,7 +106,7 @@ class Stabilogram():
 
         if filter_ :
             self.filter_(lower_bound=filter_lower_bound, upper_bound=filter_upper_bound, order= filter_order)
-   
+
 
 
     def resample(self, target_frequency=25)-> None:
@@ -141,11 +138,11 @@ class Stabilogram():
 
 
         assert self.raw_signal is not None, "Please provide a signal first"
-        assert self._sampling_ok, "Please resample the signal first, using the function resample " 
+        assert self._sampling_ok, "Please resample the signal first, using the function resample "
         assert self.signal is not None,  "Error, please resample the signal again"
 
 
-        
+
 
         signal = np.array(self.signal)
         nyq = 0.5 * self.frequency
@@ -159,12 +156,12 @@ class Stabilogram():
         else :
             b, a = butter(order, (low,high), btype='bandpass')
 
-        y = filtfilt(b, a, signal,axis=0)    
+        y = filtfilt(b, a, signal,axis=0)
         self.signal = y
 
 
-        
-    
+
+
 
 
 
@@ -181,58 +178,58 @@ class Stabilogram():
 
 
 
-    def _compute_radius(self)-> None:  
+    def _compute_radius(self)-> None:
         """
         Compute the radius of the stabilogram (signal is supposed centered). 
-        """ 
-        self._radius = np.linalg.norm(self.signal, axis=1, keepdims=True) 
-        
+        """
+        self._radius = np.linalg.norm(self.signal, axis=1, keepdims=True)
 
 
-    def _compute_power_spectrum(self)-> None:  
+
+    def _compute_power_spectrum(self)-> None:
         """
         Compute the PSD of the stabilogram using the Welch method. 
-        """ 
+        """
 
         freqs, psd = welch(self.signal, fs=self.frequency, \
                            detrend="linear", nperseg=10*self.frequency, \
                            noverlap=0.5*10*self.frequency, axis=0, \
-                           nfft=len(self.signal))     
+                           nfft=len(self.signal))
 
         power_fft = np.concatenate( [freqs[:,None], psd], axis=1)
         self._power_spectrum  = power_fft
 
 
 
-    def _compute_sway_density(self, radius=0.3)-> None:  
-        
+    def _compute_sway_density(self, radius=0.3)-> None:
+
         """
         Sway Density is computed by default for a 3 mm radius.
         """
         signal = np.array(self.signal)
         sway = np.zeros(len(signal)-1)
-        
+
         for t in range(len(signal)-1):
 
-        
+
             stopping_point = t+1
             while stopping_point<len(signal):
                 if np.linalg.norm(signal[stopping_point] - signal[t])>radius:
                     break
                 stopping_point+=1
-                
+
             starting_point = t-1
             while starting_point>=0:
                 if np.linalg.norm(signal[starting_point] - signal[t])>radius:
                     break
                 starting_point-=1
-                
+
             start = starting_point+1
             stop = stopping_point-1
-                
+
             sway[t] = stop-start
 
- 
+
         sway = sway / self.frequency
 
         nyq = 0.5 * self.frequency
@@ -241,16 +238,16 @@ class Stabilogram():
 
         b, a = butter(N=4, Wn=high, btype='lowpass')
 
-        sway = filtfilt(b, a, sway, axis=0)    
-                
+        sway = filtfilt(b, a, sway, axis=0)
+
         self._sway_density = sway
 
 
-        
-    def _compute_diffusion_plot(self, duration_ratio=1/3)-> None:  
+
+    def _compute_diffusion_plot(self, duration_ratio=1/3)-> None:
         """
         Compute the diffusion plot of the stabilogram. duration_ratio parameter set the limit for the computation, and should only be modified by experts familiar with the diffusion plot 
-        """ 
+        """
 
         n = len(self.signal)
         max_ind = int(n * duration_ratio)
@@ -260,7 +257,7 @@ class Stabilogram():
         self._diffusion_plot = diffusion_plot
 
 
-    def _compute_speed(self, window_length=5, polyorder=3) -> None:  
+    def _compute_speed(self, window_length=5, polyorder=3) -> None:
         """
         Speed is computed using savgol filter. Default parameters are the one used in the paper. 
         """
@@ -271,9 +268,9 @@ class Stabilogram():
 
     def _test_correct_format(self) -> None:
         assert self.raw_signal is not None, "Please provide a signal first"
-        assert self._sampling_ok, "Please resample the signal first, using the function resample " 
+        assert self._sampling_ok, "Please resample the signal first, using the function resample "
         assert self.signal is not None,  "Error, please resample and filter the signal again"
-            
+
 
 
 #   ===================================================================
@@ -283,7 +280,7 @@ class Stabilogram():
     def __len__(self)-> int:
         self._test_correct_format
         return(len(self.signal))
-        
+
 
     @property
     def medio_lateral(self) -> np.ndarray:
@@ -294,7 +291,7 @@ class Stabilogram():
     def antero_posterior(self) -> np.ndarray:
         self._test_correct_format()
         return self.signal[:,1:2]
-        
+
     @property
     def sway_density(self) -> np.ndarray:
         self._test_correct_format()
@@ -325,20 +322,20 @@ class Stabilogram():
         if self._radius is None:
             self._compute_radius()
         return self._radius
-    
+
     @property
     def diffusion_plot(self) -> np.ndarray:
         self._test_correct_format()
         if self._diffusion_plot is None:
             self._compute_diffusion_plot()
         return self._diffusion_plot
-            
+
 
 
     def get_signal(self, name, **kwargs) -> np.ndarray:
-        
-        
-        
+
+
+
         if name == labels.ML:
             return self.medio_lateral
         if name == labels.AP :
@@ -349,13 +346,13 @@ class Stabilogram():
             return self.radius
         if name == labels.SWAY_DENSITY :
             self.sway_density_radius = kwargs["sway_density_radius"]
-            return self.sway_density    
+            return self.sway_density
         if name == labels.PSD_ML :
             return self.power_spectrum[:,0], self.power_spectrum[:,1]
         if name == labels.PSD_AP :
             return self.power_spectrum[:,0], self.power_spectrum[:,2]
         if name == labels.SPD_ML:
-            return self.speed[:,0:1] 
+            return self.speed[:,0:1]
         if name == labels.SPD_AP:
             return self.speed[:,1:2]
         if name == labels.SPD_MLAP:

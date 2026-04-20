@@ -3,7 +3,7 @@ name = "wiibble"
 version = "0.1.0"
 description = "Wii Balance Board Live Environment — clinical rehabilitation tool"
 readme = "ReadMe.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 
 dependencies = [
@@ -12,6 +12,11 @@ dependencies = [
     "pythonnet==3.0.3",
     "dearpygui==2.1.1",
     "pytz",
+    "scipy==1.15.3",
+    # Analysis pipeline (code_descriptors_postural_control transitive deps)
+    "pandas>=1.5",
+    "scikit-learn>=1.2",
+    "statsmodels>=0.14",
     # FontAwesome 5 Solid TTF vendored at assets/fonts/fa-solid-900.ttf (OFL-1.1)
 ]
 

@@ -237,10 +237,8 @@ def build_panel_window(
         height=screen_height,
         show=False,
     ):
-        # Panel header row: close button on right, title on left
+        # Panel header row: collapse button on left (same position as floating toggle), title after
         with dpg.group(horizontal=True):
-            dpg.add_text("Settings")
-            dpg.add_spacer(width=PANEL_W - 120)
             dpg.add_button(
                 tag="panel_close_btn",
                 label=toggle_label,
@@ -248,6 +246,8 @@ def build_panel_window(
                 width=PANEL_TOGGLE_BTN_SIZE,
                 height=PANEL_TOGGLE_BTN_SIZE,
             )
+            dpg.add_spacer(width=8)
+            dpg.add_text("Settings")
         dpg.add_separator()
         dpg.add_spacer(height=PANEL_SECTION_SPACING)
         with dpg.group(tag="settings_group"):

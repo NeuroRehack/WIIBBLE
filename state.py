@@ -23,7 +23,6 @@ class Settings:
     filter_window: int = 1  # S4: moving average window (1 = no smoothing)
     record_duration: int = 10  # S5: CSV recording duration in seconds
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
-    sensitivity: float = 1.0  # S6: cursor movement sensitivity multiplier
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""

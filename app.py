@@ -494,13 +494,12 @@ def _process_frame_data(
     top_left = smoothed["top_left"]
     bottom_left = smoothed["bottom_left"]
 
-    effective_weight = app_state.weight / max(settings.sensitivity, 0.01)
     raw_x, raw_y = calculate_coordinates(
         top_left,
         top_right,
         bottom_left,
         bottom_right,
-        weight=effective_weight,
+        weight=app_state.weight,
         screen_width=app_state.screen_width,
         screen_height=app_state.screen_height,
         zoom=1.0,

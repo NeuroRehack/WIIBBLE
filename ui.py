@@ -12,8 +12,6 @@ from constants import (
     FILTER_MAX,
     FILTER_MIN,
     GEAR_BTN_SIZE,
-    SENSITIVITY_MAX,
-    SENSITIVITY_MIN,
     TOOLBAR_BTN_H,
     TOOLBAR_BTN_W_MD,
     TOOLBAR_BTN_W_SM,
@@ -403,8 +401,8 @@ def _build_cursor_and_trail_controls(app_state, settings, session_state: dict) -
     )
 
 
-def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -> None:
-    """Add zoom, sensitivity, and pan buttons to the toolbar."""
+def _build_zoom_controls(settings, app_state, session_state: dict) -> None:
+    """Add zoom and pan buttons to the toolbar."""
     dpg.add_text("Zoom:")
     dpg.add_slider_float(
         tag="zoom_slider",
@@ -424,17 +422,6 @@ def _build_zoom_sensitivity_controls(settings, app_state, session_state: dict) -
         height=TOOLBAR_BTN_H,
     )
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_text("Sensitivity:")
-    dpg.add_slider_float(
-        tag="sensitivity_slider",
-        default_value=settings.sensitivity,
-        min_value=SENSITIVITY_MIN,
-        max_value=SENSITIVITY_MAX,
-        width=TOOLBAR_SLIDER_W,
-        format="%.2fx",
-        callback=lambda s, v: _on_sensitivity_change(v, settings),
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
 
 
 def build_toolbar_controls(app_state, settings, session_state: dict) -> None:
@@ -445,7 +432,7 @@ def build_toolbar_controls(app_state, settings, session_state: dict) -> None:
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
     _build_cursor_and_trail_controls(app_state, settings, session_state)
     dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    _build_zoom_sensitivity_controls(settings, app_state, session_state)
+    _build_zoom_controls(settings, app_state, session_state)
 
 
 def _on_trail_change(value: int, settings) -> None:
@@ -470,12 +457,6 @@ def _on_zoom_change(value: float, settings, app_state) -> None:
     app_state.zoomed_max_y = app_state.raw_max_y * value
     app_state.zoomed_min_x = app_state.raw_min_x * value
     app_state.zoomed_min_y = app_state.raw_min_y * value
-    settings.save()
-
-
-def _on_sensitivity_change(value: float, settings) -> None:
-    """Adjust cursor movement sensitivity by scaling the effective weight divisor."""
-    settings.sensitivity = value
     settings.save()
 
 

@@ -335,7 +335,7 @@ def _clear_screen_state(app_state, settings) -> None:
 
 
 def _apply_zoom_to_bbox(app_state, settings) -> None:
-    """Update zoom extents and viewport scaling to fit the recorded cursor history."""
+    """Fit zoom and pan so the recorded sway bounding box is centred and fully visible."""
     _on_zoom_to_bbox(
         app_state.raw_max_x,
         app_state.raw_max_y,
@@ -375,8 +375,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox_and_reset_pan":
-        _apply_zoom_to_bbox(app_state, settings)
-        _reset_pan(app_state)
+        _apply_zoom_to_bbox(app_state, settings)  # pan to bbox centre is handled inside
         _clear_session_action(session_state)
         return None
     if action == "pan_changed":
@@ -566,9 +565,9 @@ def _process_frame_data(
 
 
 def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings) -> None:
-    """Auto-scale the viewport zoom so the cursor history fits the visible area."""
-    bbox_w = max(abs(raw_max_x), abs(raw_min_x)) * 2
-    bbox_h = max(abs(raw_max_y), abs(raw_min_y)) * 2
+    """Scale zoom so the actual bounding box fits the visible area and centre the view on it."""
+    bbox_w = raw_max_x - raw_min_x
+    bbox_h = raw_max_y - raw_min_y
     base_w = app_state.screen_width * COORD_SCALE
     base_h = app_state.screen_height * COORD_SCALE
     if bbox_w < 1 or bbox_h < 1:
@@ -576,9 +575,14 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
     new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 10)
     new_zoom = max(ZOOM_MIN, min(ZOOM_MAX, new_zoom))
     settings.zoom_factor = new_zoom
-    new_zoom = math.log(new_zoom) / math.log(ZOOM_SCALE)  # convert back to slider value
-    dpg.set_value("zoom_slider", new_zoom)
+    slider_value = math.log(new_zoom) / math.log(ZOOM_SCALE)  # convert back to slider value
+    dpg.set_value("zoom_slider", slider_value)
     settings.save()
+    # Pan so the bbox centre sits at the screen centre
+    cx_raw = (raw_max_x + raw_min_x) / 2
+    cy_raw = (raw_max_y + raw_min_y) / 2
+    app_state.pan_offset_x = -cx_raw * new_zoom
+    app_state.pan_offset_y = -cy_raw * new_zoom
 
 
 # Cached stats values — stats drawlist only redraws when these change.

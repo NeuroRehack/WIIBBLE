@@ -429,7 +429,7 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     )
     dpg.add_spacer(height=4)
     dpg.add_button(
-        label="Fit View to Sway Path",
+        label="Fit View to Bounding Box",
         tag="zoom_to_bbox_btn",
         callback=lambda: session_state.update({"action": "zoom_to_bbox_and_reset_pan"}),
         width=PANEL_BTN_W,

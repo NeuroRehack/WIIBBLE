@@ -11,15 +11,13 @@ import theme as _theme_module
 from constants import (
     FILTER_MAX,
     FILTER_MIN,
-    GEAR_BTN_SIZE,
-    TOOLBAR_BTN_H,
-    TOOLBAR_BTN_W_MD,
-    TOOLBAR_BTN_W_SM,
-    TOOLBAR_COMBO_W,
-    TOOLBAR_FULL_H,
-    TOOLBAR_SLIDER_W,
-    TOOLBAR_SPACER_MD,
-    TOOLBAR_SPACER_SM,
+    PANEL_BTN_H,
+    PANEL_BTN_W,
+    PANEL_COMBO_W,
+    PANEL_SECTION_SPACING,
+    PANEL_SLIDER_W,
+    PANEL_TOGGLE_BTN_SIZE,
+    PANEL_W,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
@@ -219,13 +217,13 @@ def update_stats_bar(
     bind_text_font(t)
 
 
-def build_toolbar_window(
-    screen_width: int,
+def build_panel_window(
+    screen_height: int,
     toggle_label: str,
     toggle_callback,
     settings_group_builder,
 ) -> None:
-    """Create the expanded toolbar window and render the control group."""
+    """Create the left-side settings panel window and populate it with controls."""
     with dpg.window(
         tag="control_panel",
         no_title_bar=True,
@@ -233,36 +231,39 @@ def build_toolbar_window(
         no_move=True,
         no_scrollbar=False,
         no_collapse=True,
-        no_scroll_with_mouse=True,
-        horizontal_scrollbar=True,
+        no_scroll_with_mouse=False,
         pos=(0, 0),
-        width=screen_width,
-        height=TOOLBAR_FULL_H,
+        width=PANEL_W,
+        height=screen_height,
         show=False,
     ):
+        # Panel header row: close button on right, title on left
         with dpg.group(horizontal=True):
+            dpg.add_text("Settings")
+            dpg.add_spacer(width=PANEL_W - 120)
             dpg.add_button(
-                tag="toggle_btn",
+                tag="panel_close_btn",
                 label=toggle_label,
                 callback=toggle_callback,
-                width=GEAR_BTN_SIZE,
-                height=GEAR_BTN_SIZE,
+                width=PANEL_TOGGLE_BTN_SIZE,
+                height=PANEL_TOGGLE_BTN_SIZE,
             )
-            dpg.add_spacer(width=8)
-            with dpg.group(tag="settings_group", horizontal=True):
-                settings_group_builder()
+        dpg.add_separator()
+        dpg.add_spacer(height=PANEL_SECTION_SPACING)
+        with dpg.group(tag="settings_group"):
+            settings_group_builder()
 
     if _theme_module.FA_ICON_FONT is not None:
-        dpg.bind_item_font("toggle_btn", _theme_module.FA_ICON_FONT)
+        dpg.bind_item_font("panel_close_btn", _theme_module.FA_ICON_FONT)
 
 
-def build_gear_button_window(toolbar_enabled: bool, toggle_label: str, toggle_callback) -> None:
-    """Create the floating collapsed toolbar gear button window."""
-    if dpg.does_item_exist("gear_btn_window"):
-        dpg.delete_item("gear_btn_window")
+def build_panel_toggle_btn(toggle_label: str, toggle_callback) -> None:
+    """Create the floating toggle button shown when the panel is collapsed."""
+    if dpg.does_item_exist("panel_toggle_window"):
+        dpg.delete_item("panel_toggle_window")
 
     with dpg.window(
-        tag="gear_btn_window",
+        tag="panel_toggle_window",
         no_title_bar=True,
         no_resize=True,
         no_move=True,
@@ -270,34 +271,52 @@ def build_gear_button_window(toolbar_enabled: bool, toggle_label: str, toggle_ca
         no_collapse=True,
         no_background=True,
         pos=(4, 4),
-        width=GEAR_BTN_SIZE + 4,
-        height=GEAR_BTN_SIZE + 4,
-        show=toolbar_enabled,
+        width=PANEL_TOGGLE_BTN_SIZE + 4,
+        height=PANEL_TOGGLE_BTN_SIZE + 4,
+        show=False,
     ):
         dpg.add_button(
-            tag="gear_float_btn",
+            tag="panel_float_btn",
             label=toggle_label,
             callback=toggle_callback,
-            width=GEAR_BTN_SIZE,
-            height=GEAR_BTN_SIZE,
+            width=PANEL_TOGGLE_BTN_SIZE,
+            height=PANEL_TOGGLE_BTN_SIZE,
         )
 
     if _theme_module.FA_ICON_FONT is not None:
-        dpg.bind_item_font("gear_float_btn", _theme_module.FA_ICON_FONT)
+        dpg.bind_item_font("panel_float_btn", _theme_module.FA_ICON_FONT)
+
+
+def _build_section_header(label: str) -> None:
+    """Render a dimly-coloured section label and a separator line."""
+    dpg.add_spacer(height=PANEL_SECTION_SPACING)
+    with dpg.group(horizontal=True):
+        t = dpg.add_text(label)
+        # Apply dim text colour to section headings
+        with dpg.theme() as _section_theme:
+            with dpg.theme_component(dpg.mvText):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Text,
+                    _theme_module.C_TEXT_DIM,
+                    category=dpg.mvThemeCat_Core,
+                )
+        dpg.bind_item_theme(t, _section_theme)
+    dpg.add_separator()
+    dpg.add_spacer(height=PANEL_SECTION_SPACING)
 
 
 def _cursor_label(settings):
-    """Return the current cursor mode label for display in the toolbar."""
-    return f"Cursor: {'Avatar' if settings.cursor_mode == 'avatar' else 'Circle'}"
+    """Return what the cursor toggle button will switch TO (action label)."""
+    return "Switch to Avatar" if settings.cursor_mode == "circle" else "Switch to Circle"
 
 
 def update_cursor_toggle_label(settings):
-    """Update the toolbar cursor button label to reflect the current mode."""
+    """Update the panel cursor button label to reflect the current mode."""
     dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
 
 
 def _on_cursor_toggle(settings):
-    """Toggle the cursor display mode and update the toolbar label."""
+    """Toggle the cursor display mode and update the panel label."""
     settings.toggle_cursor_mode()
     update_cursor_toggle_label(settings)
 
@@ -328,55 +347,50 @@ def _on_start_recording(app_state, settings) -> None:
 
 
 def _build_session_buttons(session_state: dict) -> None:
-    """Add session-level toolbar buttons such as restart and reset."""
+    """Add session-level panel button: Restart."""
     dpg.add_button(
-        label="RESTART",
+        label="Restart Session",
         callback=lambda: session_state.update({"action": "restart"}),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
-    )
-    dpg.add_button(
-        label="RESET SCREEN",
-        callback=lambda: session_state.update({"action": "reset"}),
-        width=TOOLBAR_BTN_W_MD,
-        height=TOOLBAR_BTN_H,
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
     )
 
 
 def _build_recording_controls(app_state, settings) -> None:
-    """Add recording controls and duration input to the toolbar."""
-    dpg.add_text("Record Duration (s):")
-    dpg.add_input_int(
-        tag="record_duration_input",
-        default_value=int(settings.record_duration),
-        min_value=1,
-        max_value=120,
-        width=80,
-        callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
-    )
-    dpg.add_spacer(width=TOOLBAR_SPACER_SM)
+    """Add recording duration and start/stop button to the panel."""
+    with dpg.group(horizontal=True):
+        dpg.add_text("Duration (s):")
+        dpg.add_input_int(
+            tag="record_duration_input",
+            default_value=int(settings.record_duration),
+            min_value=1,
+            max_value=120,
+            width=PANEL_SLIDER_W - 104,
+            callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
+        )
+    dpg.add_spacer(height=4)
     dpg.add_button(
         tag="start_recording_btn",
         label="Start Recording",
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
         callback=lambda: _on_start_recording(app_state, settings),
         enabled=not app_state.is_recording and not app_state.is_countdown,
     )
 
 
-def _build_cursor_and_trail_controls(app_state, settings, session_state: dict) -> None:
-    """Add cursor mode and trail/filter controls to the toolbar."""
+def _build_cursor_controls(app_state, settings) -> None:
+    """Add cursor mode toggle, trail, and smoothing filter to the panel."""
     dpg.add_button(
         tag="cursor_toggle_btn",
         label=_cursor_label(settings),
         callback=lambda: _on_cursor_toggle(settings),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
     )
     app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_text("Trail:")
+    dpg.add_spacer(height=8)
+    dpg.add_text("Sway trail")
     trail_items = ["None", "Medium", "Long"]
     trail_map = {"None": 0, "Medium": 30, "Long": 100}
     trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
@@ -385,54 +399,64 @@ def _build_cursor_and_trail_controls(app_state, settings, session_state: dict) -
         tag="trail_combo",
         items=trail_items,
         default_value=current_label,
-        width=TOOLBAR_COMBO_W,
+        width=PANEL_COMBO_W,
         callback=lambda s, v: _on_trail_change(trail_map[v], settings),
     )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    dpg.add_text("Filter:")
+    dpg.add_spacer(height=8)
+    dpg.add_text("Smoothing filter")
     dpg.add_slider_int(
         tag="filter_slider",
         default_value=settings.filter_window,
         min_value=FILTER_MIN,
         max_value=FILTER_MAX,
-        width=TOOLBAR_SLIDER_W,
+        width=PANEL_SLIDER_W,
         format="%d frames",
         callback=lambda s, v: _on_filter_change(v, settings, app_state),
     )
 
 
-def _build_zoom_controls(settings, app_state, session_state: dict) -> None:
-    """Add zoom and pan buttons to the toolbar."""
-    dpg.add_text("Zoom:")
+def _build_visualisation_controls(app_state, settings, session_state: dict) -> None:
+    """Add zoom controls and clear screen to the panel."""
+    dpg.add_text("Zoom")
     dpg.add_slider_float(
         tag="zoom_slider",
         default_value=settings.zoom_factor,
         min_value=ZOOM_MIN,
         max_value=ZOOM_MAX,
-        width=TOOLBAR_SLIDER_W,
+        width=PANEL_SLIDER_W,
         format="%.2fx",
         callback=lambda s, v: _on_zoom_change(v, settings, app_state),
     )
-    dpg.add_spacer(width=TOOLBAR_SPACER_SM)
+    dpg.add_spacer(height=4)
     dpg.add_button(
-        label="Auto-Scale",
+        label="Fit View to Sway Path",
         tag="zoom_to_bbox_btn",
         callback=lambda: session_state.update({"action": "zoom_to_bbox_and_reset_pan"}),
-        width=TOOLBAR_BTN_W_SM,
-        height=TOOLBAR_BTN_H,
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
     )
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+    dpg.add_spacer(height=8)
+    dpg.add_button(
+        label="Clear Screen",
+        callback=lambda: session_state.update({"action": "clear"}),
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
+    )
 
 
-def build_toolbar_controls(app_state, settings, session_state: dict) -> None:
-    """Add the toolbar control widgets into the current DearPyGui context."""
+def build_panel_controls(app_state, settings, session_state: dict) -> None:
+    """Populate the settings panel with all control sections."""
+    _build_section_header("SESSION")
     _build_session_buttons(session_state)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
+
+    _build_section_header("RECORDING")
     _build_recording_controls(app_state, settings)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    _build_cursor_and_trail_controls(app_state, settings, session_state)
-    dpg.add_spacer(width=TOOLBAR_SPACER_MD)
-    _build_zoom_controls(settings, app_state, session_state)
+
+    _build_section_header("CURSOR & MOVEMENT")
+    _build_cursor_controls(app_state, settings)
+
+    _build_section_header("VISUALISATION")
+    _build_visualisation_controls(app_state, settings, session_state)
 
 
 def _on_trail_change(value: int, settings) -> None:
@@ -736,8 +760,8 @@ def draw_main_screen(
         timer_width = font_size * 3  # e.g., "00:00.0"
         rec_width = font_size * 2  # e.g., "REC"
 
-        # Displace indicator group down if toolbar is visible
-        y = TOOLBAR_FULL_H + 8 if toolbar_visible else 8
+        # Recording indicator sits at the top-right of the canvas
+        y = 8
         # Compute starting x position for timer (leftmost)
         x_timer = sw - right_margin - (timer_width + spacing + dot_diameter + spacing + rec_width)
 

@@ -11,7 +11,8 @@ import dearpygui.dearpygui as dpg
 from constants import (
     CURSOR_HIT_FRACTION,
     CURSOR_HIT_RADIUS_CIRCLE,
-    TOOLBAR_FULL_H,
+    PANEL_TOGGLE_BTN_SIZE,
+    PANEL_W,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
@@ -53,8 +54,8 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
 def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
     """Handle left-click on the canvas, toggling cursor or starting a target."""
     if (
-        (mx <= 50 and my <= 50)
-        or (my <= TOOLBAR_FULL_H and session_state.get("toolbar_visible", False))
+        (mx <= PANEL_TOGGLE_BTN_SIZE + 8 and my <= PANEL_TOGGLE_BTN_SIZE + 8)
+        or (mx <= PANEL_W and session_state.get("toolbar_visible", False))
         or dpg.is_key_down(dpg.mvKey_LControl)
     ):
         return

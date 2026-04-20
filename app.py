@@ -41,10 +41,10 @@ from recording import _save_recording_csv
 from resources import resource_path
 from theme import ICON_COG
 from ui import (
-    build_gear_button_window,
+    build_panel_controls,
+    build_panel_toggle_btn,
+    build_panel_window,
     build_stats_bar,
-    build_toolbar_controls,
-    build_toolbar_window,
     draw_connection_failed_screen,
     draw_connection_screen,
     draw_main_screen,
@@ -176,34 +176,33 @@ def _get_gear_label() -> str:
 
 
 def _toggle_toolbar(session_state: dict) -> None:
-    """Toggle the toolbar visibility state for the session."""
+    """Toggle the settings panel visibility state for the session."""
     visible = not session_state.get("toolbar_visible", False)
     session_state["toolbar_visible"] = visible
     if visible:
-        # Show full toolbar, hide floating gear
+        # Show full panel, hide floating toggle button
         if dpg.does_item_exist("control_panel"):
             dpg.configure_item("control_panel", show=True)
-        if dpg.does_item_exist("gear_btn_window"):
-            dpg.configure_item("gear_btn_window", show=False)
+        if dpg.does_item_exist("panel_toggle_window"):
+            dpg.configure_item("panel_toggle_window", show=False)
     else:
-        # Hide full toolbar, show floating gear
+        # Hide panel, show floating toggle button
         if dpg.does_item_exist("control_panel"):
             dpg.configure_item("control_panel", show=False)
-        if dpg.does_item_exist("gear_btn_window"):
-            dpg.configure_item("gear_btn_window", show=True)
+        if dpg.does_item_exist("panel_toggle_window"):
+            dpg.configure_item("panel_toggle_window", show=True)
     session_state["action"] = "toolbar_toggled"
 
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
-    """Build the full toolbar and the collapsed gear button overlay."""
-    build_toolbar_window(
-        app_state.screen_width,
+    """Build the left-side settings panel and the collapsed floating toggle button."""
+    build_panel_window(
+        app_state.screen_height,
         _get_gear_label(),
         lambda: _toggle_toolbar(session_state),
-        lambda: build_toolbar_controls(app_state, settings, session_state),
+        lambda: build_panel_controls(app_state, settings, session_state),
     )
-    build_gear_button_window(
-        session_state.get("toolbar_enabled", False),
+    build_panel_toggle_btn(
         _get_gear_label(),
         lambda: _toggle_toolbar(session_state),
     )
@@ -289,7 +288,7 @@ def _update_countdown_and_recording(
 
 
 def _handle_viewport_resize(app_state, session_state):
-    """Update app dimensions and toolbar visibility on viewport resize."""
+    """Update app dimensions and panel height on viewport resize."""
     vw = dpg.get_viewport_width()
     vh = dpg.get_viewport_height()
     if vw == app_state.screen_width and vh == app_state.screen_height:
@@ -299,10 +298,10 @@ def _handle_viewport_resize(app_state, session_state):
     app_state.screen_height = vh
     toolbar_currently_visible = session_state.get("toolbar_visible", False)
     toolbar_enabled = session_state.get("toolbar_enabled", False)
-    dpg.configure_item("control_panel", width=vw, show=toolbar_currently_visible)
-    if dpg.does_item_exist("gear_btn_window"):
+    dpg.configure_item("control_panel", height=vh, show=toolbar_currently_visible)
+    if dpg.does_item_exist("panel_toggle_window"):
         dpg.configure_item(
-            "gear_btn_window",
+            "panel_toggle_window",
             show=toolbar_enabled and not toolbar_currently_visible,
         )
     # stats_dl redraws itself at correct position on next value change
@@ -323,6 +322,16 @@ def _reset_session_state(app_state, settings) -> None:
     app_state.raw_min_x = app_state.raw_min_y = 0.0
     app_state.pan_offset_x = 0.0
     app_state.pan_offset_y = 0.0
+
+
+def _clear_screen_state(app_state, settings) -> None:
+    """Clear targets and sway trail without touching pan or zoom."""
+    app_state.clicked_locations = []
+    app_state.historical_coords = [(0, 0)] * settings.trail_length
+    app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
+    app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
+    app_state.raw_max_x = app_state.raw_max_y = 0.0
+    app_state.raw_min_x = app_state.raw_min_y = 0.0
 
 
 def _apply_zoom_to_bbox(app_state, settings) -> None:
@@ -355,6 +364,10 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         return 0
     if action == "reset":
         _reset_session_state(app_state, settings)
+        _clear_session_action(session_state)
+        return None
+    if action == "clear":
+        _clear_screen_state(app_state, settings)
         _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox":
@@ -409,8 +422,8 @@ def _prepare_session(dl, app_state, settings, session_state, args):
 
     app_state.weight = calibrated_weight
     session_state["toolbar_enabled"] = True
-    if dpg.does_item_exist("gear_btn_window"):
-        dpg.configure_item("gear_btn_window", show=True)
+    if dpg.does_item_exist("panel_toggle_window"):
+        dpg.configure_item("panel_toggle_window", show=True)
 
     return device
 
@@ -607,16 +620,16 @@ def _run_session(app_state, settings, args) -> int:
     session_state = {"action": None, "toolbar_visible": False, "toolbar_enabled": False}
 
     # Clean up previous session widgets
-    for _tag in ("control_panel", "gear_btn_window"):
+    for _tag in ("control_panel", "panel_toggle_window"):
         if dpg.does_item_exist(_tag):
             dpg.delete_item(_tag)
 
     _build_control_panel(app_state, settings, session_state)
-    # Toolbar is created at startup but remains disabled until the main session
+    # Panel is created at startup but remains hidden until the main session
     # begins. Connection/calibration screens should not show settings controls.
     dpg.configure_item("control_panel", show=False)
-    if dpg.does_item_exist("gear_btn_window"):
-        dpg.configure_item("gear_btn_window", show=False)
+    if dpg.does_item_exist("panel_toggle_window"):
+        dpg.configure_item("panel_toggle_window", show=False)
 
     build_stats_bar(app_state)
 

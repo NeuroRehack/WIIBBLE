@@ -74,17 +74,15 @@ FILTER_MAX = 100  # maximum smoothing window in frames (~500ms at 60fps)
 COORD_SCALE = 0.9
 
 # ---------------------------------------------------------------------------
-# UI layout constants — all widget sizes in one place
+# UI layout constants — settings panel (left-side vertical drawer)
 # ---------------------------------------------------------------------------
-TOOLBAR_FULL_H = 110  # toolbar window height in pixels
-GEAR_BTN_SIZE = 40  # gear toggle button width and height
-TOOLBAR_BTN_H = 40  # standard toolbar button height
-TOOLBAR_BTN_W_SM = 110  # small button width (RESTART, Auto-Scale)
-TOOLBAR_BTN_W_MD = 130  # medium button width (RESET SCREEN)
-TOOLBAR_SLIDER_W = 140  # slider width (zoom, filter)
-TOOLBAR_COMBO_W = 90  # combo box width (trail)
-TOOLBAR_SPACER_SM = 8  # small spacer between related items
-TOOLBAR_SPACER_MD = 16  # medium spacer between groups
+PANEL_W = 260  # settings panel width in pixels
+PANEL_BTN_H = 36  # standard panel button height
+PANEL_BTN_W = 228  # full-width panel button
+PANEL_SLIDER_W = 228  # slider width inside panel
+PANEL_COMBO_W = 228  # combo width inside panel
+PANEL_TOGGLE_BTN_SIZE = 40  # floating toggle button size
+PANEL_SECTION_SPACING = 6  # vertical padding between sections
 
 # Click detection radii
 CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius

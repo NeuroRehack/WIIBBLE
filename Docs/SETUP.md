@@ -13,7 +13,7 @@ You will need the following installed before starting:
 | Requirement | Version | Notes |
 |---|---|---|
 | Windows | 10 or 11 | Required for Bluetooth HID |
-| Python | 3.10+ recommended (3.8+ minimum) | [python.org](https://www.python.org/downloads/) |
+| Python | 3.11 or 3.12 recommended (**3.14 not supported**) | [python.org](https://www.python.org/downloads/) |
 | .NET 8.0 SDK | Latest | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download) |
 | .NET Framework 4.8 | Included on Win 10/11 | Check: `reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v Release` |
 | Git | Any recent version | [git-scm.com](https://git-scm.com/) |

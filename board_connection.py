@@ -80,18 +80,14 @@ def disconnect_balance_board(manager_instance):
 # Event Handlers
 def on_balance_board_data_received(sender, event_args):
     """Handle the balance board data received event."""
-    log.debug("Weight: %.2f kg", event_args.Weight)
-    log.debug("Top Right: %.2f kg", event_args.TopRight)
-    log.debug("Top Left: %.2f kg", event_args.TopLeft)
-    log.debug("Bottom Right: %.2f kg", event_args.BottomRight)
-    log.debug("Bottom Left: %.2f kg", event_args.BottomLeft)
-
-    # Attempt to retrieve battery level
-    try:
-        battery_level = manager_instance.BatteryLevel
-        log.debug("Battery Level: %.2f%%", battery_level)
-    except AttributeError:
-        log.debug("Battery level information is not available.")
+    log.debug(
+        "Board data: total=%.2f kg  TR=%.2f  TL=%.2f  BR=%.2f  BL=%.2f",
+        event_args.Weight,
+        event_args.TopRight,
+        event_args.TopLeft,
+        event_args.BottomRight,
+        event_args.BottomLeft,
+    )
 
 
 def try_connection(dll_path=None, mock_mode=False):

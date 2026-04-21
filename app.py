@@ -103,6 +103,7 @@ def _save_and_analyse(record_buffer: list, total_weight_kg: float, ui_filter_win
         daemon=True,
         name="wiibble-analysis",
     )
+    log.debug("Starting background analysis thread for %s", path)
     thread.start()
 
 
@@ -359,6 +360,7 @@ def _reset_pan(app_state) -> None:
 def _handle_session_action(action, device, dl, app_state, settings, session_state):
     """Process a toolbar action request and return a loop result if a session restart is needed."""
     if action == "restart":
+        log.info("Session restart requested by user.")
         device.close()
         dpg.delete_item(dl)
         return 0
@@ -416,6 +418,7 @@ def _prepare_session(dl, app_state, settings, session_state, args):
     on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
     calibrated_weight = sensitivity_calibration(device, dl, app_state, on_start=on_start)
     if calibrated_weight == -1:
+        log.warning("Calibration aborted — window closed before subject stepped on.")
         device.close()
         return None
 
@@ -608,6 +611,9 @@ def _run_session(app_state, settings, args) -> int:
     One full session: connect → tare → calibrate → main loop.
     Returns 0 to restart, 1 to quit.
     """
+    log.info(
+        "Session starting (mock=%s, scenario=%s).", args.mock, getattr(args, "mock_scenario", "n/a")
+    )
     app_state.reset()
 
     # Update screen dimensions from current viewport
@@ -645,6 +651,7 @@ def _run_session(app_state, settings, args) -> int:
 
     result = _run_main_loop(device, dl, app_state, settings, session_state)
     device.close()
+    log.info("Session ended (result=%s).", "restart" if result == 0 else "quit")
     return result
 
 

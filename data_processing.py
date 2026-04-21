@@ -29,7 +29,7 @@ def read_data(device):
     try:
         return device.read(32)
     except Exception as e:
-        log.error("Failed to read data: %s", e)
+        log.warning("Failed to read data: %s", e)
         return None
 
 
@@ -66,7 +66,6 @@ def tare(device, data_struct: dict) -> None:
             for val in data_struct.values():
                 val["tare"] += data[val["rawIndex"]] + data[val["rawIndex"] + 1] / 255
             i += 1
-            log.debug("Tare reading %d/10", i)
 
     for val in data_struct.values():
         val["tare"] /= 10

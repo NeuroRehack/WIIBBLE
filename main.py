@@ -8,6 +8,7 @@ import argparse
 import ctypes
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # ── Configure logging before any application imports ──────────────────────
@@ -17,7 +18,12 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)-8s %(name)-20s %(message)s",
     handlers=[
-        logging.FileHandler(_log_dir / "wiibble.log", encoding="utf-8"),
+        RotatingFileHandler(
+            _log_dir / "wiibble.log",
+            maxBytes=5 * 1024 * 1024,  # 5 MB per file
+            backupCount=3,
+            encoding="utf-8",
+        ),
         logging.StreamHandler(sys.stdout),
     ],
 )

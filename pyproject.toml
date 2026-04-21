@@ -13,6 +13,14 @@ dependencies = [
     "dearpygui==2.1.1",
     "pytz",
     "tk",  # Ensure tkinter is installed for native folder picker
+    # Analysis pipeline (code_descriptors_postural_control transitive deps)
+    "scipy==1.15.3",
+    "pandas>=1.5",
+    "scikit-learn>=1.2",
+    "statsmodels>=0.14",
+    # Reporting
+    "plotly>=5.0",
+    "jinja2>=3.1",
     # FontAwesome 5 Solid TTF vendored at assets/fonts/fa-solid-900.ttf (OFL-1.1)
 ]
 

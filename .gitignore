@@ -19,3 +19,4 @@
 .pytest_cache/
 .ruff_cache/
 Backup/
+dist_nuitka/

@@ -28,18 +28,18 @@ FA_ICON_FONT = None
 # Downscaling always looks crisp; upscaling never does.
 TEXT_FONT = None
 
-# Candidate system font paths — first existing one wins.
+# Candidate font filenames — first existing one wins.
 # Segoe UI (Windows 7+) is clean, neutral, and always present on Windows.
 _TEXT_FONT_CANDIDATES = [
-    # Bundled font (highest priority — drop any .ttf into assets/fonts/)
-    resource_path("assets/fonts/Roboto-Regular.ttf"),
-    resource_path("assets/fonts/OpenSans-Regular.ttf"),
+    # Bundled fonts (highest priority — drop any .ttf into assets/fonts/)
+    "assets/fonts/Roboto-Regular.ttf",
 ]
 
 
 def _find_text_font():
-    """Return the path to the first available text font, or None."""
-    for p in _TEXT_FONT_CANDIDATES:
+    """Return the resolved path to the first available text font, or None."""
+    for candidate in _TEXT_FONT_CANDIDATES:
+        p = resource_path(candidate)
         if os.path.exists(p):
             return p
     return None

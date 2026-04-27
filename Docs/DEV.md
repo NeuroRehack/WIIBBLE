@@ -103,13 +103,13 @@ uv run pytest -v
 
 Coverage is measured over `data_processing.py`, `state.py`, and `recording.py`. A minimum of **80%** total coverage is enforced — the test run will fail if it drops below.
 
-Current coverage: **82%** (63 tests).
+Current coverage: **80.56%** (70 tests).
 
 | Module | Coverage |
 |---|---|
-| `recording.py` | 100% |
+| `recording.py` | 95% |
 | `state.py` | 98% |
-| `data_processing.py` | 55% (hardware paths excluded) |
+| `data_processing.py` | 53% (hardware paths excluded) |
 
 > Hardware-coupled modules (`app.py`, `ui.py`, `board_connection.py`, etc.) are excluded from coverage measurement. Use `--mock` mode to smoke-test the full app.
 
@@ -126,7 +126,38 @@ Two jobs defined in `.github/workflows/ci.yml`:
 
 `test` only runs after `lint` passes. Both jobs run on `windows-latest`.
 
-## 9. Contribution workflow
+## 9. Posturographic Analysis
+
+The analysis pipeline (`analysis.py`, `process_recordings.py`) depends on
+`pandas`, `scikit-learn`, and `statsmodels`. These are **not** compiled into the
+clinical executable (they make Nuitka builds extremely slow). Instead, run analysis
+offline on a workstation after a session.
+
+### Install analysis extras
+
+```powershell
+uv sync --extra analysis
+```
+
+### Process recordings
+
+```powershell
+# Process all unanalysed CSVs in recordings/ (skips existing JSON sidecars)
+python process_recordings.py --new
+
+# Process specific file(s)
+python process_recordings.py recordings/recording_20260325_211625.csv
+
+# Reprocess everything, overwriting existing JSON sidecars
+python process_recordings.py --all
+```
+
+Output JSON files are written alongside each CSV:
+`recordings/features_YYYYMMDD_HHMMSS.json`
+
+See [DATA_PIPELINE.md](DATA_PIPELINE.md) for the full feature-extraction pipeline.
+
+## 10. Contribution workflow
 
 1. Create a feature branch from `develop`.
 2. Make small, testable changes.
@@ -134,7 +165,7 @@ Two jobs defined in `.github/workflows/ci.yml`:
 4. Update documentation when adding or changing functionality.
 5. Open a pull request describing the change and how to reproduce it.
 
-## 9. Useful commands
+## 11. Useful commands
 
 - Run app in mock mode:
   ```powershell

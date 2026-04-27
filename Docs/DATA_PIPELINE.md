@@ -11,51 +11,17 @@ flowchart TD
     C -- "Recording path<br>(raw, unfiltered)" --> D(Force Deviation Calculation)
     D --> E(Buffer: timestamp, x_kg, y_kg)
     E --> F(CSV Output + metadata comments)
-    F --> G{duration ≥ 20 s?}
-    G -- Yes --> H(CoP Conversion: Leach 2014)
-    H --> I(SWARII Resampling → 25 Hz)
-    I --> J(Butterworth Filter 0–10 Hz)
-    J --> K(compute_all_features ~80–90 features)
-    K --> L(features_*.json)
-    G -- No --> M(Skip analysis)
-    C -- "Display path<br>(smoothed)" --> N(Moving Average Filter)
-    N --> O(Coordinate Calculation)
-    O --> P(Screen Render)
-```
-
-```
-Raw HID Data (32 bytes)
-   ↓
-parse_data + tare  →  raw_corners stored in AppState
-   │
-   ├── RECORDING PATH (raw) ──────────────────────────────────────────────
-   │     ↓
-   │   calculate_force_deviation_kg (from raw_corners)
-   │     ↓
-   │   Buffer (timestamp, x_kg, y_kg)
-   │     ↓
-   │   _save_recording_csv  →  recordings/recording_YYYYMMDD_HHMMSS.csv
-   │     (metadata: # total_weight_kg, # ui_filter_window)
-   │     ↓
-   │   [if duration ≥ 20 s]
-   │     ↓
-   │   analyse_recording()  (background daemon thread)
-   │     ↓
-   │   to_cop_array()  →  CoP in cm (Leach et al. 2014 Eq. 1)
-   │     ↓
-   │   Stabilogram.from_array()  →  SWARII → 25 Hz, Butterworth 0–10 Hz order 4
-   │     ↓
-   │   compute_all_features()  →  ~80–90 features
-   │     ↓
-   │   recordings/features_YYYYMMDD_HHMMSS.json
-   │
-   └── DISPLAY PATH (smoothed) ────────────────────────────────────────────
-         ↓
-       apply_filter (moving average, window = ui_filter_window)
-         ↓
-       calculate_coordinates()  →  screen pixels
-         ↓
-       draw_main_screen()
+    F --> G[process_recordings.py\noffline CLI]
+    G --> H{duration ≥ 20 s?}
+    H -- Yes --> I(CoP Conversion: Leach 2014)
+    I --> J(SWARII Resampling → 25 Hz)
+    J --> K(Butterworth Filter 0–10 Hz)
+    K --> L(compute_all_features ~80–90 features)
+    L --> M(features_*.json)
+    H -- No --> N(Skip analysis)
+    C -- "Display path<br>(smoothed)" --> O(Moving Average Filter)
+    O --> P(Coordinate Calculation)
+    P --> Q(Screen Render)
 ```
 
 
@@ -134,10 +100,16 @@ After parsing, the pipeline splits into two independent paths. **Raw (unfiltered
 
 ---
 
-## 7. Auto-Analysis (Posturographic Features)
-- **Trigger:** `_save_and_analyse()` in `app.py` — runs if recording duration ≥ 20 s
-- **Execution:** Background daemon thread (non-blocking)
+## 7. Posturographic Analysis (Offline)
+
+> **Note:** Analysis no longer runs inside the compiled app. It runs offline via
+> `process_recordings.py` to keep the Nuitka build fast (pandas/sklearn/statsmodels
+> are not compiled into the executable).
+
+- **Script:** `process_recordings.py` — CLI tool at the repository root
+- **Trigger:** Manual — run after a session to process any new recordings
 - **Function:** `analyse_recording(path, total_weight_kg)` in `analysis.py`
+- **Minimum duration:** 20 s (shorter recordings are skipped)
 - **Steps:**
   1. `load_recording(path)` — reads CSV rows and parses `# key=value` metadata comments
   2. `to_cop_array(data, total_weight_kg)` — converts `(x_kg, y_kg)` to Centre of Pressure in cm using **Leach et al. 2014** (Sensors 14:18244) Eq. 1:
@@ -147,6 +119,8 @@ After parsing, the pipeline splits into two independent paths. **Raw (unfiltered
   4. `compute_all_features(stabilogram, params)` — ~80–90 posturographic descriptors
   5. Writes `recordings/features_YYYYMMDD_HHMMSS.json` alongside the CSV
 - **Output:** JSON file with all features plus provenance keys (`source_file`, `total_weight_kg`, `ui_filter_window`, `n_samples_raw`, `duration_s`)
+
+See [DEV.md](DEV.md) — "Posturographic Analysis" for installation and usage.
 
 ---
 
@@ -159,5 +133,5 @@ After parsing, the pipeline splits into two independent paths. **Raw (unfiltered
 
 ## Notes
 - The moving-average filter is applied **only** to the display cursor. Recorded data is always raw.
-- All real-time processing is done frame by frame. Analysis runs asynchronously after save.
+- All real-time processing is done frame by frame. Analysis runs offline after the session via `process_recordings.py`.
 - The pipeline is identical for both real and mock data sources.

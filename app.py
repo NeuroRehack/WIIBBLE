@@ -4,18 +4,14 @@ This module contains the main session lifecycle, device connection flow,
 DearPyGui UI glue code, and the primary render + recording loop.
 """
 
-import json
 import logging
 import math
-import os
-import threading
 import time
 
 import dearpygui.dearpygui as dpg
 import hid
 
 import theme as _theme_module
-from analysis import analyse_recording
 from board_connection import try_connection
 from calibration import sensitivity_calibration, wait_for_tare
 from constants import (
@@ -53,58 +49,6 @@ from ui import (
 )
 
 log = logging.getLogger(__name__)
-
-# Minimum recording duration (seconds) to qualify for automatic analysis.
-# Below this threshold the signal is too short for reliable posturographic
-# estimates (SWARII needs enough samples; 30 s is the research standard).
-_MIN_ANALYSIS_DURATION_S = 20.0
-
-
-def _run_analysis(path: str, total_weight_kg: float) -> None:
-    """Run posturographic analysis on a saved recording and write a JSON sidecar.
-
-    Intended to be called from a background daemon thread only.
-    """
-    try:
-        features = analyse_recording(path, total_weight_kg=total_weight_kg)
-        stem = os.path.splitext(path)[0]
-        json_path = stem.replace("recording_", "features_") + ".json"
-        with open(json_path, "w") as f:
-            json.dump(features, f, indent=2, default=str)
-        log.info("Analysis saved to %s", json_path)
-    except Exception:
-        log.exception("Auto-analysis failed for %s", path)
-
-
-def _save_and_analyse(record_buffer: list, total_weight_kg: float, ui_filter_window: int) -> None:
-    """Save recording to CSV and, if long enough, trigger background analysis.
-
-    Analysis runs in a daemon thread so it never blocks the render loop.
-    Results are saved as a JSON file alongside the CSV
-    (``recordings/features_YYYYMMDD_HHMMSS.json``).
-    """
-    path = _save_recording_csv(record_buffer, total_weight_kg, ui_filter_window)
-    if path is None:
-        return
-    if not record_buffer:
-        return
-    duration_s = record_buffer[-1][0] - record_buffer[0][0]
-    if duration_s < _MIN_ANALYSIS_DURATION_S:
-        log.info(
-            "Recording %.1f s is shorter than %.0f s minimum — skipping auto-analysis.",
-            duration_s,
-            _MIN_ANALYSIS_DURATION_S,
-        )
-        return
-
-    thread = threading.Thread(
-        target=_run_analysis,
-        args=(path, total_weight_kg),
-        daemon=True,
-        name="wiibble-analysis",
-    )
-    log.debug("Starting background analysis thread for %s", path)
-    thread.start()
 
 
 # ---------------------------------------------------------------------------
@@ -235,7 +179,7 @@ def _update_recording_frame(
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
             dpg.set_item_label("start_recording_btn", "Start Recording")
-            _save_and_analyse(app_state.record_buffer, app_state.weight, settings.filter_window)
+            _save_recording_csv(app_state.record_buffer, app_state.weight, settings.filter_window)
             app_state.record_buffer = []
     return record_start_time
 
@@ -244,7 +188,7 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
     """Save the remaining recording buffer if recording has stopped."""
     if not app_state.is_recording and app_state.record_buffer:
         fw = settings.filter_window if settings is not None else 1
-        _save_and_analyse(app_state.record_buffer, app_state.weight, fw)
+        _save_recording_csv(app_state.record_buffer, app_state.weight, fw)
         app_state.record_buffer = []
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0

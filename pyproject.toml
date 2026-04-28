@@ -12,7 +12,6 @@ dependencies = [
     "pythonnet==3.0.3",
     "dearpygui==2.1.1",
     "pytz",
-    "scipy>=1.13,<2",
     # FontAwesome 5 Solid TTF vendored at assets/fonts/fa-solid-900.ttf (OFL-1.1)
 ]
 
@@ -21,6 +20,7 @@ dependencies = [
 # Install with: uv sync --extra analysis
 # Run with:     python process_recordings.py
 analysis = [
+    "scipy>=1.13,<2",
     "pandas>=1.5",
     "scikit-learn>=1.2",
     "statsmodels>=0.14.2",

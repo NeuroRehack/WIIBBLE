@@ -65,6 +65,47 @@ See [SETUP.md](SETUP.md) — Step 4.
 
 See [SETUP.md](SETUP.md) — Step 8.
 
+## 5. Building the physio installer
+
+WIIBBLE ships to clinical machines as a standard Windows installer (`.exe`) produced by [Inno Setup 6](https://jrsoftware.org/isinfo.php).
+
+### Prerequisites
+
+1. Run `compiler.bat` first to produce `dist_nuitka/main.dist/`.
+2. Install Inno Setup 6.x and ensure `iscc` is on your `PATH`.
+
+### Build
+
+`compiler.bat` calls `iscc` automatically after the Nuitka step if it is found on `PATH`:
+
+```powershell
+.\compiler.bat
+```
+
+Or build the installer separately (after Nuitka has already run):
+
+```powershell
+iscc installer.iss
+```
+
+Output: `installer_output\WIIBBLE-0.1.0-Setup.exe`
+
+### Deployment
+
+The installer supports silent/managed deployment:
+
+```powershell
+# Silent (progress bar, no prompts)
+WIIBBLE-0.1.0-Setup.exe /SILENT
+
+# Fully silent (no UI at all — for SCCM / Intune)
+WIIBBLE-0.1.0-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+```
+
+Installs to `%ProgramFiles%\WIIBBLE\`. Creates a Start Menu entry and an optional Desktop shortcut. A standard uninstaller is registered in Add/Remove Programs.
+
+> Patient recordings are saved to `%USERPROFILE%\.wiibble\recordings\` and are **never** touched by the uninstaller.
+
 ## 5. Logging and debugging
 
 WIIBBLE uses Python's standard `logging` module. Logs are written to:

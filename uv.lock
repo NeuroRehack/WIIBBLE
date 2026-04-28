@@ -915,17 +915,19 @@ dependencies = [
     { name = "hidapi" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pythonnet" },
     { name = "pytz" },
+]
+
+[package.optional-dependencies]
+analysis = [
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "scipy" },
     { name = "statsmodels" },
 ]
-
-[package.optional-dependencies]
 dev = [
     { name = "nuitka" },
     { name = "pytest" },
@@ -939,14 +941,14 @@ requires-dist = [
     { name = "hidapi", specifier = ">=0.14.0.post4" },
     { name = "nuitka", marker = "extra == 'dev'", specifier = ">=2.0" },
     { name = "numpy", specifier = ">=1.26,<3" },
-    { name = "pandas", specifier = ">=1.5" },
+    { name = "pandas", marker = "extra == 'analysis'", specifier = ">=1.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pythonnet", specifier = "==3.0.3" },
     { name = "pytz" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
-    { name = "scikit-learn", specifier = ">=1.2" },
-    { name = "scipy", specifier = ">=1.13,<2" },
-    { name = "statsmodels", specifier = ">=0.14.2" },
+    { name = "scikit-learn", marker = "extra == 'analysis'", specifier = ">=1.2" },
+    { name = "scipy", marker = "extra == 'analysis'", specifier = ">=1.13,<2" },
+    { name = "statsmodels", marker = "extra == 'analysis'", specifier = ">=0.14.2" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["analysis", "dev"]

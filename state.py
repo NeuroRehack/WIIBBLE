@@ -25,6 +25,7 @@ class Settings:
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
     cursor_size: int = 20  # S1: circle cursor radius in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
+    target_jelly: bool = True  # whether targets animate with jelly effect on hit
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
 
     def toggle_cursor_mode(self):
@@ -155,6 +156,12 @@ class AppState:
     toast_message: str = ""
     toast_until: float = 0.0
 
+    # Ripple animations — per-target jelly oscillation ages, keyed by target index.
+    # Value is the frame age since the hit; absent/removed when animation ends.
+    _jelly_ages: dict = field(default_factory=dict)
+    # Previous per-target hit states for edge detection — keyed by target index
+    _prev_hit_states: dict = field(default_factory=dict)
+
     def reset(self):
         """Called on RESTART — resets session data but preserves calibration."""
         self.ball_x = 0
@@ -184,3 +191,5 @@ class AppState:
         self.cursor_drag_start_size = 20
         self.toast_message = ""
         self.toast_until = 0.0
+        self._jelly_ages = {}
+        self._prev_hit_states = {}

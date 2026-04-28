@@ -664,6 +664,15 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     )
     with dpg.tooltip(parent="show_bbox_checkbox"):
         dpg.add_text("Show or hide the movement bounding box on the canvas.")
+    dpg.add_spacer(height=4)
+    dpg.add_checkbox(
+        tag="target_jelly_checkbox",
+        label="Target jelly effect",
+        default_value=settings.target_jelly,
+        callback=lambda s, v: _on_target_jelly_change(v, settings),
+    )
+    with dpg.tooltip(parent="target_jelly_checkbox"):
+        dpg.add_text("Animate targets with a jelly wobble when hit.")
     dpg.add_spacer(height=8)
     _clear_btn = dpg.add_button(
         tag="clear_screen_btn",
@@ -710,6 +719,12 @@ def _on_filter_change(value: int, settings, app_state) -> None:
 def _on_show_bbox_change(value: bool, settings) -> None:
     """Toggle bounding box visibility."""
     settings.show_bbox = value
+    settings.save()
+
+
+def _on_target_jelly_change(value: bool, settings) -> None:
+    """Toggle target jelly animation on hit."""
+    settings.target_jelly = value
     settings.save()
 
 
@@ -903,7 +918,7 @@ def draw_main_screen(
     cx = sw // 2 + pan_offset_x
     cy = sh // 2 + pan_offset_y
     # Draw all finalized targets (support both old tuple and new dict format)
-    for target in app_state.clicked_locations:
+    for idx, target in enumerate(app_state.clicked_locations):
         if isinstance(target, dict):
             (lx, ly) = target["center"]
             logical_radius = target.get("radius", 5.0)
@@ -915,8 +930,26 @@ def draw_main_screen(
         scaled_radius = logical_radius * settings.zoom_factor
         dist = math.sqrt((vx - ball_x) ** 2 + (vy - ball_y) ** 2)
         hit = dist < scaled_radius
+        # Spawn jelly oscillation on False→True transition
+        prev = app_state._prev_hit_states.get(idx, False)
+        if hit and not prev and settings.target_jelly:
+            app_state._jelly_ages[idx] = 0
+        app_state._prev_hit_states[idx] = hit
+        # Compute display radius with damped sinusoidal jelly if active
+        age = app_state._jelly_ages.get(idx, -1)
+        if age >= 0 and settings.target_jelly:
+            jelly_r = scaled_radius * (1.0 + 0.25 * math.exp(-0.13 * age) * math.sin(0.55 * age))
+            age += 1
+            if age >= 50:
+                del app_state._jelly_ages[idx]
+            else:
+                app_state._jelly_ages[idx] = age
+        else:
+            jelly_r = scaled_radius
         fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
-        dpg.draw_circle((vx, vy), scaled_radius, color=fill, fill=fill, parent=dl)
+        dpg.draw_circle((vx, vy), max(1.0, jelly_r), color=fill, fill=fill, parent=dl)
+
+    # (ripple ring loop removed — replaced by per-target jelly oscillation above)
 
     # Draw target-in-progress (preview)
     tip = getattr(app_state, "target_in_progress", None)

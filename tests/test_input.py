@@ -58,12 +58,12 @@ def test_handle_canvas_click_starts_target_when_click_off_cursor(monkeypatch):
 
     assert app_state.target_in_progress is not None
     assert app_state.target_in_progress["center"] == (50.0, 25.0)
-    assert app_state.target_in_progress["radius"] == 5.0
+    assert app_state.target_in_progress["radius"] == 20.0
 
 
 def test_handle_target_drag_updates_target_radius(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100)
-    app_state.target_in_progress = {"center": (0.0, 0.0), "radius": 5.0}
+    app_state.target_in_progress = {"center": (0.0, 0.0), "radius": 5.0, "drag_started": True}
     settings = DummySettings(zoom_factor=1.0)
     monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (110, 50))
 

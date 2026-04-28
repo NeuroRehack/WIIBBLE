@@ -142,7 +142,7 @@ _stats_cache = {"left": -1, "weight": -1, "right": -1}
 def build_stats_bar(app_state) -> None:
     """Create or reset the overlay stats drawlist for the main screen."""
     if not dpg.does_item_exist("stats_dl"):
-        dpg.add_viewport_drawlist(tag="stats_dl", front=True)
+        dpg.add_viewport_drawlist(tag="stats_dl", front=False)
     dpg.delete_item("stats_dl", children_only=True)
     _stats_cache["left"] = -1
     _stats_cache["weight"] = -1
@@ -233,15 +233,15 @@ def build_panel_window(
         no_title_bar=True,
         no_resize=True,
         no_move=True,
-        no_scrollbar=False,
+        no_scrollbar=True,
         no_collapse=True,
-        no_scroll_with_mouse=False,
+        no_scroll_with_mouse=True,
         pos=(0, 0),
         width=PANEL_W,
         height=screen_height,
         show=False,
     ):
-        # Panel header row: collapse button on left (same position as floating toggle), title after
+        # Fixed header row
         with dpg.group(horizontal=True):
             dpg.add_button(
                 tag="panel_close_btn",
@@ -254,8 +254,24 @@ def build_panel_window(
             dpg.add_text("Settings")
         dpg.add_separator()
         dpg.add_spacer(height=PANEL_SECTION_SPACING)
-        with dpg.group(tag="settings_group"):
+        # Scrollable area for settings controls only
+        header_height = 128  # buffer enough for header, separator, spacing and window padding
+        controls_height = max(40, screen_height - header_height)
+        with dpg.child_window(
+            tag="settings_scroll",
+            width=PANEL_W - 10,
+            autosize_x=False,
+            autosize_y=False,
+            height=controls_height,
+            no_scrollbar=False,
+            horizontal_scrollbar=False,
+            border=False,
+            no_scroll_with_mouse=False,
+            always_use_window_padding=False,
+            frame_style=False,
+        ):
             settings_group_builder()
+            dpg.add_spacer(height=24)
 
     if _theme_module.FA_ICON_FONT is not None:
         dpg.bind_item_font("panel_close_btn", _theme_module.FA_ICON_FONT)

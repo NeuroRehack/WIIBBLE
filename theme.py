@@ -173,10 +173,10 @@ def apply_global_theme() -> None:
     """
     with dpg.theme() as global_theme:
         with dpg.theme_component(dpg.mvAll):
-            # Window backgrounds
-            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, C_BG_WINDOW, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, C_BG_WINDOW, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(dpg.mvThemeCol_PopupBg, C_BG_TOOLBAR, category=dpg.mvThemeCat_Core)
+            # Window backgrounds (fully opaque)
+            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core)
+            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core)
+            dpg.add_theme_color(dpg.mvThemeCol_PopupBg, (*C_BG_TOOLBAR[:3], 255), category=dpg.mvThemeCat_Core)
             # Text
             dpg.add_theme_color(dpg.mvThemeCol_Text, C_TEXT, category=dpg.mvThemeCat_Core)
             # Buttons
@@ -215,10 +215,20 @@ def apply_global_theme() -> None:
             )
             # Scrollbar
             dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarBg, C_BG_WINDOW, category=dpg.mvThemeCat_Core
+                dpg.mvThemeCol_ScrollbarBg, (*C_FRAME[:3], 240), category=dpg.mvThemeCat_Core
             )
-            dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrab, C_BTN, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ScrollbarGrab, (190, 220, 235, 255), category=dpg.mvThemeCat_Core
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ScrollbarGrabHovered, (215, 235, 245, 255), category=dpg.mvThemeCat_Core
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ScrollbarGrabActive, (240, 255, 255, 255), category=dpg.mvThemeCat_Core
+            )
             # Rounding — subtle, not pill-shaped
+            dpg.add_theme_style(dpg.mvStyleVar_ScrollbarSize, 14, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_style(dpg.mvStyleVar_ScrollbarRounding, 6, category=dpg.mvThemeCat_Core)
             dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6, category=dpg.mvThemeCat_Core)
             dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 0, category=dpg.mvThemeCat_Core)
             dpg.add_theme_style(dpg.mvStyleVar_GrabRounding, 6, category=dpg.mvThemeCat_Core)

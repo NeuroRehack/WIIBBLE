@@ -497,6 +497,15 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     with dpg.tooltip(parent="zoom_to_bbox_btn"):
         dpg.add_text("Zoom and pan to fit all recorded\nmovement within the view.")
     dpg.add_spacer(height=8)
+    dpg.add_checkbox(
+        tag="show_bbox_checkbox",
+        label="Show bounding box",
+        default_value=settings.show_bbox,
+        callback=lambda s, v: _on_show_bbox_change(v, settings),
+    )
+    with dpg.tooltip(parent="show_bbox_checkbox"):
+        dpg.add_text("Show or hide the movement bounding box on the canvas.")
+    dpg.add_spacer(height=8)
     _clear_btn = dpg.add_button(
         tag="clear_screen_btn",
         label="Clear Screen",
@@ -534,6 +543,12 @@ def _on_filter_change(value: int, settings, app_state) -> None:
     settings.filter_window = value
     if len(app_state.filter_buffer) > value:
         app_state.filter_buffer = app_state.filter_buffer[-value:]
+    settings.save()
+
+
+def _on_show_bbox_change(value: bool, settings) -> None:
+    """Toggle bounding box visibility."""
+    settings.show_bbox = value
     settings.save()
 
 
@@ -780,17 +795,19 @@ def draw_main_screen(
         p2 = (ball_x + scaled_w // 2, ball_y)
         dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
     else:
-        dpg.draw_circle((ball_x, ball_y), settings.cursor_size, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl)
+        scaled_cursor = max(1, int(settings.cursor_size * settings.zoom_factor))
+        dpg.draw_circle((ball_x, ball_y), scaled_cursor, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl)
 
     # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
     # They need to be offset by canvas centre (cx, cy) to get viewport coords.
-    dpg.draw_rectangle(
-        (cx + min_x, cy + min_y),
-        (cx + max_x, cy + max_y),
-        color=BBOX_COLOR,
-        thickness=BBOX_THICKNESS,
-        parent=dl,
-    )
+    if settings.show_bbox:
+        dpg.draw_rectangle(
+            (cx + min_x, cy + min_y),
+            (cx + max_x, cy + max_y),
+            color=BBOX_COLOR,
+            thickness=BBOX_THICKNESS,
+            parent=dl,
+        )
 
     # Weight bar and stats text are both drawn on stats_dl in app.py
     # so they render above the canvas layer in the correct order.

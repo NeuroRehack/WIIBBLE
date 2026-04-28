@@ -65,7 +65,7 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     cursor_radius = (
         int(CURSOR_HIT_FRACTION * app_state.screen_height)
         if settings.cursor_mode == "avatar"
-        else settings.cursor_size
+        else int(settings.cursor_size * settings.zoom_factor)
     )
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
@@ -78,9 +78,13 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
     logical_x = (mx - cx) / settings.zoom_factor
     logical_y = (my - cy) / settings.zoom_factor
+    # cursor_size is in logical units; no division needed — target matches cursor at any zoom
+    default_radius = float(settings.cursor_size)
     app_state.target_in_progress = {
         "center": (logical_x, logical_y),
-        "radius": 5.0,
+        "radius": default_radius,
+        "drag_started": False,
+        "click_screen": (mx, my),
     }
 
 
@@ -92,7 +96,8 @@ def _handle_cursor_drag(app_state, settings) -> None:
     dist = math.sqrt(
         (mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2
     )
-    new_size = int(max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist)))
+    # dist is in screen pixels; divide by zoom so cursor_size stays in logical units
+    new_size = int(max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist / settings.zoom_factor)))
     settings.cursor_size = new_size
     if dpg.does_item_exist("cursor_size_slider"):
         dpg.set_value("cursor_size_slider", new_size)
@@ -119,16 +124,23 @@ def _handle_cursor_release(app_state, settings) -> None:
 
 def _handle_target_drag(app_state, settings):
     """Resize the target under construction while the mouse is dragged."""
-    if app_state.target_in_progress is None:
+    tip = app_state.target_in_progress
+    if tip is None:
         return
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+    # Only begin resizing once the mouse has moved meaningfully from the click point.
+    if not tip.get("drag_started", False):
+        cx0, cy0 = tip.get("click_screen", (mouse_x, mouse_y))
+        if math.sqrt((mouse_x - cx0) ** 2 + (mouse_y - cy0) ** 2) < CURSOR_DRAG_THRESHOLD:
+            return
+        tip["drag_started"] = True
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
     logical_x = (mouse_x - cx) / settings.zoom_factor
     logical_y = (mouse_y - cy) / settings.zoom_factor
-    x0, y0 = app_state.target_in_progress["center"]
+    x0, y0 = tip["center"]
     new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
-    app_state.target_in_progress["radius"] = max(1.0, new_radius)
+    tip["radius"] = max(1.0, new_radius)
 
 
 def _handle_target_release(app_state):
@@ -164,6 +176,26 @@ def _handle_pan_release(app_state):
         app_state.is_panning = False
 
 
+def _handle_right_click(mx: float, my: float, app_state, settings) -> None:
+    """Remove a target when right-clicking inside it."""
+    cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    for target in list(app_state.clicked_locations):
+        if isinstance(target, dict):
+            lx, ly = target["center"]
+            logical_radius = target.get("radius", 5.0)
+        else:
+            lx, ly = target
+            logical_radius = 5.0
+        vx = cx + lx * settings.zoom_factor
+        vy = cy + ly * settings.zoom_factor
+        scaled_radius = logical_radius * settings.zoom_factor
+        dist = math.sqrt((mx - vx) ** 2 + (my - vy) ** 2)
+        if dist <= scaled_radius:
+            app_state.clicked_locations.remove(target)
+            break
+
+
 def register_input_handlers(app_state, settings, session_state):
     """Register all mouse interaction handlers for the main session canvas."""
     if dpg.does_item_exist("click_handler"):
@@ -176,6 +208,14 @@ def register_input_handlers(app_state, settings, session_state):
                 app_state,
                 settings,
                 session_state,
+            ),
+        )
+        dpg.add_mouse_click_handler(
+            button=1,
+            callback=lambda: _handle_right_click(
+                *dpg.get_mouse_pos(local=False),
+                app_state,
+                settings,
             ),
         )
         dpg.add_mouse_wheel_handler(

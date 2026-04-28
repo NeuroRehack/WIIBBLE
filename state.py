@@ -24,6 +24,7 @@ class Settings:
     record_duration: int = 10  # S5: CSV recording duration in seconds (0 = indefinite)
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
     cursor_size: int = 20  # S1: circle cursor radius in pixels
+    show_bbox: bool = True  # whether to show the bounding box on canvas
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""

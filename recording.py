@@ -15,7 +15,9 @@ log = logging.getLogger(__name__)
 
 
 def _save_recording_csv(
-    record_buffer, total_weight_kg: float = None, ui_filter_window: int = 1,
+    record_buffer,
+    total_weight_kg: float = None,
+    ui_filter_window: int = 1,
     out_dir: str = "",
 ) -> str:
     """Save the provided recording buffer to a timestamped CSV file.

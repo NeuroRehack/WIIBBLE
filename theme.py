@@ -71,10 +71,10 @@ C_BRAND = (107, 143, 168, 255)  # teal accent (matches canvas trail)
 C_BORDER = (55, 68, 85, 255)
 
 # Section accent bar colours (left-edge coloured strip per settings section)
-C_ACCENT_SESSION = (107, 143, 168, 255)     # teal  — brand colour
-C_ACCENT_RECORDING = (210, 75, 75, 255)     # red   — recording / alert
-C_ACCENT_CURSOR = (80, 185, 130, 255)       # green — movement
-C_ACCENT_VISUAL = (155, 110, 210, 255)      # purple — visualisation
+C_ACCENT_SESSION = (107, 143, 168, 255)  # teal  — brand colour
+C_ACCENT_RECORDING = (210, 75, 75, 255)  # red   — recording / alert
+C_ACCENT_CURSOR = (80, 185, 130, 255)  # green — movement
+C_ACCENT_VISUAL = (155, 110, 210, 255)  # purple — visualisation
 
 # Canvas drawing colours (used in ui.py)
 CANVAS_BG = (250, 250, 250, 255)  # near-white canvas
@@ -174,9 +174,15 @@ def apply_global_theme() -> None:
     with dpg.theme() as global_theme:
         with dpg.theme_component(dpg.mvAll):
             # Window backgrounds (fully opaque)
-            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(dpg.mvThemeCol_PopupBg, (*C_BG_TOOLBAR[:3], 255), category=dpg.mvThemeCat_Core)
+            dpg.add_theme_color(
+                dpg.mvThemeCol_WindowBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ChildBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_PopupBg, (*C_BG_TOOLBAR[:3], 255), category=dpg.mvThemeCat_Core
+            )
             # Text
             dpg.add_theme_color(dpg.mvThemeCol_Text, C_TEXT, category=dpg.mvThemeCat_Core)
             # Buttons
@@ -221,10 +227,14 @@ def apply_global_theme() -> None:
                 dpg.mvThemeCol_ScrollbarGrab, (190, 220, 235, 255), category=dpg.mvThemeCat_Core
             )
             dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarGrabHovered, (215, 235, 245, 255), category=dpg.mvThemeCat_Core
+                dpg.mvThemeCol_ScrollbarGrabHovered,
+                (215, 235, 245, 255),
+                category=dpg.mvThemeCat_Core,
             )
             dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarGrabActive, (240, 255, 255, 255), category=dpg.mvThemeCat_Core
+                dpg.mvThemeCol_ScrollbarGrabActive,
+                (240, 255, 255, 255),
+                category=dpg.mvThemeCat_Core,
             )
             # Rounding — subtle, not pill-shaped
             dpg.add_theme_style(dpg.mvStyleVar_ScrollbarSize, 14, category=dpg.mvThemeCat_Core)

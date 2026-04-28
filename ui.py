@@ -552,7 +552,9 @@ def _build_recording_controls(app_state, settings) -> None:
         callback=lambda s, v: _on_manual_duration_change(v, settings, app_state),
     )
     with dpg.tooltip(parent="record_duration_input"):
-        dpg.add_text("Custom duration in seconds (0 = record indefinitely).\nOr use the preset buttons above.")
+        dpg.add_text(
+            "Custom duration in seconds (0 = record indefinitely).\nOr use the preset buttons above."
+        )
     _update_duration_preset_buttons(int(settings.record_duration))
     dpg.add_spacer(height=4)
     dpg.add_button(
@@ -614,7 +616,6 @@ def _build_cursor_controls(app_state, settings) -> None:
         )
     dpg.add_spacer(height=8)
     dpg.add_text("Sway trail")
-    trail_map = {"None": 0, "Medium": 30, "Long": 100}
     trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
     current_label = trail_rmap.get(settings.trail_length, "Long")
     _btn_w = (PANEL_BTN_W - 8) // 3
@@ -630,7 +631,9 @@ def _build_cursor_controls(app_state, settings) -> None:
                 user_data=val,
             )
             with dpg.tooltip(parent=tag):
-                dpg.add_text(f"Trail length: {lbl}\nLength of the historical position trail shown behind the cursor.")
+                dpg.add_text(
+                    f"Trail length: {lbl}\nLength of the historical position trail shown behind the cursor."
+                )
     _update_trail_buttons(current_label)
     dpg.add_spacer(height=8)
     dpg.add_text("Smoothing filter")

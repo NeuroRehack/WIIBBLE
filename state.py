@@ -25,6 +25,7 @@ class Settings:
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
     cursor_size: int = 20  # S1: circle cursor radius in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
+    recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""
@@ -150,6 +151,10 @@ class AppState:
     zoomed_min_x: float = 0.0
     zoomed_min_y: float = 0.0
 
+    # Toast overlay — brief canvas banner shown after a recording is saved.
+    toast_message: str = ""
+    toast_until: float = 0.0
+
     def reset(self):
         """Called on RESTART — resets session data but preserves calibration."""
         self.ball_x = 0
@@ -177,3 +182,5 @@ class AppState:
         self.recording_indicator = False
         self.cursor_drag_in_progress = False
         self.cursor_drag_start_size = 20
+        self.toast_message = ""
+        self.toast_until = 0.0

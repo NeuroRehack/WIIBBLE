@@ -4,6 +4,8 @@
 # window chrome around the canvas. UI controls sit in a separate overlay window.
 
 import math
+import os
+import time
 
 import dearpygui.dearpygui as dpg
 
@@ -445,6 +447,33 @@ def _build_session_buttons(session_state: dict) -> None:
         dpg.add_text("Restart the current session from recalibration.")
 
 
+def _open_recording_dir_picker(settings) -> None:
+    """Open the native Windows folder-picker in a background thread."""
+    import threading
+    import tkinter as tk
+    from tkinter import filedialog
+
+    def _pick():
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        initial = settings.recording_dir or os.path.join(os.getcwd(), "recordings")
+        chosen = filedialog.askdirectory(
+            parent=root,
+            title="Choose recording save folder",
+            initialdir=initial,
+            mustexist=False,
+        )
+        root.destroy()
+        if chosen:
+            settings.recording_dir = chosen
+            settings.save()
+            if dpg.does_item_exist("recording_dir_label"):
+                dpg.set_value("recording_dir_label", chosen)
+
+    threading.Thread(target=_pick, daemon=True).start()
+
+
 # Duration preset values (seconds); 0 = indefinite
 _DURATION_PRESETS = [(10, "10s"), (20, "20s"), (30, "30s"), (60, "60s"), (0, ICON_INFINITY)]
 
@@ -520,6 +549,22 @@ def _build_recording_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="start_recording_btn"):
         dpg.add_text("Begin recording after a 3-second countdown.\nClick again to stop.")
+    dpg.add_spacer(height=8)
+    # Save location
+    dpg.add_text("Save location")
+    _default_dir = os.path.join(os.getcwd(), "recordings")
+    _display_dir = settings.recording_dir if settings.recording_dir else _default_dir
+    dpg.add_text(_display_dir, tag="recording_dir_label", wrap=PANEL_BTN_W)
+    dpg.add_spacer(height=4)
+    dpg.add_button(
+        tag="recording_dir_btn",
+        label="Choose Folder...",
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
+        callback=lambda: _open_recording_dir_picker(settings),
+    )
+    with dpg.tooltip(parent="recording_dir_btn"):
+        dpg.add_text("Choose the folder where recordings are saved.")
 
 
 def _build_cursor_controls(app_state, settings) -> None:
@@ -977,3 +1022,26 @@ def draw_main_screen(
         # Draw "REC"
         x_rec = x_dot + dot_radius + spacing
         _crisp_text((x_rec, y), "REC", color=(255, 0, 0, 255), size=font_size, parent=dl)
+
+    # Toast overlay — shown briefly after a recording is saved
+    if time.time() < getattr(app_state, "toast_until", 0.0):
+        msg = getattr(app_state, "toast_message", "")
+        toast_h = 44
+        margin = 20
+        toast_y = 55
+        dpg.draw_rectangle(
+            (margin, toast_y),
+            (sw - margin, toast_y + toast_h),
+            fill=(30, 36, 48, 210),
+            color=(80, 200, 120, 255),
+            thickness=2,
+            rounding=6,
+            parent=dl,
+        )
+        _crisp_text(
+            (sw // 2 - 80, toast_y + 7),
+            msg,
+            color=(80, 200, 120, 255),
+            size=28,
+            parent=dl,
+        )

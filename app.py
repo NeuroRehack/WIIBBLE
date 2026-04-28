@@ -180,8 +180,13 @@ def _update_recording_frame(
             app_state.stopwatch_elapsed = 0.0
             dpg.set_item_label("start_recording_btn", "Start Recording")
             dpg.bind_item_theme("start_recording_btn", 0)
-            _save_recording_csv(app_state.record_buffer, app_state.weight, settings.filter_window)
+            _save_recording_csv(
+                app_state.record_buffer, app_state.weight, settings.filter_window,
+                out_dir=settings.recording_dir,
+            )
             app_state.record_buffer = []
+            app_state.toast_message = "Recording saved"
+            app_state.toast_until = time.time() + 2.5
     return record_start_time
 
 
@@ -189,10 +194,13 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
     """Save the remaining recording buffer if recording has stopped."""
     if not app_state.is_recording and app_state.record_buffer:
         fw = settings.filter_window if settings is not None else 1
-        _save_recording_csv(app_state.record_buffer, app_state.weight, fw)
+        rd = settings.recording_dir if settings is not None else ""
+        _save_recording_csv(app_state.record_buffer, app_state.weight, fw, out_dir=rd)
         app_state.record_buffer = []
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
+        app_state.toast_message = "Recording saved"
+        app_state.toast_until = time.time() + 2.5
 
 
 def _update_countdown_and_recording(

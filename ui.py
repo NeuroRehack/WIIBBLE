@@ -9,6 +9,8 @@ import dearpygui.dearpygui as dpg
 
 import theme as _theme_module
 from constants import (
+    CURSOR_SIZE_MAX,
+    CURSOR_SIZE_MIN,
     FILTER_MAX,
     FILTER_MIN,
     PANEL_BTN_H,
@@ -34,6 +36,7 @@ from theme import (
     CANVAS_LINE,
     CANVAS_LINE_W,
     CURSOR_COLOR,
+    ICON_INFINITY,
     STATS_TEXT_COLOR,
     TRAIL_COLOR_BASE,
     bind_text_font,
@@ -321,6 +324,12 @@ def _on_cursor_toggle(settings):
     update_cursor_toggle_label(settings)
 
 
+def _on_cursor_size_change(value: int, settings) -> None:
+    """Persist a new cursor size selection and update settings."""
+    settings.cursor_size = value
+    settings.save()
+
+
 def _on_record_duration_change(value: int, settings, app_state) -> None:
     """Persist a new recording duration selection in settings and runtime state."""
     settings.record_duration = value
@@ -338,6 +347,7 @@ def _on_start_recording(app_state, settings) -> None:
         return  # Prevent double start
     app_state.is_countdown = True
     app_state.countdown_value = 4
+    # Use a sentinel value for indefinite recording; app.py checks settings.record_indefinite
     app_state.record_duration = settings.record_duration
     app_state.record_buffer = []
     app_state.recording_indicator = False
@@ -348,26 +358,52 @@ def _on_start_recording(app_state, settings) -> None:
 
 def _build_session_buttons(session_state: dict) -> None:
     """Add session-level panel button: Restart."""
-    dpg.add_button(
+    _restart_btn = dpg.add_button(
+        tag="restart_session_btn",
         label="Restart Session",
         callback=lambda: session_state.update({"action": "restart"}),
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
+    with dpg.tooltip(parent="restart_session_btn"):
+        dpg.add_text("Restart the current session from recalibration.")
+
+
+def _on_infinite_click(settings, app_state) -> None:
+    """Set duration to 0 (indefinite) when the infinity button is clicked."""
+    settings.record_duration = 0
+    app_state.record_duration = 0
+    settings.save()
+    if dpg.does_item_exist("record_duration_input"):
+        dpg.set_value("record_duration_input", 0)
 
 
 def _build_recording_controls(app_state, settings) -> None:
     """Add recording duration and start/stop button to the panel."""
+    _inf_label = ICON_INFINITY if _theme_module.FA_ICON_FONT is not None else "inf"
     with dpg.group(horizontal=True):
         dpg.add_text("Duration (s):")
         dpg.add_input_int(
             tag="record_duration_input",
             default_value=int(settings.record_duration),
-            min_value=1,
+            min_value=0,
             max_value=120,
-            width=PANEL_SLIDER_W - 104,
+            width=PANEL_SLIDER_W - 140,
             callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
         )
+        with dpg.tooltip(parent="record_duration_input"):
+            dpg.add_text("Recording duration in seconds.\n0 = record indefinitely until stopped.")
+        dpg.add_button(
+            tag="record_infinite_btn",
+            label=_inf_label,
+            width=0,
+            height=0,
+            callback=lambda: _on_infinite_click(settings, app_state),
+        )
+        if _theme_module.FA_ICON_FONT_SMALL is not None:
+            dpg.bind_item_font("record_infinite_btn", _theme_module.FA_ICON_FONT_SMALL)
+        with dpg.tooltip(parent="record_infinite_btn"):
+            dpg.add_text("Set duration to 0 to record indefinitely.")
     dpg.add_spacer(height=4)
     dpg.add_button(
         tag="start_recording_btn",
@@ -377,6 +413,8 @@ def _build_recording_controls(app_state, settings) -> None:
         callback=lambda: _on_start_recording(app_state, settings),
         enabled=not app_state.is_recording and not app_state.is_countdown,
     )
+    with dpg.tooltip(parent="start_recording_btn"):
+        dpg.add_text("Begin recording after a 3-second countdown.\nClick again to stop.")
 
 
 def _build_cursor_controls(app_state, settings) -> None:
@@ -388,7 +426,22 @@ def _build_cursor_controls(app_state, settings) -> None:
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
+    with dpg.tooltip(parent="cursor_toggle_btn"):
+        dpg.add_text("Switch between avatar and circle cursor.\nYou can also click the cursor on screen.")
     app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
+    dpg.add_spacer(height=8)
+    dpg.add_text("Cursor size")
+    dpg.add_slider_int(
+        tag="cursor_size_slider",
+        default_value=settings.cursor_size,
+        min_value=CURSOR_SIZE_MIN,
+        max_value=CURSOR_SIZE_MAX,
+        width=PANEL_SLIDER_W,
+        format="%d px",
+        callback=lambda s, v: _on_cursor_size_change(v, settings),
+    )
+    with dpg.tooltip(parent="cursor_size_slider"):
+        dpg.add_text("Adjust the circle cursor radius.\nYou can also drag the cursor on screen to resize.")
     dpg.add_spacer(height=8)
     dpg.add_text("Sway trail")
     trail_items = ["None", "Medium", "Long"]
@@ -402,6 +455,8 @@ def _build_cursor_controls(app_state, settings) -> None:
         width=PANEL_COMBO_W,
         callback=lambda s, v: _on_trail_change(trail_map[v], settings),
     )
+    with dpg.tooltip(parent="trail_combo"):
+        dpg.add_text("Length of the historical position trail\nshown behind the cursor.")
     dpg.add_spacer(height=8)
     dpg.add_text("Smoothing filter")
     dpg.add_slider_int(
@@ -413,6 +468,8 @@ def _build_cursor_controls(app_state, settings) -> None:
         format="%d frames",
         callback=lambda s, v: _on_filter_change(v, settings, app_state),
     )
+    with dpg.tooltip(parent="filter_slider"):
+        dpg.add_text("Frames averaged to reduce sensor noise.\n1 = no smoothing.")
 
 
 def _build_visualisation_controls(app_state, settings, session_state: dict) -> None:
@@ -427,6 +484,8 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
         format="%.2fx",
         callback=lambda s, v: _on_zoom_change(v, settings, app_state),
     )
+    with dpg.tooltip(parent="zoom_slider"):
+        dpg.add_text("Zoom the movement canvas.\nCtrl+Scroll also zooms.")
     dpg.add_spacer(height=4)
     dpg.add_button(
         label="Fit View to Bounding Box",
@@ -435,13 +494,18 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
+    with dpg.tooltip(parent="zoom_to_bbox_btn"):
+        dpg.add_text("Zoom and pan to fit all recorded\nmovement within the view.")
     dpg.add_spacer(height=8)
-    dpg.add_button(
+    _clear_btn = dpg.add_button(
+        tag="clear_screen_btn",
         label="Clear Screen",
         callback=lambda: session_state.update({"action": "clear"}),
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
+    with dpg.tooltip(parent="clear_screen_btn"):
+        dpg.add_text("Remove all targets and the sway trail\nfrom the canvas.")
 
 
 def build_panel_controls(app_state, settings, session_state: dict) -> None:
@@ -716,7 +780,7 @@ def draw_main_screen(
         p2 = (ball_x + scaled_w // 2, ball_y)
         dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
     else:
-        dpg.draw_circle((ball_x, ball_y), 20, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl)
+        dpg.draw_circle((ball_x, ball_y), settings.cursor_size, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl)
 
     # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
     # They need to be offset by canvas centre (cx, cy) to get viewport coords.

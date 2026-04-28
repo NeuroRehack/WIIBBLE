@@ -5,9 +5,10 @@ from state import AppState
 
 
 class DummySettings:
-    def __init__(self, cursor_mode="avatar", zoom_factor=1.0):
+    def __init__(self, cursor_mode="avatar", zoom_factor=1.0, cursor_size=20):
         self.cursor_mode = cursor_mode
         self.zoom_factor = zoom_factor
+        self.cursor_size = cursor_size
         self.toggled = False
 
     def toggle_cursor_mode(self):
@@ -29,20 +30,27 @@ class DummyRegistry:
 
 def test_handle_canvas_click_toggles_cursor_when_ball_hit(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=100, ball_y=50)
-    settings = DummySettings(cursor_mode="avatar")
+    settings = DummySettings(cursor_mode="avatar", cursor_size=20)
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
 
+    # Click starts the drag; a tiny release (no drag) should toggle the mode
     input_module._handle_canvas_click(100, 50, app_state, settings, session_state)
+    assert app_state.cursor_drag_in_progress is True
+
+    # Release without dragging — size unchanged, so toggle fires
+    input_module._handle_cursor_release(app_state, settings)
 
     assert settings.cursor_mode == "circle"
     assert settings.toggled is True
+    assert app_state.cursor_drag_in_progress is False
     assert app_state.target_in_progress is None
 
 
 def test_handle_canvas_click_starts_target_when_click_off_cursor(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
-    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0)
+    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
 

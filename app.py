@@ -174,7 +174,7 @@ def _update_recording_frame(
             rc["top_left"], rc["top_right"], rc["bottom_left"], rc["bottom_right"]
         )
         app_state.record_buffer.append((elapsed, x_kg, y_kg))
-        if elapsed >= app_state.record_duration:
+        if app_state.record_duration > 0 and elapsed >= app_state.record_duration:
             app_state.is_recording = False
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0

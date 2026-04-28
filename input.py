@@ -9,8 +9,10 @@ import math
 import dearpygui.dearpygui as dpg
 
 from constants import (
+    CURSOR_DRAG_THRESHOLD,
     CURSOR_HIT_FRACTION,
-    CURSOR_HIT_RADIUS_CIRCLE,
+    CURSOR_SIZE_MAX,
+    CURSOR_SIZE_MIN,
     PANEL_TOGGLE_BTN_SIZE,
     PANEL_W,
     ZOOM_MAX,
@@ -52,7 +54,7 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
 
 
 def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
-    """Handle left-click on the canvas, toggling cursor or starting a target."""
+    """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
     if (
         (mx <= PANEL_TOGGLE_BTN_SIZE + 8 and my <= PANEL_TOGGLE_BTN_SIZE + 8)
         or (mx <= PANEL_W and session_state.get("toolbar_visible", False))
@@ -63,13 +65,13 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     cursor_radius = (
         int(CURSOR_HIT_FRACTION * app_state.screen_height)
         if settings.cursor_mode == "avatar"
-        else CURSOR_HIT_RADIUS_CIRCLE
+        else settings.cursor_size
     )
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
-        settings.toggle_cursor_mode()
-        if hasattr(app_state, "update_cursor_toggle_label"):
-            app_state.update_cursor_toggle_label()
+        # Begin cursor drag — mode toggle is decided on release based on drag distance
+        app_state.cursor_drag_in_progress = True
+        app_state.cursor_drag_start_size = settings.cursor_size
         return
 
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
@@ -80,6 +82,39 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
         "center": (logical_x, logical_y),
         "radius": 5.0,
     }
+
+
+def _handle_cursor_drag(app_state, settings) -> None:
+    """Resize the circle cursor while the mouse is dragged from the cursor position."""
+    if not getattr(app_state, "cursor_drag_in_progress", False):
+        return
+    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+    dist = math.sqrt(
+        (mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2
+    )
+    new_size = int(max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist)))
+    settings.cursor_size = new_size
+    if dpg.does_item_exist("cursor_size_slider"):
+        dpg.set_value("cursor_size_slider", new_size)
+
+
+def _handle_cursor_release(app_state, settings) -> None:
+    """Finalise cursor drag: toggle mode if barely moved, otherwise save new size."""
+    if not getattr(app_state, "cursor_drag_in_progress", False):
+        return
+    size_delta = abs(settings.cursor_size - app_state.cursor_drag_start_size)
+    if size_delta < CURSOR_DRAG_THRESHOLD:
+        # Treat as a click — toggle cursor mode
+        settings.toggle_cursor_mode()
+        # Restore size (drag was tiny, probably unintentional)
+        settings.cursor_size = app_state.cursor_drag_start_size
+        if dpg.does_item_exist("cursor_size_slider"):
+            dpg.set_value("cursor_size_slider", settings.cursor_size)
+        if hasattr(app_state, "update_cursor_toggle_label"):
+            app_state.update_cursor_toggle_label()
+    else:
+        settings.save()
+    app_state.cursor_drag_in_progress = False
 
 
 def _handle_target_drag(app_state, settings):
@@ -152,7 +187,11 @@ def register_input_handlers(app_state, settings, session_state):
             callback=lambda s, d: (
                 _handle_pan_drag(app_state, session_state)
                 if dpg.is_key_down(dpg.mvKey_LControl)
-                else _handle_target_drag(app_state, settings)
+                else (
+                    _handle_cursor_drag(app_state, settings)
+                    if getattr(app_state, "cursor_drag_in_progress", False)
+                    else _handle_target_drag(app_state, settings)
+                )
             ),
         )
         dpg.add_mouse_release_handler(
@@ -160,6 +199,10 @@ def register_input_handlers(app_state, settings, session_state):
             callback=lambda: (
                 _handle_pan_release(app_state)
                 if getattr(app_state, "is_panning", False)
-                else _handle_target_release(app_state)
+                else (
+                    _handle_cursor_release(app_state, settings)
+                    if getattr(app_state, "cursor_drag_in_progress", False)
+                    else _handle_target_release(app_state)
+                )
             ),
         )

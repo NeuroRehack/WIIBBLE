@@ -21,8 +21,9 @@ class Settings:
     trail_length: int = 100  # S2: number of historical positions shown
     zoom_factor: float = 1.0  # S3: display scale multiplier
     filter_window: int = 1  # S4: moving average window (1 = no smoothing)
-    record_duration: int = 10  # S5: CSV recording duration in seconds
+    record_duration: int = 10  # S5: CSV recording duration in seconds (0 = indefinite)
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
+    cursor_size: int = 20  # S1: circle cursor radius in pixels
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""
@@ -88,6 +89,9 @@ class AppState:
     clicked_locations: list = field(default_factory=list)
     # Temporary state for a target being created (None or dict with 'center' and 'radius')
     target_in_progress: dict = None
+    # Cursor drag-to-resize state
+    cursor_drag_in_progress: bool = False
+    cursor_drag_start_size: int = 20
     data_struct: dict = field(
         default_factory=lambda: {
             "top_right": {"rawIndex": 3, "tare": 0},
@@ -170,3 +174,5 @@ class AppState:
         self.countdown_value = 0
         self.record_duration = 10.0
         self.recording_indicator = False
+        self.cursor_drag_in_progress = False
+        self.cursor_drag_start_size = 20

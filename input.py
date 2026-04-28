@@ -93,9 +93,7 @@ def _handle_cursor_drag(app_state, settings) -> None:
     if not getattr(app_state, "cursor_drag_in_progress", False):
         return
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
-    dist = math.sqrt(
-        (mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2
-    )
+    dist = math.sqrt((mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2)
     # dist is in screen pixels; divide by zoom so cursor_size stays in logical units
     new_size = int(max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist / settings.zoom_factor)))
     settings.cursor_size = new_size

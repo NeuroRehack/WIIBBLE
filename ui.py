@@ -427,7 +427,9 @@ def _build_cursor_controls(app_state, settings) -> None:
         height=PANEL_BTN_H,
     )
     with dpg.tooltip(parent="cursor_toggle_btn"):
-        dpg.add_text("Switch between avatar and circle cursor.\nYou can also click the cursor on screen.")
+        dpg.add_text(
+            "Switch between avatar and circle cursor.\nYou can also click the cursor on screen."
+        )
     app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
     dpg.add_spacer(height=8)
     dpg.add_text("Cursor size")
@@ -441,7 +443,9 @@ def _build_cursor_controls(app_state, settings) -> None:
         callback=lambda s, v: _on_cursor_size_change(v, settings),
     )
     with dpg.tooltip(parent="cursor_size_slider"):
-        dpg.add_text("Adjust the circle cursor radius.\nYou can also drag the cursor on screen to resize.")
+        dpg.add_text(
+            "Adjust the circle cursor radius.\nYou can also drag the cursor on screen to resize."
+        )
     dpg.add_spacer(height=8)
     dpg.add_text("Sway trail")
     trail_items = ["None", "Medium", "Long"]
@@ -796,7 +800,9 @@ def draw_main_screen(
         dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
     else:
         scaled_cursor = max(1, int(settings.cursor_size * settings.zoom_factor))
-        dpg.draw_circle((ball_x, ball_y), scaled_cursor, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl)
+        dpg.draw_circle(
+            (ball_x, ball_y), scaled_cursor, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl
+        )
 
     # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
     # They need to be offset by canvas centre (cx, cy) to get viewport coords.

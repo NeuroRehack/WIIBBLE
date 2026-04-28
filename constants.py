@@ -89,7 +89,7 @@ CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius (fa
 CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
 
 # Cursor size limits (circle mode only)
-CURSOR_SIZE_MIN = 5    # minimum circle cursor radius in pixels
+CURSOR_SIZE_MIN = 5  # minimum circle cursor radius in pixels
 CURSOR_SIZE_MAX = 100  # maximum circle cursor radius in pixels
 CURSOR_DRAG_THRESHOLD = 5  # px size-delta below which a cursor press is treated as a click
 

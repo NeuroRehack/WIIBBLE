@@ -15,7 +15,6 @@ from constants import (
     FILTER_MIN,
     PANEL_BTN_H,
     PANEL_BTN_W,
-    PANEL_COMBO_W,
     PANEL_SECTION_SPACING,
     PANEL_SLIDER_W,
     PANEL_TOGGLE_BTN_SIZE,
@@ -290,10 +289,85 @@ def build_panel_toggle_btn(toggle_label: str, toggle_callback) -> None:
         dpg.bind_item_font("panel_float_btn", _theme_module.FA_ICON_FONT)
 
 
-def _build_section_header(label: str) -> None:
-    """Render a dimly-coloured section label and a separator line."""
+# ---------------------------------------------------------------------------
+# Per-widget theme caches — created lazily on first use
+# ---------------------------------------------------------------------------
+_trail_active_theme = None
+_recording_active_theme = None
+
+
+def _get_trail_active_theme():
+    """Return (creating on demand) the highlighted theme for the active trail button."""
+    global _trail_active_theme
+    if _trail_active_theme is None or not dpg.does_item_exist(_trail_active_theme):
+        with dpg.theme() as t:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Button, _theme_module.C_BRAND, category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonHovered,
+                    _theme_module.C_BTN_ACTIVE,
+                    category=dpg.mvThemeCat_Core,
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonActive,
+                    _theme_module.C_BTN_ACTIVE,
+                    category=dpg.mvThemeCat_Core,
+                )
+        _trail_active_theme = t
+    return _trail_active_theme
+
+
+def _get_recording_theme():
+    """Return (creating on demand) a red theme for the Stop Recording button."""
+    global _recording_active_theme
+    if _recording_active_theme is None or not dpg.does_item_exist(_recording_active_theme):
+        with dpg.theme() as t:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Button, (180, 50, 50, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonHovered, (200, 70, 70, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonActive, (220, 90, 90, 255), category=dpg.mvThemeCat_Core
+                )
+        _recording_active_theme = t
+    return _recording_active_theme
+
+
+def _update_trail_buttons(active_label: str) -> None:
+    """Highlight the active trail selection button; clear highlight on the others."""
+    for lbl in ("None", "Medium", "Long"):
+        tag = f"trail_btn_{lbl.lower()}"
+        if dpg.does_item_exist(tag):
+            if lbl == active_label:
+                dpg.bind_item_theme(tag, _get_trail_active_theme())
+            else:
+                dpg.bind_item_theme(tag, 0)
+
+
+def _build_section_header(label: str, accent_color=None) -> None:
+    """Render a section label with an optional coloured accent bar and a separator line."""
     dpg.add_spacer(height=PANEL_SECTION_SPACING)
     with dpg.group(horizontal=True):
+        if accent_color is not None:
+            accent_item = dpg.add_button(label="", width=4, height=18)
+            with dpg.theme() as _accent_theme:
+                with dpg.theme_component(dpg.mvButton):
+                    dpg.add_theme_color(
+                        dpg.mvThemeCol_Button, accent_color, category=dpg.mvThemeCat_Core
+                    )
+                    dpg.add_theme_color(
+                        dpg.mvThemeCol_ButtonHovered, accent_color, category=dpg.mvThemeCat_Core
+                    )
+                    dpg.add_theme_color(
+                        dpg.mvThemeCol_ButtonActive, accent_color, category=dpg.mvThemeCat_Core
+                    )
+            dpg.bind_item_theme(accent_item, _accent_theme)
+            dpg.add_spacer(width=4)
         t = dpg.add_text(label)
         # Apply dim text colour to section headings
         with dpg.theme() as _section_theme:
@@ -342,6 +416,7 @@ def _on_start_recording(app_state, settings) -> None:
     if app_state.is_recording or app_state.is_countdown:
         app_state.is_recording = False
         dpg.set_item_label("start_recording_btn", "Start Recording")
+        dpg.bind_item_theme("start_recording_btn", 0)
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
         return  # Prevent double start
@@ -354,6 +429,7 @@ def _on_start_recording(app_state, settings) -> None:
     app_state.stopwatch_elapsed = 0.0
     # change label of start button to "Stop Recording"
     dpg.set_item_label("start_recording_btn", "Stop Recording")
+    dpg.bind_item_theme("start_recording_btn", _get_recording_theme())
 
 
 def _build_session_buttons(session_state: dict) -> None:
@@ -448,19 +524,24 @@ def _build_cursor_controls(app_state, settings) -> None:
         )
     dpg.add_spacer(height=8)
     dpg.add_text("Sway trail")
-    trail_items = ["None", "Medium", "Long"]
     trail_map = {"None": 0, "Medium": 30, "Long": 100}
     trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
     current_label = trail_rmap.get(settings.trail_length, "Long")
-    dpg.add_combo(
-        tag="trail_combo",
-        items=trail_items,
-        default_value=current_label,
-        width=PANEL_COMBO_W,
-        callback=lambda s, v: _on_trail_change(trail_map[v], settings),
-    )
-    with dpg.tooltip(parent="trail_combo"):
-        dpg.add_text("Length of the historical position trail\nshown behind the cursor.")
+    _btn_w = (PANEL_BTN_W - 8) // 3
+    with dpg.group(horizontal=True):
+        for lbl, val in [("None", 0), ("Medium", 30), ("Long", 100)]:
+            tag = f"trail_btn_{lbl.lower()}"
+            dpg.add_button(
+                tag=tag,
+                label=lbl,
+                width=_btn_w,
+                height=PANEL_BTN_H,
+                callback=lambda s, a, u: _on_trail_change(u, settings),
+                user_data=val,
+            )
+            with dpg.tooltip(parent=tag):
+                dpg.add_text(f"Trail length: {lbl}\nLength of the historical position trail shown behind the cursor.")
+    _update_trail_buttons(current_label)
     dpg.add_spacer(height=8)
     dpg.add_text("Smoothing filter")
     dpg.add_slider_int(
@@ -523,16 +604,16 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
 
 def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
-    _build_section_header("SESSION")
+    _build_section_header("SESSION", accent_color=_theme_module.C_ACCENT_SESSION)
     _build_session_buttons(session_state)
 
-    _build_section_header("RECORDING")
+    _build_section_header("RECORDING", accent_color=_theme_module.C_ACCENT_RECORDING)
     _build_recording_controls(app_state, settings)
 
-    _build_section_header("CURSOR & MOVEMENT")
+    _build_section_header("CURSOR & MOVEMENT", accent_color=_theme_module.C_ACCENT_CURSOR)
     _build_cursor_controls(app_state, settings)
 
-    _build_section_header("VISUALISATION")
+    _build_section_header("VISUALISATION", accent_color=_theme_module.C_ACCENT_VISUAL)
     _build_visualisation_controls(app_state, settings, session_state)
 
 
@@ -540,6 +621,8 @@ def _on_trail_change(value: int, settings) -> None:
     """Update the trail length setting used for the historical cursor path."""
     settings.trail_length = value
     settings.save()
+    trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
+    _update_trail_buttons(trail_rmap.get(value, "Long"))
 
 
 def _on_filter_change(value: int, settings, app_state) -> None:

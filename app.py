@@ -179,6 +179,7 @@ def _update_recording_frame(
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
             dpg.set_item_label("start_recording_btn", "Start Recording")
+            dpg.bind_item_theme("start_recording_btn", 0)
             _save_recording_csv(app_state.record_buffer, app_state.weight, settings.filter_window)
             app_state.record_buffer = []
     return record_start_time

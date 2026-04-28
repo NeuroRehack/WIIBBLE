@@ -70,6 +70,12 @@ C_FRAME_HOVER = (60, 75, 95, 255)
 C_BRAND = (107, 143, 168, 255)  # teal accent (matches canvas trail)
 C_BORDER = (55, 68, 85, 255)
 
+# Section accent bar colours (left-edge coloured strip per settings section)
+C_ACCENT_SESSION = (107, 143, 168, 255)     # teal  — brand colour
+C_ACCENT_RECORDING = (210, 75, 75, 255)     # red   — recording / alert
+C_ACCENT_CURSOR = (80, 185, 130, 255)       # green — movement
+C_ACCENT_VISUAL = (155, 110, 210, 255)      # purple — visualisation
+
 # Canvas drawing colours (used in ui.py)
 CANVAS_BG = (250, 250, 250, 255)  # near-white canvas
 CANVAS_LINE = (180, 185, 190, 255)  # soft grey crosshairs
@@ -213,9 +219,9 @@ def apply_global_theme() -> None:
             )
             dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrab, C_BTN, category=dpg.mvThemeCat_Core)
             # Rounding — subtle, not pill-shaped
-            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6, category=dpg.mvThemeCat_Core)
             dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 0, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_GrabRounding, 4, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_style(dpg.mvStyleVar_GrabRounding, 6, category=dpg.mvThemeCat_Core)
             # Padding
             dpg.add_theme_style(dpg.mvStyleVar_WindowPadding, 6, 4, category=dpg.mvThemeCat_Core)
             dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 6, 4, category=dpg.mvThemeCat_Core)

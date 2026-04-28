@@ -445,41 +445,70 @@ def _build_session_buttons(session_state: dict) -> None:
         dpg.add_text("Restart the current session from recalibration.")
 
 
-def _on_infinite_click(settings, app_state) -> None:
-    """Set duration to 0 (indefinite) when the infinity button is clicked."""
-    settings.record_duration = 0
-    app_state.record_duration = 0
-    settings.save()
+# Duration preset values (seconds); 0 = indefinite
+_DURATION_PRESETS = [(10, "10s"), (20, "20s"), (30, "30s"), (60, "60s"), (0, ICON_INFINITY)]
+
+
+def _update_duration_preset_buttons(active_val: int) -> None:
+    """Highlight the active duration preset button; clear the others."""
+    for val, _lbl in _DURATION_PRESETS:
+        tag = f"dur_preset_{val}"
+        if dpg.does_item_exist(tag):
+            if val == active_val:
+                dpg.bind_item_theme(tag, _get_trail_active_theme())
+            else:
+                dpg.bind_item_theme(tag, 0)
+
+
+def _on_duration_preset_change(val: int, settings, app_state) -> None:
+    """Apply a duration preset selection, sync the manual input, and update button highlight."""
+    _on_record_duration_change(val, settings, app_state)
+    _update_duration_preset_buttons(val)
     if dpg.does_item_exist("record_duration_input"):
-        dpg.set_value("record_duration_input", 0)
+        dpg.set_value("record_duration_input", val)
+
+
+def _on_manual_duration_change(val: int, settings, app_state) -> None:
+    """Apply a manually typed duration; clears preset highlight unless it matches a preset."""
+    _on_record_duration_change(val, settings, app_state)
+    preset_vals = {p[0] for p in _DURATION_PRESETS}
+    _update_duration_preset_buttons(val if val in preset_vals else -1)
 
 
 def _build_recording_controls(app_state, settings) -> None:
-    """Add recording duration and start/stop button to the panel."""
-    _inf_label = ICON_INFINITY if _theme_module.FA_ICON_FONT is not None else "inf"
+    """Add recording duration presets, manual input, and start/stop button to the panel."""
+    dpg.add_text("Duration (s)")
+    # 5 preset buttons sharing PANEL_BTN_W; 4 gaps of 4 px between them
+    _btn_w = (PANEL_BTN_W - 16) // 5
     with dpg.group(horizontal=True):
-        dpg.add_text("Duration (s):")
-        dpg.add_input_int(
-            tag="record_duration_input",
-            default_value=int(settings.record_duration),
-            min_value=0,
-            max_value=120,
-            width=PANEL_SLIDER_W - 140,
-            callback=lambda s, v: _on_record_duration_change(v, settings, app_state),
-        )
-        with dpg.tooltip(parent="record_duration_input"):
-            dpg.add_text("Recording duration in seconds.\n0 = record indefinitely until stopped.")
-        dpg.add_button(
-            tag="record_infinite_btn",
-            label=_inf_label,
-            width=0,
-            height=0,
-            callback=lambda: _on_infinite_click(settings, app_state),
-        )
-        if _theme_module.FA_ICON_FONT_SMALL is not None:
-            dpg.bind_item_font("record_infinite_btn", _theme_module.FA_ICON_FONT_SMALL)
-        with dpg.tooltip(parent="record_infinite_btn"):
-            dpg.add_text("Set duration to 0 to record indefinitely.")
+        for val, lbl in _DURATION_PRESETS:
+            tag = f"dur_preset_{val}"
+            b = dpg.add_button(
+                tag=tag,
+                label=lbl,
+                width=_btn_w,
+                height=PANEL_BTN_H,
+                callback=lambda s, a, u: _on_duration_preset_change(u, settings, app_state),
+                user_data=val,
+            )
+            tip = "Record indefinitely" if val == 0 else f"Record for {val} seconds"
+            with dpg.tooltip(parent=tag):
+                dpg.add_text(tip)
+            # Use small FA font for the ∞ glyph button
+            if val == 0 and _theme_module.FA_ICON_FONT_SMALL is not None:
+                dpg.bind_item_font(b, _theme_module.FA_ICON_FONT_SMALL)
+    dpg.add_spacer(height=4)
+    dpg.add_input_int(
+        tag="record_duration_input",
+        default_value=int(settings.record_duration),
+        min_value=0,
+        max_value=3600,
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_manual_duration_change(v, settings, app_state),
+    )
+    with dpg.tooltip(parent="record_duration_input"):
+        dpg.add_text("Custom duration in seconds (0 = record indefinitely).\nOr use the preset buttons above.")
+    _update_duration_preset_buttons(int(settings.record_duration))
     dpg.add_spacer(height=4)
     dpg.add_button(
         tag="start_recording_btn",

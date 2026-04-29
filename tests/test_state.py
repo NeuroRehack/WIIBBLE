@@ -6,6 +6,8 @@ import os
 
 import pytest
 
+from state import AppState, Settings
+
 
 # Automatically set WIIBBLE_SETTINGS_PATH to a temp file for all tests in this module
 @pytest.fixture(autouse=True)
@@ -16,9 +18,6 @@ def set_settings_path_env(tmp_path, monkeypatch):
     monkeypatch.setenv("WIIBBLE_SETTINGS_PATH", settings_file)
 
 
-from state import AppState, Settings
-
-# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

@@ -53,6 +53,8 @@ def test_handle_canvas_click_starts_target_when_click_off_cursor(monkeypatch):
     settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module.dpg, "is_item_shown", lambda _tag: False)
 
     input_module._handle_canvas_click(150, 75, app_state, settings, session_state)
 

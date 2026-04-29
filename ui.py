@@ -471,7 +471,7 @@ def _open_recording_dir_picker(settings) -> None:
 
     # Create a more detailed light theme for the dialog if not already present
     if not dpg.does_item_exist("recording_dir_dialog_theme"):
-        with dpg.theme(tag="recording_dir_dialog_theme") as theme:
+        with dpg.theme(tag="recording_dir_dialog_theme"):
             with dpg.theme_component(dpg.mvAll):
                 dpg.add_theme_color(
                     dpg.mvThemeCol_WindowBg, (245, 245, 245, 255), category=dpg.mvThemeCat_Core

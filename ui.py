@@ -464,30 +464,30 @@ def _build_session_buttons(session_state: dict) -> None:
 
 
 def _open_recording_dir_picker(settings) -> None:
-    """Open the native Windows folder-picker in a background thread."""
-    import threading
+    """Open the native Windows folder-picker using Tkinter (main thread, blocking)."""
     import tkinter as tk
     from tkinter import filedialog
 
-    def _pick():
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        initial = settings.recording_dir or os.path.join(os.getcwd(), "recordings")
-        chosen = filedialog.askdirectory(
-            parent=root,
-            title="Choose recording save folder",
-            initialdir=initial,
-            mustexist=False,
-        )
-        root.destroy()
-        if chosen:
-            settings.recording_dir = chosen
-            settings.save()
-            if dpg.does_item_exist("recording_dir_label"):
-                dpg.set_value("recording_dir_label", chosen)
+    # Use Documents/WIIBBLE/recordings as default initial dir
+    documents = os.path.join(os.path.expanduser("~"), "Documents")
+    default_dir = os.path.join(documents, "WIIBBLE", "recordings")
+    initial = settings.recording_dir or default_dir
 
-    threading.Thread(target=_pick, daemon=True).start()
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    chosen = filedialog.askdirectory(
+        parent=root,
+        title="Choose recording save folder",
+        initialdir=initial,
+        mustexist=False,
+    )
+    root.destroy()
+    if chosen:
+        settings.recording_dir = chosen
+        settings.save()
+        if dpg.does_item_exist("recording_dir_label"):
+            dpg.set_value("recording_dir_label", chosen)
 
 
 # Duration preset values (seconds); 0 = indefinite

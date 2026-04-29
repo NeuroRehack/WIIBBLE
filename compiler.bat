@@ -23,6 +23,7 @@ python -m nuitka --standalone --follow-imports ^
     --include-package=hid ^
     --include-package=numpy ^
     --include-package=pygments ^
+    --include-module=tkinter ^
     --nofollow-import-to=analysis ^
     --nofollow-import-to=code_descriptors_postural_control ^
     --nofollow-import-to=scipy ^

@@ -464,30 +464,130 @@ def _build_session_buttons(session_state: dict) -> None:
 
 
 def _open_recording_dir_picker(settings) -> None:
-    """Open the native Windows folder-picker using Tkinter (main thread, blocking)."""
-    import tkinter as tk
-    from tkinter import filedialog
-
-    # Use Documents/WIIBBLE/recordings as default initial dir
+    """Open the Dear PyGui file dialog in directory mode (light theme override)."""
     documents = os.path.join(os.path.expanduser("~"), "Documents")
     default_dir = os.path.join(documents, "WIIBBLE", "recordings")
     initial = settings.recording_dir or default_dir
 
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-    chosen = filedialog.askdirectory(
-        parent=root,
-        title="Choose recording save folder",
-        initialdir=initial,
-        mustexist=False,
-    )
-    root.destroy()
-    if chosen:
-        settings.recording_dir = chosen
-        settings.save()
-        if dpg.does_item_exist("recording_dir_label"):
-            dpg.set_value("recording_dir_label", chosen)
+    # Create a more detailed light theme for the dialog if not already present
+    if not dpg.does_item_exist("recording_dir_dialog_theme"):
+        with dpg.theme(tag="recording_dir_dialog_theme") as theme:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_WindowBg, (245, 245, 245, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ChildBg, (255, 255, 255, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Text, (20, 20, 20, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Button, (220, 220, 220, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonHovered, (200, 200, 200, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonActive, (180, 180, 180, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_FrameBg, (235, 235, 235, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_FrameBgHovered,
+                    (220, 220, 220, 255),
+                    category=dpg.mvThemeCat_Core,
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_FrameBgActive, (200, 200, 200, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_SliderGrab, (107, 143, 168, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_SliderGrabActive,
+                    (180, 180, 180, 255),
+                    category=dpg.mvThemeCat_Core,
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Header, (220, 220, 220, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_HeaderHovered, (200, 200, 200, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_HeaderActive, (180, 180, 180, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Border, (180, 180, 180, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ScrollbarBg, (235, 235, 235, 240), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ScrollbarGrab, (190, 220, 235, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ScrollbarGrabHovered,
+                    (215, 235, 245, 255),
+                    category=dpg.mvThemeCat_Core,
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ScrollbarGrabActive,
+                    (240, 255, 255, 255),
+                    category=dpg.mvThemeCat_Core,
+                )
+                # Brighter header and menu bar for dialog
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_TitleBg, (250, 250, 250, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_TitleBgActive, (245, 245, 245, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_TitleBgCollapsed,
+                    (250, 250, 250, 255),
+                    category=dpg.mvThemeCat_Core,
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_MenuBarBg, (245, 245, 245, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_style(dpg.mvStyleVar_ScrollbarSize, 16, category=dpg.mvThemeCat_Core)
+                # Use very light colors for file dialog column header row (filename/type/size/date)
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Header, (252, 252, 252, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_HeaderHovered, (240, 240, 240, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_HeaderActive, (230, 230, 230, 255), category=dpg.mvThemeCat_Core
+                )
+
+    if not dpg.does_item_exist("recording_dir_dialog"):
+
+        def _on_dir_picker(sender, app_data):
+            chosen = app_data.get("file_path_name")
+            if chosen:
+                settings.recording_dir = chosen
+                settings.save()
+                if dpg.does_item_exist("recording_dir_label"):
+                    dpg.set_value("recording_dir_label", chosen)
+
+        dpg.add_file_dialog(
+            directory_selector=True,
+            show=False,
+            tag="recording_dir_dialog",
+            width=700,  # wider for more margin
+            height=400,
+            default_path=initial,
+            callback=_on_dir_picker,
+            cancel_callback=lambda s, a: dpg.hide_item("recording_dir_dialog"),
+            modal=True,
+        )
+        dpg.bind_item_theme("recording_dir_dialog", "recording_dir_dialog_theme")
+    dpg.show_item("recording_dir_dialog")
 
 
 # Duration preset values (seconds); 0 = indefinite

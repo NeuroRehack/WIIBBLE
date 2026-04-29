@@ -76,11 +76,11 @@ COORD_SCALE = 0.9
 # ---------------------------------------------------------------------------
 # UI layout constants — settings panel (left-side vertical drawer)
 # ---------------------------------------------------------------------------
-PANEL_W = 260  # settings panel width in pixels
+PANEL_W = 340  # settings panel width in pixels (wider)
 PANEL_BTN_H = 36  # standard panel button height
-PANEL_BTN_W = 228  # full-width panel button
-PANEL_SLIDER_W = 228  # slider width inside panel
-PANEL_COMBO_W = 228  # combo width inside panel
+PANEL_BTN_W = 290  # full-width panel button (wider)
+PANEL_SLIDER_W = 290  # slider width inside panel (wider)
+PANEL_COMBO_W = 290  # combo width inside panel (wider)
 PANEL_TOGGLE_BTN_SIZE = 40  # floating toggle button size
 PANEL_SECTION_SPACING = 6  # vertical padding between sections
 

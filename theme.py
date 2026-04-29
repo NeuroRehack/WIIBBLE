@@ -58,17 +58,19 @@ def bind_text_font(item_tag) -> None:
 # ---------------------------------------------------------------------------
 # Colour palette
 # ---------------------------------------------------------------------------
-C_BG_TOOLBAR = (30, 36, 48, 255)  # dark blue-grey toolbar
-C_BG_WINDOW = (30, 36, 48, 255)  # same — toggle blends in
-C_BTN = (55, 70, 90, 255)  # button resting
-C_BTN_HOVER = (75, 95, 120, 255)  # button hover
-C_BTN_ACTIVE = (107, 143, 168, 255)  # button pressed (brand teal)
-C_TEXT = (220, 228, 235, 255)  # off-white text
-C_TEXT_DIM = (140, 155, 170, 255)  # labels / secondary text
-C_FRAME = (45, 55, 70, 255)  # slider / combo background
-C_FRAME_HOVER = (60, 75, 95, 255)
-C_BRAND = (107, 143, 168, 255)  # teal accent (matches canvas trail)
-C_BORDER = (55, 68, 85, 255)
+
+# --- Light theme colors ---
+C_BG_TOOLBAR = (240, 240, 240, 255)  # light grey toolbar
+C_BG_WINDOW = (201, 225, 242, 255)  # white window background
+C_BTN = (220, 220, 220, 255)  # button resting
+C_BTN_HOVER = (200, 200, 200, 255)  # button hover
+C_BTN_ACTIVE = (180, 180, 180, 255)  # button pressed
+C_TEXT = (20, 20, 20, 255)  # dark text
+C_TEXT_DIM = (20, 20, 20, 255)  # dimmed text
+C_FRAME = (235, 235, 235, 255)  # slider / combo background
+C_FRAME_HOVER = (220, 220, 220, 255)
+C_BRAND = (107, 143, 168, 255)  # teal accent (unchanged)
+C_BORDER = (180, 180, 180, 255)
 
 # Section accent bar colours (left-edge coloured strip per settings section)
 C_ACCENT_SESSION = (107, 143, 168, 255)  # teal  — brand colour
@@ -185,6 +187,9 @@ def apply_global_theme() -> None:
             )
             # Text
             dpg.add_theme_color(dpg.mvThemeCol_Text, C_TEXT, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_color(
+                dpg.mvThemeCol_TextDisabled, C_TEXT_DIM, category=dpg.mvThemeCat_Core
+            )
             # Buttons
             dpg.add_theme_color(dpg.mvThemeCol_Button, C_BTN, category=dpg.mvThemeCat_Core)
             dpg.add_theme_color(
@@ -193,6 +198,9 @@ def apply_global_theme() -> None:
             dpg.add_theme_color(
                 dpg.mvThemeCol_ButtonActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
             )
+            # Black border for all buttons
+            dpg.add_theme_color(dpg.mvThemeCol_Border, (0, 0, 0, 255), category=dpg.mvThemeCat_Core)
+            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5, category=dpg.mvThemeCat_Core)
             # Sliders / frames
             dpg.add_theme_color(dpg.mvThemeCol_FrameBg, C_FRAME, category=dpg.mvThemeCat_Core)
             dpg.add_theme_color(

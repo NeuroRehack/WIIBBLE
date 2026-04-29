@@ -570,7 +570,8 @@ def _build_recording_controls(app_state, settings) -> None:
     dpg.add_spacer(height=8)
     # Save location
     dpg.add_text("Save location")
-    _default_dir = os.path.join(os.getcwd(), "recordings")
+    documents = os.path.join(os.path.expanduser("~"), "Documents")
+    _default_dir = os.path.join(documents, "WIIBBLE", "recordings")
     _display_dir = settings.recording_dir if settings.recording_dir else _default_dir
     dpg.add_text(_display_dir, tag="recording_dir_label", wrap=PANEL_BTN_W)
     dpg.add_spacer(height=4)

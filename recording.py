@@ -33,7 +33,9 @@ def _save_recording_csv(
     Returns the absolute path of the written file.
     """
     if not out_dir:
-        out_dir = os.path.join(os.getcwd(), "recordings")
+        # Use Documents/WIIBBLE/recordings as default
+        documents = os.path.join(os.path.expanduser("~"), "Documents")
+        out_dir = os.path.join(documents, "WIIBBLE", "recordings")
     os.makedirs(out_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"recording_{timestamp}.csv"

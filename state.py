@@ -1,14 +1,23 @@
 # state.py
+
 import json
 import logging
 import os
+import platform
 from dataclasses import asdict, dataclass, field
 
 log = logging.getLogger(__name__)
 
 
-# Settings are persisted to this file between sessions.
-SETTINGS_PATH = os.path.join(".wiibble", "settings.json")
+def get_settings_path():
+    override = os.environ.get("WIIBBLE_SETTINGS_PATH")
+    if override:
+        return override
+    if platform.system() == "Windows":
+        return os.path.join(
+            os.environ.get("APPDATA", os.path.expanduser("~")), "WIIBBLE", "settings.json"
+        )
+    return os.path.join(os.path.expanduser("~/.wiibble"), "settings.json")
 
 
 @dataclass
@@ -35,11 +44,12 @@ class Settings:
 
     def save(self) -> None:
         """Persist current settings to disk."""
+        path = get_settings_path()
         try:
-            os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
-            with open(SETTINGS_PATH, "w") as f:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
                 json.dump(asdict(self), f, indent=2)
-            log.info("Settings saved to %s", SETTINGS_PATH)
+            log.info("Settings saved to %s", path)
         except Exception:
             log.exception("Failed to save settings")
 
@@ -49,21 +59,22 @@ class Settings:
         Load settings from disk, falling back to defaults for any
         missing or invalid fields. Safe to call even on first run.
         """
+        path = get_settings_path()
         defaults = cls()
-        if not os.path.exists(SETTINGS_PATH):
+        if not os.path.exists(path):
             log.info("No saved settings found, using defaults.")
             return defaults
         try:
-            with open(SETTINGS_PATH) as f:
+            with open(path) as f:
                 data = json.load(f)
 
             # Only apply keys that are valid Settings fields.
             # Unknown keys (e.g. from an older version) are silently ignored.
             valid_fields = {f.name for f in defaults.__dataclass_fields__.values()}
-            filtered = {k: v for k, v in data.items() if k in valid_fields}
-
-            loaded = cls(**filtered)
-            log.info("Settings loaded from %s", SETTINGS_PATH)
+            merged = defaults.__dict__.copy()
+            merged.update({k: v for k, v in data.items() if k in valid_fields})
+            loaded = cls(**merged)
+            log.info("Settings loaded from %s", path)
             return loaded
         except Exception as e:
             log.warning("Failed to load settings (%s), using defaults.", e)

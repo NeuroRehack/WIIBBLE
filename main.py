@@ -95,6 +95,8 @@ if __name__ == "__main__":
             height=screen_h,
             x_pos=0,
             y_pos=0,
+            small_icon="images/logo.ico",
+            large_icon="images/logo.ico",
         )
         dpg.show_viewport()
         dpg.maximize_viewport()

@@ -34,103 +34,40 @@ This project integrates the Wii Balance Board with custom software to measure we
 - Simple real-time data visualization of weight distribution
 - Sensitivity calibration
 - Tare functionality for more accurate measurements
-- Easy setup for connecting to the Wii Balance Board via Bluetooth *(after pairing: see [Board Pairing](#board-pairing))*
+- Easy setup for connecting to the Wii Balance Board via Bluetooth *(after pairing: see [Board Pairing in the User Manual](Docs/USER_MANUAL.md#board-pairing))*
 - **Recording feature:** Record weight and balance data for a set duration or stop manually, with export to CSV for further analysis
 
 
 ## 📝 Prerequisites <a name="prerequisites"></a>
+For prerequisites, supported platforms, and required tool versions, see [DEV.md](Docs/DEV.md#prerequisites).
 
 ## 🧑‍💻 Development Without Hardware
 
-WIIBBLE can be developed and tested **without a physical Wii Balance Board** using the built-in mock mode. This is ideal for development in a devcontainer, CI, or when hardware is unavailable.
-
-### Mock Mode
-
-- Run the app with the `--mock` flag to simulate a connected board and realistic weight data.
-- Choose a scenario with `--mock-scenario` (default: `sway`). Supported scenarios:
-  - `still` — standing perfectly still
-  - `sway` — natural postural sway (default)
-  - `lean_left` — weight shifted left
-  - `lean_right` — weight shifted right
-  - `hands` — very light weight (simulating hand use)
-  - `step_on_off` — step on/off pressure changes
-
-
-- Wii Balance Board
-- Windows 10/11
-- Bluetooth-enabled computer
-- 
-### ⚙️ Requirements for running from source and/or compiling
-- Python 3.8+
-- .NET 8.0
-- .NET Framework 4.8
+WIIBBLE can be developed and tested **without a physical Wii Balance Board** using the built-in mock mode. See scenarios and full details/manual in [USER_MANUAL.md](Docs/USER_MANUAL.md#command-line-options).
 
 
 ## 🚀 Getting Started <a name="getting-started"></a>
 1. **Download the latest release** from [here](https://github.com/NeuroRehack/WIIBBLE/releases)
      - or clone the repository and follow the instructions at [Developer Setup & Workflow Guide](Docs/DEV.md).
-2. **Pair the Wii Balance Board with your computer** (see [Board Pairing](#board-pairing)).
-3. **Head to the [Usage](#usage) section for instructions on running the application.**
+2. **Pair the Wii Balance Board with your computer** (see [Board Pairing in the User Manual](Docs/USER_MANUAL.md#board-pairing)).
+3. **Head to the [Usage section in the User Manual](Docs/USER_MANUAL.md#data-recording) for instructions on running and recording with the application.**
 
 
 
 ## 🔧 Board pairing <a name="board-pairing"></a>
-Pairing the board to the computer can be a little tricky. The board can be permanently paired to the computer using a pin that is generated from your computer's Bluetooth MAC address. However, this cannot be done if the Bluetooth MAC address has "00" in it. If you have this issue, there may be ways to change your Bluetooth MAC address, but on some hardware, this is not possible or very difficult.
-
-To find out if your Bluetooth MAC address has "00" in it, open a command prompt and type `getmac /v /fo list`. Look for the Physical Address of your Bluetooth adapter. If it has "00" in it, your board will not be able to be permanently paired.
-
-### 😀 Case 1: Bluetooth mac address does not contain "00" <a name="case1"></a>
-To permanently pair the board to your computer, you will need to follow these steps:
-  - Download WiiBalanceWalker v0.5 from [here](https://github.com/lshachar/WiiBalanceWalker/releases). 
-  - Open the program and click on `Add\Remove Bluetooth Wii device`.
-  - Copy the Permanent PIN Code
-  - Open Windows settings and go to `Bluetooth & devices` -> `Add device`
-  - On the board, remove the battery cover and press the red button. The blue light should start blinking.
-  - On the computer, select `Nintendo RVL-WBC-01` and click on `Pair`.
-  - Paste the Permanent PIN Code when prompted and click on `Next`.
-
-The board should now be permanently paired with the computer.
-
-### 😭 Case 2: Bluetooth mac address contains "00" <a name="case2"></a>
-You can still pair the board to your computer, but you will have to do it from "`Control Panel\Hardware and Sound\Devices and Printers`" (Windows settings do not allow you to skip the pin). That is annoying on its own, but the board will also need to be removed and paired again every time you switch the Bluetooth adapter or the computer off and on.
+For full step-by-step instructions and troubleshooting for pairing the Wii Balance Board over Bluetooth, see the [Board Pairing section in the User Manual](Docs/USER_MANUAL.md#board-pairing).
 
 ## 🔨 Installation from Source <a name="installation-from-source"></a>
-1. **Clone the repository and install dependencies:**
+For full developer setup, dependency installation, and build/test/packaging workflow, see the [Developer Setup & Workflow Guide](Docs/DEV.md).
+
+Quickstart:
+1. Clone the repository and install dependencies:
    ```powershell
    git clone https://github.com/NeuroRehack/WIIBBLE.git
    cd WIIBBLE
    uv sync
    ```
-
-   To install development tools used for building the executable and running checks:
-   ```powershell
-   uv sync --extra dev
-   ```
-
-2. **Build the C# library:**
-
-   Navigate to the `WiiBalanceBoardLibrary` directory and build the C# library using the following commands:
-
-   ```powershell
-   cd WiiBalanceBoardLibrary
-   dotnet build
-   cd ..
-   ```
-
-### 💻 Compiling to an executable <a name="compiling">
-After installing dev dependencies via `uv sync --extra dev`, run:
-
-```powershell
-.\compiler.bat
-```
-
-This creates an executable under `outputBuild\WIIBBLE\WIIBBLE.exe`.
-
-Mock mode works with the compiled exe too:
-
-```powershell
-outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
-```
+2. For building, packaging, and in-depth instructions, follow [DEV.md](Docs/DEV.md).
 
 ## 📄 Usage <a name="usage"></a>
 
@@ -169,22 +106,11 @@ outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
   - Once calibrated, the live environment will display real-time weight distribution.
 
 ## 🚑 Troubleshooting <a name="troubleshooting"></a>
-- **Library Issues:** If the application fails to run due to library issues, try installing the required packages one at a time.
-
-- **Connection Issues:** If the application fails to connect to the Wii Balance Board, ensure that:
-  - Bluetooth is enabled on your computer.
-  - The board is correctly paired and the LED is blinking blue.
-  - The battery level is sufficient, try replacing the batteries.
-  
-- **DLL Loading Issues:** Ensure that the `WiiBalanceBoardLibrary.dll` file is built and located in the correct path as specified in `board_connection.py`.
-
-See [Docs/TODO.md](Docs/TODO.md) for the full roadmap.
+For troubleshooting common issues (connection, libraries, board not found, DLLs), see the [Troubleshooting section in the User Manual](Docs/USER_MANUAL.md#troubleshooting).
 
 ## 🙏 Acknowledgements: <a name="acknowledgements"></a>
 - This project was developed as part of the **EPIC-Tech study** in collaboration with **The University of Queensland**, **Griffith University**, and **Metro South Princess Alexandra Hospital**.
 - Thanks to the physiotherapists at the [Princess Alexandra Hospital - Geriatric And Rehabilitation Unit](https://www.healthdirect.gov.au/australian-health-services/healthcare-service/woolloongabba-4102-qld/princess-alexandra-hospital-geriatric-and-rehabilitation-unit/geriatric-medicine/efcf3c01-fc12-46fc-2912-691b09238616) for their feedback and guidance.
-
 - [WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) for the Wii Balance Board connection library.
-
-- [code_descriptors_postural_control](https://github.com/Jythen/code_descriptors_postural_control) by **Jythen** (MIT license) — vendored at `code_descriptors_postural_control/` and used for posturographic feature extraction. The original source and license are preserved; see [`code_descriptors_postural_control/VENDOR.md`](code_descriptors_postural_control/VENDOR.md) for the pinned upstream commit and details of local patches applied.
+- [code_descriptors_postural_control](https://github.com/Jythen/code_descriptors_postural_control) by **Jythen** — vendored at `code_descriptors_postural_control/` and used for posturographic feature extraction ([details](code_descriptors_postural_control/VENDOR.md)).
 

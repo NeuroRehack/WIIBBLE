@@ -166,6 +166,32 @@ WIIBBLE is a real-time visualization and recording tool for the Wii Balance Boar
 
 ---
 
+## Board Pairing
+
+Pairing the Wii Balance Board to your computer over Bluetooth can vary depending on your device's Bluetooth adapter.
+
+### Check your Bluetooth MAC address
+- Open a command prompt and type:
+  ```
+  getmac /v /fo list
+  ```
+  Look for the Physical Address of your Bluetooth adapter.
+
+### Case 1: Bluetooth MAC address **does NOT** contain "00"
+- Permanent pairing is possible:
+  1. Download WiiBalanceWalker v0.5 from [here](https://github.com/lshachar/WiiBalanceWalker/releases).
+  2. Open it and click `Add/Remove Bluetooth Wii device`.
+  3. Copy the Permanent PIN Code.
+  4. In Windows: Settings ➔ Bluetooth & devices ➔ Add device.
+  5. On the board: Remove battery cover, press red button (blue light should blink).
+  6. On the computer: Select `Nintendo RVL-WBC-01` ➔ Pair ➔ paste Permanent PIN.
+
+### Case 2: Bluetooth MAC address **does** contain "00"
+- Permanent pairing may not be supported. Pair **each session** via:
+  - Control Panel ➔ Hardware and Sound ➔ Devices and Printers
+  - You may need to remove and re-pair if you switch Bluetooth adapter or restart.
+
+---
 ## Connection & Calibration
 
 - **Startup:**  
@@ -188,14 +214,23 @@ WIIBBLE is a real-time visualization and recording tool for the Wii Balance Boar
 
 ## Troubleshooting
 
-- If the board does not connect, ensure Bluetooth is enabled, the board is paired, and powered on.
-- Use the mock mode (`--mock`) for testing without hardware.
+If you have trouble:
+- **Board does not connect**: Ensure Bluetooth is enabled, the board is paired, and powered on.
+- **Mock mode**: Use `--mock` for testing without hardware.
+- **Library Issues**: If the application fails to run due to library problems, try installing the required packages one at a time (`uv sync`, see DEV.md).
+- **Connection Issues**: If the application fails to connect to the Wii Balance Board, check:
+    - Bluetooth is enabled
+    - Board is correctly paired and LED is blinking blue
+    - Battery level is sufficient (replace batteries if in doubt)
+- **DLL Loading Issues**: Ensure `WiiBalanceBoardLibrary.dll` is built and is in the location required by `board_connection.py`.
 
 **Cursor feels jittery**
 - Increase the **Filter** slider in the settings panel.
 
 **Cannot see the gear icon**
 - Make sure the font file `assets/fonts/fa-solid-900.ttf` is present.
+
+For more, see [Developer Setup & Workflow Guide](DEV.md)
 
 ---
 

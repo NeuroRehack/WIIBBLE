@@ -208,4 +208,38 @@ WIIBBLE is a real-time visualization and recording tool for the Wii Balance Boar
 
 > Note: these same flags also work with the compiled executable in `outputBuild\WIIBBLE\WIIBBLE.exe`.
 
+---
+
+## Posturographic Analysis: Analyzing Session Recordings
+
+After you record balance data, you can extract clinically-relevant posturographic features from your CSVs. This post-processing is done outside the app using a command-line tool. 
+
+**What you need:**
+- Make sure analysis dependencies are installed (**see installation steps in [DEV.md](DEV.md), "Development Workflow"**).
+
+### Typical Analysis Tasks
+
+**Analyze all new (unanalyzed) recordings in `recordings/`:**
+```powershell
+python process_recordings.py --new
+```
+
+**Analyze a specific recording:**
+```powershell
+python process_recordings.py recordings/recording_YYYYMMDD_HHMMSS.csv
+```
+
+**Re-analyze (overwrite) all recordings:**
+```powershell
+python process_recordings.py --all
+```
+
+**Where does the output go?**
+- Results are written as `.json` files beside the original CSVs (e.g.,
+  `recordings/features_YYYYMMDD_HHMMSS.json`).
+- Each file contains ~80-90 posturographic features plus provenance (patient weight, smoothing, etc).
+
+**Tip:** If you get an error about missing packages, make sure to install analysis dependencies as described in [DEV.md](DEV.md).
+
+**For a technical explanation of each analysis step and data flow, see [DATA_PIPELINE.md](DATA_PIPELINE.md)**.
 

@@ -120,7 +120,9 @@ After parsing, the pipeline splits into two independent paths. **Raw (unfiltered
   5. Writes `recordings/features_YYYYMMDD_HHMMSS.json` alongside the CSV
 - **Output:** JSON file with all features plus provenance keys (`source_file`, `total_weight_kg`, `ui_filter_window`, `n_samples_raw`, `duration_s`)
 
-See [DEV.md](DEV.md) — "Posturographic Analysis" for installation and usage.
+For step-by-step usage instructions (what to run, where output appears), see the “Posturographic Analysis” section in [USER_MANUAL.md](USER_MANUAL.md).
+
+For a technical breakdown of what each pipeline stage does, keep reading below.
 
 ---
 

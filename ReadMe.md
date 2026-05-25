@@ -68,7 +68,7 @@ WIIBBLE can be developed and tested **without a physical Wii Balance Board** usi
 
 ## 🚀 Getting Started <a name="getting-started"></a>
 1. **Download the latest release** from [here](https://github.com/NeuroRehack/WIIBBLE/releases)
-     - or clone the repository and follow the instructions at [Installation from Source](#installation-from-source).
+     - or clone the repository and follow the instructions at [Developer Setup & Workflow Guide](Docs/DEV.md).
 2. **Pair the Wii Balance Board with your computer** (see [Board Pairing](#board-pairing)).
 3. **Head to the [Usage](#usage) section for instructions on running the application.**
 

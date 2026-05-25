@@ -31,13 +31,12 @@ import sys
 import time
 start_all = time.time()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("wiibble-analysis")
+log = logging.getLogger(__name__)
 log.info("Starting WIIBBLE posturographic batch analysis script…")
 log.info("Importing analysis library and all dependencies…")
 from analysis import analyse_recording
 log.info("Imports complete.")
 
-log = logging.getLogger(__name__)
 
 # Recordings shorter than this will be skipped — too few samples for reliable
 # posturographic estimates (SWARII resamples to 25 Hz; 30 s is the standard).

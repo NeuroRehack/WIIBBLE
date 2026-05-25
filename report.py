@@ -38,7 +38,7 @@ import time
 start_all = time.time()
 import logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("wiibble-report")
+log = logging.getLogger(__name__)
 log.info("Starting WIIBBLE report generation script…")
 log.info("Importing scientific libraries (this may take several seconds the first time)…")
 import numpy as np

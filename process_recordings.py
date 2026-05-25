@@ -27,14 +27,16 @@ import json
 import logging
 import os
 import sys
-
 import time
+
+from analysis import analyse_recording
+
 start_all = time.time()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
 log.info("Starting WIIBBLE posturographic batch analysis script…")
 log.info("Importing analysis library and all dependencies…")
-from analysis import analyse_recording
+
 log.info("Imports complete.")
 
 
@@ -73,7 +75,9 @@ def _read_duration(csv_path: str) -> float:
     return last_ts - first_ts
 
 
-def _process_file(csv_path: str, total_weight_kg: float | None, overwrite: bool, with_report: bool = True) -> bool:
+def _process_file(
+    csv_path: str, total_weight_kg: float | None, overwrite: bool, with_report: bool = True
+) -> bool:
     """Analyse *csv_path*, write JSON sidecar, then HTML report if requested.
 
     Returns True on success, False if skipped or failed.
@@ -95,23 +99,26 @@ def _process_file(csv_path: str, total_weight_kg: float | None, overwrite: bool,
         return False
 
     log.info(f"  [run]  {os.path.basename(csv_path)} ({duration:.1f} s) — starting analysis")
-    log.info(f"Beginning analysis of file: %s", csv_path)
+    log.info("Beginning analysis of file: %s", csv_path)
     try:
         t0 = time.time()
-        log.info("    Running analyse_recording (this may take a moment for large files or first run)…")
+        log.info(
+            "    Running analyse_recording (this may take a moment for large files or first run)…"
+        )
         features = analyse_recording(csv_path, total_weight_kg=total_weight_kg)
         t1 = time.time()
-        log.info(f"    analyse_recording done in {t1-t0:.2f} s. Writing JSON…")
-        log.info("analyse_recording complete in %.2f s for %s", (t1-t0), csv_path)
+        log.info(f"    analyse_recording done in {t1 - t0:.2f} s. Writing JSON…")
+        log.info("analyse_recording complete in %.2f s for %s", (t1 - t0), csv_path)
         with open(json_path, "w", encoding="utf-8") as fh:
             json.dump(features, fh, indent=2, default=str)
         t2 = time.time()
-        log.info(f"    JSON written: {os.path.basename(json_path)} (total {t2-t0:.2f} s)")
+        log.info(f"    JSON written: {os.path.basename(json_path)} (total {t2 - t0:.2f} s)")
         # --- HTML report generation ---
         if with_report:
             try:
                 log.info("    Generating HTML report…")
                 from report import generate_report
+
                 out_html = generate_report(csv_path, features_path=json_path)
                 log.info(f"    HTML report written: {os.path.basename(out_html)}")
             except Exception as exc:
@@ -181,7 +188,7 @@ def main() -> int:
         "--no-report",
         action="store_true",
         dest="no_report",
-        help="Disable automatic report (HTML) generation after JSON analysis. [default: reports are generated]"
+        help="Disable automatic report (HTML) generation after JSON analysis. [default: reports are generated]",
     )
 
     args = parser.parse_args()
@@ -210,7 +217,8 @@ def main() -> int:
 
     log.info(f"Processing {len(csv_files)} file(s)…")
     succeeded = sum(
-        _process_file(p, total_weight_kg=args.weight, overwrite=overwrite, with_report=with_report) for p in csv_files
+        _process_file(p, total_weight_kg=args.weight, overwrite=overwrite, with_report=with_report)
+        for p in csv_files
     )
     elapsed = time.time() - start_all
     log.info(f"Done — {succeeded}/{len(csv_files)} file(s) analysed in {elapsed:.1f} seconds.")

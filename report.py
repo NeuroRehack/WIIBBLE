@@ -33,38 +33,42 @@ import logging
 import os
 import re
 import sys
-
 import time
-start_all = time.time()
-import logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-log = logging.getLogger(__name__)
-log.info("Starting WIIBBLE report generation script…")
-log.info("Importing scientific libraries (this may take several seconds the first time)…")
+
 import numpy as np
 import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
+
+from analysis import load_recording, to_cop_array
+from code_descriptors_postural_control.stabilogram.stato import Stabilogram
+
+start_all = time.time()
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger(__name__)
+log.info("Starting WIIBBLE report generation script…")
+log.info("Importing scientific libraries (this may take several seconds the first time)…")
+
 log.info("Imports complete.")
 
 log.info("Importing WIIBBLE analysis modules…")
-from analysis import analyse_recording, load_recording, to_cop_array
-from code_descriptors_postural_control.stabilogram.stato import Stabilogram
+
 log.info("WIIBBLE analysis code imported.")
 
 
 # ---------------------------------------------------------------------------
 # Colour palette — consistent across all charts
 # ---------------------------------------------------------------------------
-_COL_ML = "#4C72B0"       # blue  — mediolateral
-_COL_AP = "#DD8452"       # orange — anteroposterior
+_COL_ML = "#4C72B0"  # blue  — mediolateral
+_COL_AP = "#DD8452"  # orange — anteroposterior
 _COL_ELLIPSE = "#C44E52"  # red   — 95 % confidence ellipse
-_COL_BAND1 = "rgba(100,180,100,0.15)"   # 0–1 Hz band
-_COL_BAND2 = "rgba(220,100,100,0.15)"   # 1–3 Hz band
+_COL_BAND1 = "rgba(100,180,100,0.15)"  # 0–1 Hz band
+_COL_BAND2 = "rgba(220,100,100,0.15)"  # 1–3 Hz band
 
 # ---------------------------------------------------------------------------
 # Chart helpers
 # ---------------------------------------------------------------------------
+
 
 def _base_layout(**kwargs) -> dict:
     """Shared layout defaults — clean, white, clinical look."""
@@ -82,7 +86,7 @@ def _fig_html(fig: go.Figure, first: bool = False) -> str:
     """Serialise a Plotly figure to an HTML div string."""
     return fig.to_html(
         full_html=False,
-        include_plotlyjs=first,   # bundle embedded only in the first figure
+        include_plotlyjs=first,  # bundle embedded only in the first figure
         config={"responsive": True, "displayModeBar": True},
     )
 
@@ -91,6 +95,7 @@ def _fig_html(fig: go.Figure, first: bool = False) -> str:
 # 1. CoP Sway Path + 95 % Confidence Ellipse
 # ---------------------------------------------------------------------------
 
+
 def plot_sway_path(stab: Stabilogram, features: dict | None) -> go.Figure:
     ml = stab.medio_lateral.flatten()
     ap = stab.antero_posterior.flatten()
@@ -98,56 +103,82 @@ def plot_sway_path(stab: Stabilogram, features: dict | None) -> go.Figure:
     fig = go.Figure()
 
     # Sway trail
-    fig.add_trace(go.Scatter(
-        x=ml, y=ap,
-        mode="lines",
-        line=dict(color=_COL_ML, width=0.8),
-        opacity=0.6,
-        name="Sway path",
-        hovertemplate="ML: %{x:.2f} cm<br>AP: %{y:.2f} cm<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=ml,
+            y=ap,
+            mode="lines",
+            line=dict(color=_COL_ML, width=0.8),
+            opacity=0.6,
+            name="Sway path",
+            hovertemplate="ML: %{x:.2f} cm<br>AP: %{y:.2f} cm<extra></extra>",
+        )
+    )
 
     # Start / end markers
-    fig.add_trace(go.Scatter(
-        x=[ml[0]], y=[ap[0]],
-        mode="markers",
-        marker=dict(size=10, color="green", symbol="circle"),
-        name="Start",
-        hovertemplate="Start<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        x=[ml[-1]], y=[ap[-1]],
-        mode="markers",
-        marker=dict(size=10, color="red", symbol="x"),
-        name="End",
-        hovertemplate="End<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=[ml[0]],
+            y=[ap[0]],
+            mode="markers",
+            marker=dict(size=10, color="green", symbol="circle"),
+            name="Start",
+            hovertemplate="Start<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[ml[-1]],
+            y=[ap[-1]],
+            mode="markers",
+            marker=dict(size=10, color="red", symbol="x"),
+            name="End",
+            hovertemplate="End<extra></extra>",
+        )
+    )
 
     # 95 % confidence ellipse from covariance
     cov = np.cov(ml, ap)
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
     chi2_val = 5.991  # chi-squared, 2 DOF, 95 %
     t = np.linspace(0, 2 * np.pi, 300)
-    ellipse = np.sqrt(chi2_val) * eigenvectors @ np.diag(np.sqrt(np.abs(eigenvalues))) @ np.array([np.cos(t), np.sin(t)])
-    fig.add_trace(go.Scatter(
-        x=ellipse[0] + np.mean(ml),
-        y=ellipse[1] + np.mean(ap),
-        mode="lines",
-        line=dict(color=_COL_ELLIPSE, width=2, dash="dash"),
-        name="95% ellipse",
-        hoverinfo="skip",
-    ))
+    ellipse = (
+        np.sqrt(chi2_val)
+        * eigenvectors
+        @ np.diag(np.sqrt(np.abs(eigenvalues)))
+        @ np.array([np.cos(t), np.sin(t)])
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=ellipse[0] + np.mean(ml),
+            y=ellipse[1] + np.mean(ap),
+            mode="lines",
+            line=dict(color=_COL_ELLIPSE, width=2, dash="dash"),
+            name="95% ellipse",
+            hoverinfo="skip",
+        )
+    )
 
     ellipse_area = features.get("confidence_ellipse_area_ML_AND_AP") if features else None
     title_suffix = f"  |  Ellipse area: {ellipse_area:.2f} cm²" if ellipse_area is not None else ""
 
-    fig.update_layout(**_base_layout(
-        title=f"CoP Sway Path + 95% Confidence Ellipse{title_suffix}",
-        xaxis=dict(title="Mediolateral (cm)", zeroline=True, zerolinecolor="#ccc", gridcolor="#eee"),
-        yaxis=dict(title="Anteroposterior (cm)", zeroline=True, zerolinecolor="#ccc", gridcolor="#eee",
-                   scaleanchor="x", scaleratio=1),
-        legend=dict(orientation="h", y=-0.15),
-    ))
+    fig.update_layout(
+        **_base_layout(
+            title=f"CoP Sway Path + 95% Confidence Ellipse{title_suffix}",
+            xaxis=dict(
+                title="Mediolateral (cm)", zeroline=True, zerolinecolor="#ccc", gridcolor="#eee"
+            ),
+            yaxis=dict(
+                title="Anteroposterior (cm)",
+                zeroline=True,
+                zerolinecolor="#ccc",
+                gridcolor="#eee",
+                scaleanchor="x",
+                scaleratio=1,
+            ),
+            legend=dict(orientation="h", y=-0.15),
+        )
+    )
     return fig
 
 
@@ -155,28 +186,45 @@ def plot_sway_path(stab: Stabilogram, features: dict | None) -> go.Figure:
 # 2. ML / AP Time Series
 # ---------------------------------------------------------------------------
 
+
 def plot_time_series(stab: Stabilogram) -> go.Figure:
     ml = stab.medio_lateral.flatten()
     ap = stab.antero_posterior.flatten()
     t = np.arange(len(ml)) / stab.frequency
 
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        subplot_titles=("Mediolateral (ML)", "Anteroposterior (AP)"),
-                        vertical_spacing=0.1)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=("Mediolateral (ML)", "Anteroposterior (AP)"),
+        vertical_spacing=0.1,
+    )
 
-    fig.add_trace(go.Scatter(
-        x=t, y=ml, mode="lines",
-        line=dict(color=_COL_ML, width=1),
-        name="ML",
-        hovertemplate="t=%{x:.2f}s  ML=%{y:.2f}cm<extra></extra>",
-    ), row=1, col=1)
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=ml,
+            mode="lines",
+            line=dict(color=_COL_ML, width=1),
+            name="ML",
+            hovertemplate="t=%{x:.2f}s  ML=%{y:.2f}cm<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
 
-    fig.add_trace(go.Scatter(
-        x=t, y=ap, mode="lines",
-        line=dict(color=_COL_AP, width=1),
-        name="AP",
-        hovertemplate="t=%{x:.2f}s  AP=%{y:.2f}cm<extra></extra>",
-    ), row=2, col=1)
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=ap,
+            mode="lines",
+            line=dict(color=_COL_AP, width=1),
+            name="AP",
+            hovertemplate="t=%{x:.2f}s  AP=%{y:.2f}cm<extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
 
     # Zero reference lines
     for row in (1, 2):
@@ -192,29 +240,46 @@ def plot_time_series(stab: Stabilogram) -> go.Figure:
 # 3. CoP Velocity Time Series
 # ---------------------------------------------------------------------------
 
+
 def plot_velocity(stab: Stabilogram) -> go.Figure:
-    speed = stab.speed          # shape (N, 2) — ML, AP
+    speed = stab.speed  # shape (N, 2) — ML, AP
     ml_v = speed[:, 0]
     ap_v = speed[:, 1]
     t = np.arange(len(ml_v)) / stab.frequency
 
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        subplot_titles=("ML Velocity", "AP Velocity"),
-                        vertical_spacing=0.1)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        subplot_titles=("ML Velocity", "AP Velocity"),
+        vertical_spacing=0.1,
+    )
 
-    fig.add_trace(go.Scatter(
-        x=t, y=ml_v, mode="lines",
-        line=dict(color=_COL_ML, width=1),
-        name="ML velocity",
-        hovertemplate="t=%{x:.2f}s  v=%{y:.3f}cm/s<extra></extra>",
-    ), row=1, col=1)
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=ml_v,
+            mode="lines",
+            line=dict(color=_COL_ML, width=1),
+            name="ML velocity",
+            hovertemplate="t=%{x:.2f}s  v=%{y:.3f}cm/s<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
 
-    fig.add_trace(go.Scatter(
-        x=t, y=ap_v, mode="lines",
-        line=dict(color=_COL_AP, width=1),
-        name="AP velocity",
-        hovertemplate="t=%{x:.2f}s  v=%{y:.3f}cm/s<extra></extra>",
-    ), row=2, col=1)
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=ap_v,
+            mode="lines",
+            line=dict(color=_COL_AP, width=1),
+            name="AP velocity",
+            hovertemplate="t=%{x:.2f}s  v=%{y:.3f}cm/s<extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
 
     for row in (1, 2):
         fig.add_hline(y=0, line=dict(color="#aaa", width=1, dash="dot"), row=row, col=1)
@@ -229,8 +294,9 @@ def plot_velocity(stab: Stabilogram) -> go.Figure:
 # 4. Power Spectral Density
 # ---------------------------------------------------------------------------
 
+
 def plot_psd(stab: Stabilogram, features: dict | None) -> go.Figure:
-    ps = stab.power_spectrum    # shape (N, 3) — [freq, PSD_ML, PSD_AP]
+    ps = stab.power_spectrum  # shape (N, 3) — [freq, PSD_ML, PSD_AP]
     freqs = ps[:, 0]
     psd_ml = ps[:, 1]
     psd_ap = ps[:, 2]
@@ -248,27 +314,40 @@ def plot_psd(stab: Stabilogram, features: dict | None) -> go.Figure:
         (0.0, 1.0, _COL_BAND1, "0–1 Hz (normal sway)"),
         (1.0, 3.0, _COL_BAND2, "1–3 Hz (elevated concern)"),
     ]:
-        fig.add_vrect(x0=x0, x1=x1, fillcolor=color, line_width=0,
-                      annotation_text=label,
-                      annotation_position="top left",
-                      annotation=dict(font_size=11, font_color="#666"))
+        fig.add_vrect(
+            x0=x0,
+            x1=x1,
+            fillcolor=color,
+            line_width=0,
+            annotation_text=label,
+            annotation_position="top left",
+            annotation=dict(font_size=11, font_color="#666"),
+        )
 
-    fig.add_trace(go.Scatter(
-        x=freqs, y=psd_ml,
-        mode="lines", fill="tozeroy",
-        fillcolor="rgba(76,114,176,0.2)",
-        line=dict(color=_COL_ML, width=1.5),
-        name="ML PSD",
-        hovertemplate="f=%{x:.3f}Hz  PSD=%{y:.4f}<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        x=freqs, y=psd_ap,
-        mode="lines", fill="tozeroy",
-        fillcolor="rgba(221,132,82,0.2)",
-        line=dict(color=_COL_AP, width=1.5),
-        name="AP PSD",
-        hovertemplate="f=%{x:.3f}Hz  PSD=%{y:.4f}<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=psd_ml,
+            mode="lines",
+            fill="tozeroy",
+            fillcolor="rgba(76,114,176,0.2)",
+            line=dict(color=_COL_ML, width=1.5),
+            name="ML PSD",
+            hovertemplate="f=%{x:.3f}Hz  PSD=%{y:.4f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=psd_ap,
+            mode="lines",
+            fill="tozeroy",
+            fillcolor="rgba(221,132,82,0.2)",
+            line=dict(color=_COL_AP, width=1.5),
+            name="AP PSD",
+            hovertemplate="f=%{x:.3f}Hz  PSD=%{y:.4f}<extra></extra>",
+        )
+    )
 
     # Annotate 95 % power frequencies if available
     if features:
@@ -278,17 +357,22 @@ def plot_psd(stab: Stabilogram, features: dict | None) -> go.Figure:
         ]:
             val = features.get(key)
             if val is not None:
-                fig.add_vline(x=val, line=dict(color=color, width=1, dash="dash"),
-                              annotation_text=f"{label}={val:.2f}Hz",
-                              annotation_position="top right",
-                              annotation=dict(font_size=10))
+                fig.add_vline(
+                    x=val,
+                    line=dict(color=color, width=1, dash="dash"),
+                    annotation_text=f"{label}={val:.2f}Hz",
+                    annotation_position="top right",
+                    annotation=dict(font_size=10),
+                )
 
-    fig.update_layout(**_base_layout(
-        title="Power Spectral Density (Welch method)",
-        xaxis=dict(title="Frequency (Hz)", gridcolor="#eee"),
-        yaxis=dict(title="PSD (cm² / Hz)", gridcolor="#eee"),
-        legend=dict(orientation="h", y=-0.15),
-    ))
+    fig.update_layout(
+        **_base_layout(
+            title="Power Spectral Density (Welch method)",
+            xaxis=dict(title="Frequency (Hz)", gridcolor="#eee"),
+            yaxis=dict(title="PSD (cm² / Hz)", gridcolor="#eee"),
+            legend=dict(orientation="h", y=-0.15),
+        )
+    )
     return fig
 
 
@@ -296,8 +380,9 @@ def plot_psd(stab: Stabilogram, features: dict | None) -> go.Figure:
 # 5. Diffusion Plot (log-log MSD)
 # ---------------------------------------------------------------------------
 
+
 def plot_diffusion(stab: Stabilogram, features: dict | None) -> go.Figure:
-    dp = stab.diffusion_plot    # shape (N, 3) — [time, MSD_ML, MSD_AP]
+    dp = stab.diffusion_plot  # shape (N, 3) — [time, MSD_ML, MSD_AP]
     t = dp[:, 0]
     msd_ml = dp[:, 1]
     msd_ap = dp[:, 2]
@@ -310,20 +395,26 @@ def plot_diffusion(stab: Stabilogram, features: dict | None) -> go.Figure:
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(
-        x=t, y=msd_ml,
-        mode="lines",
-        line=dict(color=_COL_ML, width=2),
-        name="MSD ML",
-        hovertemplate="Δt=%{x:.2f}s  MSD=%{y:.4f}cm²<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        x=t, y=msd_ap,
-        mode="lines",
-        line=dict(color=_COL_AP, width=2),
-        name="MSD AP",
-        hovertemplate="Δt=%{x:.2f}s  MSD=%{y:.4f}cm²<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=msd_ml,
+            mode="lines",
+            line=dict(color=_COL_ML, width=2),
+            name="MSD ML",
+            hovertemplate="Δt=%{x:.2f}s  MSD=%{y:.4f}cm²<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=msd_ap,
+            mode="lines",
+            line=dict(color=_COL_AP, width=2),
+            name="MSD AP",
+            hovertemplate="Δt=%{x:.2f}s  MSD=%{y:.4f}cm²<extra></extra>",
+        )
+    )
 
     # Mark critical times if available
     if features:
@@ -333,17 +424,22 @@ def plot_diffusion(stab: Stabilogram, features: dict | None) -> go.Figure:
         ]:
             val = features.get(key)
             if val is not None:
-                fig.add_vline(x=val, line=dict(color=color, width=1.2, dash="dash"),
-                              annotation_text=f"{label}={val:.2f}s",
-                              annotation_position="top left",
-                              annotation=dict(font_size=10))
+                fig.add_vline(
+                    x=val,
+                    line=dict(color=color, width=1.2, dash="dash"),
+                    annotation_text=f"{label}={val:.2f}s",
+                    annotation_position="top left",
+                    annotation=dict(font_size=10),
+                )
 
-    fig.update_layout(**_base_layout(
-        title="Diffusion Plot — Mean Square Displacement (log-log)",
-        xaxis=dict(title="Time interval Δt (s)", type="log", gridcolor="#eee"),
-        yaxis=dict(title="MSD (cm²)", type="log", gridcolor="#eee"),
-        legend=dict(orientation="h", y=-0.15),
-    ))
+    fig.update_layout(
+        **_base_layout(
+            title="Diffusion Plot — Mean Square Displacement (log-log)",
+            xaxis=dict(title="Time interval Δt (s)", type="log", gridcolor="#eee"),
+            yaxis=dict(title="MSD (cm²)", type="log", gridcolor="#eee"),
+            legend=dict(orientation="h", y=-0.15),
+        )
+    )
     return fig
 
 
@@ -351,42 +447,56 @@ def plot_diffusion(stab: Stabilogram, features: dict | None) -> go.Figure:
 # 6. CoP Density Heatmap (2D histogram contour)
 # ---------------------------------------------------------------------------
 
+
 def plot_density_heatmap(stab: Stabilogram) -> go.Figure:
     ml = stab.medio_lateral.flatten()
     ap = stab.antero_posterior.flatten()
 
     fig = go.Figure()
 
-    fig.add_trace(go.Histogram2dContour(
-        x=ml, y=ap,
-        colorscale="Blues",
-        reversescale=False,
-        showscale=True,
-        colorbar=dict(title="Density"),
-        contours=dict(showlabels=True, labelfont=dict(size=10, color="white")),
-        hovertemplate="ML: %{x:.2f} cm<br>AP: %{y:.2f} cm<extra></extra>",
-        name="Density",
-    ))
+    fig.add_trace(
+        go.Histogram2dContour(
+            x=ml,
+            y=ap,
+            colorscale="Blues",
+            reversescale=False,
+            showscale=True,
+            colorbar=dict(title="Density"),
+            contours=dict(showlabels=True, labelfont=dict(size=10, color="white")),
+            hovertemplate="ML: %{x:.2f} cm<br>AP: %{y:.2f} cm<extra></extra>",
+            name="Density",
+        )
+    )
 
     # Overlay sway path faintly
-    fig.add_trace(go.Scatter(
-        x=ml, y=ap,
-        mode="lines",
-        line=dict(color="rgba(80,80,80,0.2)", width=0.5),
-        showlegend=False,
-        hoverinfo="skip",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=ml,
+            y=ap,
+            mode="lines",
+            line=dict(color="rgba(80,80,80,0.2)", width=0.5),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
 
     # Centre crosshair
     fig.add_hline(y=0, line=dict(color="#aaa", width=1, dash="dot"))
     fig.add_vline(x=0, line=dict(color="#aaa", width=1, dash="dot"))
 
-    fig.update_layout(**_base_layout(
-        title="CoP Spatial Density (2D Histogram Contour)",
-        xaxis=dict(title="Mediolateral (cm)", zeroline=False, gridcolor="#eee"),
-        yaxis=dict(title="Anteroposterior (cm)", zeroline=False, gridcolor="#eee",
-                   scaleanchor="x", scaleratio=1),
-    ))
+    fig.update_layout(
+        **_base_layout(
+            title="CoP Spatial Density (2D Histogram Contour)",
+            xaxis=dict(title="Mediolateral (cm)", zeroline=False, gridcolor="#eee"),
+            yaxis=dict(
+                title="Anteroposterior (cm)",
+                zeroline=False,
+                gridcolor="#eee",
+                scaleanchor="x",
+                scaleratio=1,
+            ),
+        )
+    )
     return fig
 
 
@@ -400,100 +510,178 @@ def plot_density_heatmap(stab: Stabilogram) -> go.Figure:
 # fmt=None → display as raw string   fmt="d" → integer
 _TABLE_SECTIONS: list = [
     ("header", "Session Info"),
-    ("data", "source_file",      "Source file",              "",        None),
-    ("data", "duration_s",       "Recording duration",       "s",       ".1f"),
-    ("data", "total_weight_kg",  "Body weight",              "kg",      ".1f"),
-    ("data", "n_samples_raw",    "Raw samples",              "",        "d"),
-    ("data", "ui_filter_window", "Display filter window",    "frames",  "d"),
-
+    ("data", "source_file", "Source file", "", None),
+    ("data", "duration_s", "Recording duration", "s", ".1f"),
+    ("data", "total_weight_kg", "Body weight", "kg", ".1f"),
+    ("data", "n_samples_raw", "Raw samples", "", "d"),
+    ("data", "ui_filter_window", "Display filter window", "frames", "d"),
     ("header", "Positional"),
-    ("data", "mean_value_ML",                       "Mean position — ML",             "cm",  ".3f"),
-    ("data", "mean_value_AP",                       "Mean position — AP",             "cm",  ".3f"),
-    ("data", "mean_distance_ML",                    "Mean displacement — ML",         "cm",  ".3f"),
-    ("data", "mean_distance_AP",                    "Mean displacement — AP",         "cm",  ".3f"),
-    ("data", "mean_distance_Radius",                "Mean displacement — Radius",     "cm",  ".3f"),
-    ("data", "maximal_distance_ML",                 "Max displacement — ML",          "cm",  ".3f"),
-    ("data", "maximal_distance_AP",                 "Max displacement — AP",          "cm",  ".3f"),
-    ("data", "maximal_distance_Radius",             "Max displacement — Radius",      "cm",  ".3f"),
-    ("data", "rms_ML",                              "RMS — ML",                       "cm",  ".3f"),
-    ("data", "rms_AP",                              "RMS — AP",                       "cm",  ".3f"),
-    ("data", "rms_Radius",                          "RMS — Radius",                   "cm",  ".3f"),
-    ("data", "range_ML",                            "Range — ML",                     "cm",  ".3f"),
-    ("data", "range_AP",                            "Range — AP",                     "cm",  ".3f"),
-    ("data", "range_ML_AND_AP",                     "Range — ML+AP",                  "cm",  ".3f"),
-    ("data", "range_ratio_ML_AND_AP",               "Range ratio ML/AP",              "",    ".3f"),
-    ("data", "planar_deviation_ML_AND_AP",          "Planar deviation",               "cm",  ".3f"),
-    ("data", "coefficient_sway_direction_ML_AND_AP","Sway direction coefficient",     "",    ".5f"),
-    ("data", "confidence_ellipse_area_ML_AND_AP",   "95% confidence ellipse area",    "cm²", ".3f"),
-    ("data", "principal_sway_direction_ML_AND_AP",  "Principal sway direction",       "°",   ".2f"),
-
+    ("data", "mean_value_ML", "Mean position — ML", "cm", ".3f"),
+    ("data", "mean_value_AP", "Mean position — AP", "cm", ".3f"),
+    ("data", "mean_distance_ML", "Mean displacement — ML", "cm", ".3f"),
+    ("data", "mean_distance_AP", "Mean displacement — AP", "cm", ".3f"),
+    ("data", "mean_distance_Radius", "Mean displacement — Radius", "cm", ".3f"),
+    ("data", "maximal_distance_ML", "Max displacement — ML", "cm", ".3f"),
+    ("data", "maximal_distance_AP", "Max displacement — AP", "cm", ".3f"),
+    ("data", "maximal_distance_Radius", "Max displacement — Radius", "cm", ".3f"),
+    ("data", "rms_ML", "RMS — ML", "cm", ".3f"),
+    ("data", "rms_AP", "RMS — AP", "cm", ".3f"),
+    ("data", "rms_Radius", "RMS — Radius", "cm", ".3f"),
+    ("data", "range_ML", "Range — ML", "cm", ".3f"),
+    ("data", "range_AP", "Range — AP", "cm", ".3f"),
+    ("data", "range_ML_AND_AP", "Range — ML+AP", "cm", ".3f"),
+    ("data", "range_ratio_ML_AND_AP", "Range ratio ML/AP", "", ".3f"),
+    ("data", "planar_deviation_ML_AND_AP", "Planar deviation", "cm", ".3f"),
+    ("data", "coefficient_sway_direction_ML_AND_AP", "Sway direction coefficient", "", ".5f"),
+    ("data", "confidence_ellipse_area_ML_AND_AP", "95% confidence ellipse area", "cm²", ".3f"),
+    ("data", "principal_sway_direction_ML_AND_AP", "Principal sway direction", "°", ".2f"),
     ("header", "Dynamic"),
-    ("data", "mean_velocity_ML",              "Mean velocity — ML",         "cm/s",   ".3f"),
-    ("data", "mean_velocity_AP",              "Mean velocity — AP",         "cm/s",   ".3f"),
-    ("data", "mean_velocity_ML_AND_AP",       "Mean velocity — ML+AP",      "cm/s",   ".3f"),
-    ("data", "sway_area_per_second_ML_AND_AP","Sway area per second",        "cm²/s",  ".4f"),
-    ("data", "phase_plane_parameter_ML",      "Phase plane parameter — ML", "",       ".4f"),
-    ("data", "phase_plane_parameter_AP",      "Phase plane parameter — AP", "",       ".4f"),
-    ("data", "LFS_ML_AND_AP",                 "Long-range fractal scaling", "",       ".4f"),
-    ("data", "fractal_dimension_ML_AND_AP",   "Fractal dimension",          "",       ".4f"),
-
+    ("data", "mean_velocity_ML", "Mean velocity — ML", "cm/s", ".3f"),
+    ("data", "mean_velocity_AP", "Mean velocity — AP", "cm/s", ".3f"),
+    ("data", "mean_velocity_ML_AND_AP", "Mean velocity — ML+AP", "cm/s", ".3f"),
+    ("data", "sway_area_per_second_ML_AND_AP", "Sway area per second", "cm²/s", ".4f"),
+    ("data", "phase_plane_parameter_ML", "Phase plane parameter — ML", "", ".4f"),
+    ("data", "phase_plane_parameter_AP", "Phase plane parameter — AP", "", ".4f"),
+    ("data", "LFS_ML_AND_AP", "Long-range fractal scaling", "", ".4f"),
+    ("data", "fractal_dimension_ML_AND_AP", "Fractal dimension", "", ".4f"),
     ("header", "Sway Density (SPD)"),
-    ("data", "zero_crossing_SPD_ML",           "Zero crossings — ML",           "",     "d"),
-    ("data", "peak_velocity_pos_SPD_ML",       "Peak velocity (positive) — ML", "cm/s", ".4f"),
-    ("data", "peak_velocity_neg_SPD_ML",       "Peak velocity (negative) — ML", "cm/s", ".4f"),
-    ("data", "peak_velocity_all_SPD_ML",       "Peak velocity (mean) — ML",     "cm/s", ".4f"),
-    ("data", "zero_crossing_SPD_AP",           "Zero crossings — AP",           "",     "d"),
-    ("data", "peak_velocity_pos_SPD_AP",       "Peak velocity (positive) — AP", "cm/s", ".4f"),
-    ("data", "peak_velocity_neg_SPD_AP",       "Peak velocity (negative) — AP", "cm/s", ".4f"),
-    ("data", "peak_velocity_all_SPD_AP",       "Peak velocity (mean) — AP",     "cm/s", ".4f"),
-    ("data", "mean_peak_Sway_Density",         "Mean peak sway density",         "s",   ".4f"),
-    ("data", "mean_distance_peak_Sway_Density","Mean distance between SD peaks", "cm",  ".4f"),
-
+    ("data", "zero_crossing_SPD_ML", "Zero crossings — ML", "", "d"),
+    ("data", "peak_velocity_pos_SPD_ML", "Peak velocity (positive) — ML", "cm/s", ".4f"),
+    ("data", "peak_velocity_neg_SPD_ML", "Peak velocity (negative) — ML", "cm/s", ".4f"),
+    ("data", "peak_velocity_all_SPD_ML", "Peak velocity (mean) — ML", "cm/s", ".4f"),
+    ("data", "zero_crossing_SPD_AP", "Zero crossings — AP", "", "d"),
+    ("data", "peak_velocity_pos_SPD_AP", "Peak velocity (positive) — AP", "cm/s", ".4f"),
+    ("data", "peak_velocity_neg_SPD_AP", "Peak velocity (negative) — AP", "cm/s", ".4f"),
+    ("data", "peak_velocity_all_SPD_AP", "Peak velocity (mean) — AP", "cm/s", ".4f"),
+    ("data", "mean_peak_Sway_Density", "Mean peak sway density", "s", ".4f"),
+    ("data", "mean_distance_peak_Sway_Density", "Mean distance between SD peaks", "cm", ".4f"),
     ("header", "Frequency (Power Spectral Density)"),
-    ("data", "mean_frequency_ML",                              "Mean frequency — ML",          "Hz",     ".4f"),
-    ("data", "mean_frequency_AP",                              "Mean frequency — AP",          "Hz",     ".4f"),
-    ("data", "mean_frequency_ML_AND_AP",                       "Mean frequency — ML+AP",       "Hz",     ".4f"),
-    ("data", "total_power_Power_Spectrum_Density_ML",          "Total PSD power — ML",         "cm²/Hz", ".4f"),
-    ("data", "total_power_Power_Spectrum_Density_AP",          "Total PSD power — AP",         "cm²/Hz", ".4f"),
-    ("data", "power_frequency_50_Power_Spectrum_Density_ML",   "50% power frequency — ML",     "Hz",     ".4f"),
-    ("data", "power_frequency_50_Power_Spectrum_Density_AP",   "50% power frequency — AP",     "Hz",     ".4f"),
-    ("data", "power_frequency_95_Power_Spectrum_Density_ML",   "95% power frequency — ML",     "Hz",     ".4f"),
-    ("data", "power_frequency_95_Power_Spectrum_Density_AP",   "95% power frequency — AP",     "Hz",     ".4f"),
-    ("data", "frequency_mode_Power_Spectrum_Density_ML",       "Frequency mode — ML",          "Hz",     ".4f"),
-    ("data", "frequency_mode_Power_Spectrum_Density_AP",       "Frequency mode — AP",          "Hz",     ".4f"),
-    ("data", "centroid_frequency_Power_Spectrum_Density_ML",   "Centroid frequency — ML",      "Hz",     ".4f"),
-    ("data", "centroid_frequency_Power_Spectrum_Density_AP",   "Centroid frequency — AP",      "Hz",     ".4f"),
-    ("data", "frequency_dispersion_Power_Spectrum_Density_ML", "Frequency dispersion — ML",    "",       ".4f"),
-    ("data", "frequency_dispersion_Power_Spectrum_Density_AP", "Frequency dispersion — AP",    "",       ".4f"),
-    ("data", "energy_content_below_05_Power_Spectrum_Density_ML", "Energy < 0.5 Hz — ML",      "cm²",    ".4f"),
-    ("data", "energy_content_below_05_Power_Spectrum_Density_AP", "Energy < 0.5 Hz — AP",      "cm²",    ".4f"),
-    ("data", "energy_content_05_2_Power_Spectrum_Density_ML",     "Energy 0.5–2 Hz — ML",      "cm²",    ".5f"),
-    ("data", "energy_content_05_2_Power_Spectrum_Density_AP",     "Energy 0.5–2 Hz — AP",      "cm²",    ".5f"),
-    ("data", "energy_content_above_2_Power_Spectrum_Density_ML",  "Energy > 2 Hz — ML",        "cm²",    ".6f"),
-    ("data", "energy_content_above_2_Power_Spectrum_Density_AP",  "Energy > 2 Hz — AP",        "cm²",    ".6f"),
-    ("data", "frequency_quotient_Power_Spectrum_Density_ML",      "Frequency quotient — ML",   "",       ".6f"),
-    ("data", "frequency_quotient_Power_Spectrum_Density_AP",      "Frequency quotient — AP",   "",       ".6f"),
-
+    ("data", "mean_frequency_ML", "Mean frequency — ML", "Hz", ".4f"),
+    ("data", "mean_frequency_AP", "Mean frequency — AP", "Hz", ".4f"),
+    ("data", "mean_frequency_ML_AND_AP", "Mean frequency — ML+AP", "Hz", ".4f"),
+    ("data", "total_power_Power_Spectrum_Density_ML", "Total PSD power — ML", "cm²/Hz", ".4f"),
+    ("data", "total_power_Power_Spectrum_Density_AP", "Total PSD power — AP", "cm²/Hz", ".4f"),
+    (
+        "data",
+        "power_frequency_50_Power_Spectrum_Density_ML",
+        "50% power frequency — ML",
+        "Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "power_frequency_50_Power_Spectrum_Density_AP",
+        "50% power frequency — AP",
+        "Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "power_frequency_95_Power_Spectrum_Density_ML",
+        "95% power frequency — ML",
+        "Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "power_frequency_95_Power_Spectrum_Density_AP",
+        "95% power frequency — AP",
+        "Hz",
+        ".4f",
+    ),
+    ("data", "frequency_mode_Power_Spectrum_Density_ML", "Frequency mode — ML", "Hz", ".4f"),
+    ("data", "frequency_mode_Power_Spectrum_Density_AP", "Frequency mode — AP", "Hz", ".4f"),
+    (
+        "data",
+        "centroid_frequency_Power_Spectrum_Density_ML",
+        "Centroid frequency — ML",
+        "Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "centroid_frequency_Power_Spectrum_Density_AP",
+        "Centroid frequency — AP",
+        "Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "frequency_dispersion_Power_Spectrum_Density_ML",
+        "Frequency dispersion — ML",
+        "",
+        ".4f",
+    ),
+    (
+        "data",
+        "frequency_dispersion_Power_Spectrum_Density_AP",
+        "Frequency dispersion — AP",
+        "",
+        ".4f",
+    ),
+    (
+        "data",
+        "energy_content_below_05_Power_Spectrum_Density_ML",
+        "Energy < 0.5 Hz — ML",
+        "cm²",
+        ".4f",
+    ),
+    (
+        "data",
+        "energy_content_below_05_Power_Spectrum_Density_AP",
+        "Energy < 0.5 Hz — AP",
+        "cm²",
+        ".4f",
+    ),
+    ("data", "energy_content_05_2_Power_Spectrum_Density_ML", "Energy 0.5–2 Hz — ML", "cm²", ".5f"),
+    ("data", "energy_content_05_2_Power_Spectrum_Density_AP", "Energy 0.5–2 Hz — AP", "cm²", ".5f"),
+    (
+        "data",
+        "energy_content_above_2_Power_Spectrum_Density_ML",
+        "Energy > 2 Hz — ML",
+        "cm²",
+        ".6f",
+    ),
+    (
+        "data",
+        "energy_content_above_2_Power_Spectrum_Density_AP",
+        "Energy > 2 Hz — AP",
+        "cm²",
+        ".6f",
+    ),
+    ("data", "frequency_quotient_Power_Spectrum_Density_ML", "Frequency quotient — ML", "", ".6f"),
+    ("data", "frequency_quotient_Power_Spectrum_Density_AP", "Frequency quotient — AP", "", ".6f"),
     ("header", "Diffusion / SDA — Mediolateral"),
-    ("data", "short_time_diffusion_Diffusion_ML",  "Short-time diffusion coeff — ML", "cm²/s", ".4f"),
-    ("data", "long_time_diffusion_Diffusion_ML",   "Long-time diffusion coeff — ML",  "cm²/s", ".4f"),
-    ("data", "critical_time_Diffusion_ML",         "Critical time (t*) — ML",         "s",     ".3f"),
-    ("data", "critical_displacement_Diffusion_ML", "Critical displacement — ML",      "cm²",   ".4f"),
-    ("data", "short_time_scaling_Diffusion_ML",    "Short-time Hurst exponent — ML",  "",      ".4f"),
-    ("data", "long_time_scaling_Diffusion_ML",     "Long-time Hurst exponent — ML",   "",      ".4f"),
-
+    (
+        "data",
+        "short_time_diffusion_Diffusion_ML",
+        "Short-time diffusion coeff — ML",
+        "cm²/s",
+        ".4f",
+    ),
+    ("data", "long_time_diffusion_Diffusion_ML", "Long-time diffusion coeff — ML", "cm²/s", ".4f"),
+    ("data", "critical_time_Diffusion_ML", "Critical time (t*) — ML", "s", ".3f"),
+    ("data", "critical_displacement_Diffusion_ML", "Critical displacement — ML", "cm²", ".4f"),
+    ("data", "short_time_scaling_Diffusion_ML", "Short-time Hurst exponent — ML", "", ".4f"),
+    ("data", "long_time_scaling_Diffusion_ML", "Long-time Hurst exponent — ML", "", ".4f"),
     ("header", "Diffusion / SDA — Anteroposterior"),
-    ("data", "short_time_diffusion_Diffusion_AP",  "Short-time diffusion coeff — AP", "cm²/s", ".4f"),
-    ("data", "long_time_diffusion_Diffusion_AP",   "Long-time diffusion coeff — AP",  "cm²/s", ".4f"),
-    ("data", "critical_time_Diffusion_AP",         "Critical time (t*) — AP",         "s",     ".3f"),
-    ("data", "critical_displacement_Diffusion_AP", "Critical displacement — AP",      "cm²",   ".4f"),
-    ("data", "short_time_scaling_Diffusion_AP",    "Short-time Hurst exponent — AP",  "",      ".4f"),
-    ("data", "long_time_scaling_Diffusion_AP",     "Long-time Hurst exponent — AP",   "",      ".4f"),
+    (
+        "data",
+        "short_time_diffusion_Diffusion_AP",
+        "Short-time diffusion coeff — AP",
+        "cm²/s",
+        ".4f",
+    ),
+    ("data", "long_time_diffusion_Diffusion_AP", "Long-time diffusion coeff — AP", "cm²/s", ".4f"),
+    ("data", "critical_time_Diffusion_AP", "Critical time (t*) — AP", "s", ".3f"),
+    ("data", "critical_displacement_Diffusion_AP", "Critical displacement — AP", "cm²", ".4f"),
+    ("data", "short_time_scaling_Diffusion_AP", "Short-time Hurst exponent — AP", "", ".4f"),
+    ("data", "long_time_scaling_Diffusion_AP", "Long-time Hurst exponent — AP", "", ".4f"),
 ]
 
 _SECTION_FILL = "#dce6f5"
 _SECTION_FONT = "#2a4a80"
-_ROW_FILLS    = ["#f7f9fc", "white"]
+_ROW_FILLS = ["#f7f9fc", "white"]
 
 
 def build_feature_table(features: dict) -> go.Figure:
@@ -509,9 +697,7 @@ def build_feature_table(features: dict) -> go.Figure:
         if entry[0] == "header":
             labels_col.append(f"<b>{entry[1]}</b>")
             values_col.append("")
-            for col_fill, col_font in [
-                (fill_labels, font_labels), (fill_values, font_values)
-            ]:
+            for col_fill, col_font in [(fill_labels, font_labels), (fill_values, font_values)]:
                 col_fill.append(_SECTION_FILL)
                 col_font.append(_SECTION_FONT)
         else:
@@ -535,28 +721,34 @@ def build_feature_table(features: dict) -> go.Figure:
             font_values.append("#333")
             data_row_idx += 1
 
-    fig = go.Figure(data=[go.Table(
-        header=dict(
-            values=["<b>Feature</b>", "<b>Value</b>"],
-            fill_color="#4C72B0",
-            font=dict(color="white", size=13),
-            align="left",
-            height=32,
-        ),
-        cells=dict(
-            values=[labels_col, values_col],
-            fill_color=[fill_labels, fill_values],
-            align="left",
-            font=dict(size=12, color=[font_labels, font_values]),
-            height=26,
-        ),
-    )])
+    fig = go.Figure(
+        data=[
+            go.Table(
+                header=dict(
+                    values=["<b>Feature</b>", "<b>Value</b>"],
+                    fill_color="#4C72B0",
+                    font=dict(color="white", size=13),
+                    align="left",
+                    height=32,
+                ),
+                cells=dict(
+                    values=[labels_col, values_col],
+                    fill_color=[fill_labels, fill_values],
+                    align="left",
+                    font=dict(size=12, color=[font_labels, font_values]),
+                    height=26,
+                ),
+            )
+        ]
+    )
     n_rows = len(labels_col)
-    fig.update_layout(**_base_layout(
-        title="Full Feature Summary",
-        height=max(400, 32 + n_rows * 26 + 50),
-        margin=dict(l=20, r=20, t=50, b=20),
-    ))
+    fig.update_layout(
+        **_base_layout(
+            title="Full Feature Summary",
+            height=max(400, 32 + n_rows * 26 + 50),
+            margin=dict(l=20, r=20, t=50, b=20),
+        )
+    )
     return fig
 
 
@@ -767,6 +959,7 @@ _HTML_TEMPLATE = """\
 # Report builder
 # ---------------------------------------------------------------------------
 
+
 def _find_features_json(csv_path: str) -> str | None:
     """Locate the features JSON that matches the CSV timestamp, if it exists."""
     basename = os.path.basename(csv_path)
@@ -775,13 +968,13 @@ def _find_features_json(csv_path: str) -> str | None:
     if not m:
         return None
     timestamp = m.group(1)
-    candidate = os.path.join(
-        os.path.dirname(csv_path), f"features_{timestamp}.json"
-    )
+    candidate = os.path.join(os.path.dirname(csv_path), f"features_{timestamp}.json")
     return candidate if os.path.isfile(candidate) else None
 
 
-def generate_report(csv_path: str, features_path: str | None = None, out_path: str | None = None) -> str:
+def generate_report(
+    csv_path: str, features_path: str | None = None, out_path: str | None = None
+) -> str:
     """Build the HTML report and write it to disk.
 
     Parameters
@@ -809,8 +1002,7 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
             log.info("Auto-detected features JSON: %s", features_path)
         else:
             log.warning(
-                "No matching features JSON found for '%s'. "
-                "Feature table will be omitted.",
+                "No matching features JSON found for '%s'. Feature table will be omitted.",
                 os.path.basename(csv_path),
             )
 
@@ -825,36 +1017,38 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
     if weight_kg <= 0:
         raise ValueError("Cannot determine total_weight_kg — pass it explicitly or re-record.")
 
-    log.info(f"Generating Stabilogram and computing CoP series…")
+    log.info("Generating Stabilogram and computing CoP series…")
     cop = to_cop_array(data, weight_kg)
     stab = Stabilogram()
     stab.from_array(cop)
-    log.info(f"Signal processing complete.")
+    log.info("Signal processing complete.")
 
     # ── Session metadata for header ──────────────────────────────────────────
     m = re.search(r"(\d{8}_\d{6})", os.path.basename(csv_path))
     if m:
         raw_ts = m.group(1)
-        session_date = datetime.datetime.strptime(raw_ts, "%Y%m%d_%H%M%S").strftime("%d %b %Y %H:%M")
+        session_date = datetime.datetime.strptime(raw_ts, "%Y%m%d_%H%M%S").strftime(
+            "%d %b %Y %H:%M"
+        )
     else:
         session_date = "Unknown"
 
     duration_s = features.get("duration_s") if features else float(data[-1, 0] - data[0, 0])
 
-    log.info(f"Creating all report figures (Plotly)…")
+    log.info("Creating all report figures (Plotly)…")
     t_fig_start = time.time()
     figures = [
-        ("fig_sway_path",   plot_sway_path(stab, features)),
+        ("fig_sway_path", plot_sway_path(stab, features)),
         ("fig_time_series", plot_time_series(stab)),
-        ("fig_velocity",    plot_velocity(stab)),
-        ("fig_psd",         plot_psd(stab, features)),
-        ("fig_diffusion",   plot_diffusion(stab, features)),
-        ("fig_density",     plot_density_heatmap(stab)),
+        ("fig_velocity", plot_velocity(stab)),
+        ("fig_psd", plot_psd(stab, features)),
+        ("fig_diffusion", plot_diffusion(stab, features)),
+        ("fig_density", plot_density_heatmap(stab)),
     ]
     if features:
         figures.append(("fig_table", build_feature_table(features)))
     t_fig_end = time.time()
-    log.info(f"Figures created in {t_fig_end-t_fig_start:.2f}s.")
+    log.info(f"Figures created in {t_fig_end - t_fig_start:.2f}s.")
 
     # ── Serialise to HTML divs (JS bundle only in first figure) ──────────────
     div_map: dict[str, str] = {}
@@ -876,7 +1070,7 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
     )
 
     # ── Write output ─────────────────────────────────────────────────────────
-    log.info(f"Writing HTML report to disk…")
+    log.info("Writing HTML report to disk…")
     if out_path is None:
         # Extract timestamp from CSV filename (recording_YYYYMMDD_HHMMSS.csv)
         m = re.search(r"(\d{8}_\d{6})", os.path.basename(csv_path))
@@ -900,6 +1094,7 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
 # CLI entry-point
 # ---------------------------------------------------------------------------
 
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Generate a posturographic HTML report from a WIIBBLE recording.",
@@ -913,12 +1108,19 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("csv", help="Path to the WIIBBLE recording CSV file.")
-    p.add_argument("--features", metavar="JSON", default=None,
-                   help="Path to the features JSON file (auto-detected if omitted).")
-    p.add_argument("--out", metavar="HTML", default=None,
-                   help="Output HTML file path (default: recordings/report_<timestamp>.html).")
-    p.add_argument("--verbose", "-v", action="store_true",
-                   help="Enable DEBUG logging.")
+    p.add_argument(
+        "--features",
+        metavar="JSON",
+        default=None,
+        help="Path to the features JSON file (auto-detected if omitted).",
+    )
+    p.add_argument(
+        "--out",
+        metavar="HTML",
+        default=None,
+        help="Output HTML file path (default: recordings/report_<timestamp>.html).",
+    )
+    p.add_argument("--verbose", "-v", action="store_true", help="Enable DEBUG logging.")
     return p
 
 

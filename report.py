@@ -34,15 +34,24 @@ import os
 import re
 import sys
 
+import time
+start_all = time.time()
+import logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("wiibble-report")
+log.info("Starting WIIBBLE report generation script…")
+log.info("Importing scientific libraries (this may take several seconds the first time)…")
 import numpy as np
 import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
+log.info("Imports complete.")
 
+log.info("Importing WIIBBLE analysis modules…")
 from analysis import analyse_recording, load_recording, to_cop_array
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
+log.info("WIIBBLE analysis code imported.")
 
-log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Colour palette — consistent across all charts
@@ -810,15 +819,17 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
         with open(features_path) as f:
             features = json.load(f)
 
-    # ── Build Stabilogram ────────────────────────────────────────────────────
+    log.info(f"Loading recording CSV: {csv_path}")
     data, metadata = load_recording(csv_path)
     weight_kg = float((features or metadata).get("total_weight_kg", 0))
     if weight_kg <= 0:
         raise ValueError("Cannot determine total_weight_kg — pass it explicitly or re-record.")
 
+    log.info(f"Generating Stabilogram and computing CoP series…")
     cop = to_cop_array(data, weight_kg)
     stab = Stabilogram()
     stab.from_array(cop)
+    log.info(f"Signal processing complete.")
 
     # ── Session metadata for header ──────────────────────────────────────────
     m = re.search(r"(\d{8}_\d{6})", os.path.basename(csv_path))
@@ -830,7 +841,8 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
 
     duration_s = features.get("duration_s") if features else float(data[-1, 0] - data[0, 0])
 
-    # ── Build figures ────────────────────────────────────────────────────────
+    log.info(f"Creating all report figures (Plotly)…")
+    t_fig_start = time.time()
     figures = [
         ("fig_sway_path",   plot_sway_path(stab, features)),
         ("fig_time_series", plot_time_series(stab)),
@@ -841,6 +853,8 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
     ]
     if features:
         figures.append(("fig_table", build_feature_table(features)))
+    t_fig_end = time.time()
+    log.info(f"Figures created in {t_fig_end-t_fig_start:.2f}s.")
 
     # ── Serialise to HTML divs (JS bundle only in first figure) ──────────────
     div_map: dict[str, str] = {}
@@ -862,14 +876,23 @@ def generate_report(csv_path: str, features_path: str | None = None, out_path: s
     )
 
     # ── Write output ─────────────────────────────────────────────────────────
+    log.info(f"Writing HTML report to disk…")
     if out_path is None:
-        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        out_path = os.path.join(os.path.dirname(csv_path), f"report_{ts}.html")
+        # Extract timestamp from CSV filename (recording_YYYYMMDD_HHMMSS.csv)
+        m = re.search(r"(\d{8}_\d{6})", os.path.basename(csv_path))
+        if m:
+            ts = m.group(1)
+            out_path = os.path.join(os.path.dirname(csv_path), f"report_{ts}.html")
+        else:
+            # Fallback: use datetime now if the format is not as expected
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_path = os.path.join(os.path.dirname(csv_path), f"report_{ts}.html")
     out_path = os.path.abspath(out_path)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
-
-    log.info("Report written to %s", out_path)
+    elapsed = time.time() - start_all
+    log.info(f"Report written to {out_path} in {elapsed:.2f} seconds.")
+    log.info("Report written to %s (%.2f s total)", out_path, elapsed)
     return out_path
 
 

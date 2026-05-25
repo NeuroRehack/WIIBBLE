@@ -247,6 +247,7 @@ For more, see [Developer Setup & Workflow Guide](DEV.md)
 
 ## Posturographic Analysis: Analyzing Session Recordings
 
+
 After you record balance data, you can extract clinically-relevant posturographic features from your CSVs. This post-processing is done outside the app using a command-line tool. 
 
 **What you need:**
@@ -277,4 +278,14 @@ python process_recordings.py --all
 **Tip:** If you get an error about missing packages, make sure to install analysis dependencies as described in [DEV.md](DEV.md).
 
 **For a technical explanation of each analysis step and data flow, see [DATA_PIPELINE.md](DATA_PIPELINE.md)**.
+
+## Session Reports (HTML)
+
+WIIBBLE can generate a detailed HTML summary report for each session, viewable in any web browser or saved as PDF for clinical records. These reports show all analysis figures and a full numerical feature table.
+
+- Reports appear in your data folder (`recordings/`).
+- Ask your clinic IT, administrator, or advanced user to generate these if you do not see them automatically.
+- For technical instructions on running or customizing the reporter, see [Data Pipeline](DATA_PIPELINE.md#9-report-generation) or [Developer Guide](DEV.md#report-generation-html-plotly).
+
+Each plot includes a neutral caption describing what is displayed.
 

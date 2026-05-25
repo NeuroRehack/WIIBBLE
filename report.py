@@ -661,12 +661,7 @@ _HTML_TEMPLATE = """\
     <h2>1 · CoP Sway Path &amp; 95% Confidence Ellipse</h2>
     {{ fig_sway_path }}
     <div class="interpretation">
-      <strong>How to interpret:</strong> Each point is the Centre of Pressure (CoP) position
-      during the recording. The dashed ellipse encloses 95% of the sway area.
-      A <em>larger</em> or <em>more off-centre</em> ellipse suggests increased postural instability
-      or weight asymmetry. Healthy quiet standing typically produces ellipse areas below 1–2 cm².
-      Mediolateral (ML) sway dominates in most healthy adults; an unusually large AP component
-      may indicate neurological or musculoskeletal involvement.
+      <strong>Caption:</strong> This plot shows the center of pressure (CoP) trajectory during the recording session as a continuous line. The dashed ellipse indicates the region containing 95% of the observed sway positions.
     </div>
   </div>
 
@@ -674,11 +669,7 @@ _HTML_TEMPLATE = """\
     <h2>2 · ML / AP Time Series</h2>
     {{ fig_time_series }}
     <div class="interpretation">
-      <strong>How to interpret:</strong> The two panels show how CoP position changed over time
-      in the mediolateral (blue) and anteroposterior (orange) directions.
-      Slow, low-amplitude oscillations are normal. Look for <em>sustained drifts</em> away from zero,
-      <em>sudden step changes</em> (perturbation responses), or <em>progressive increase</em> in
-      amplitude toward the end of the recording (fatigue or loss of attention).
+      <strong>Caption:</strong> The top and bottom panels display the center of pressure (CoP) position as a function of time, split into mediolateral (ML, blue) and anteroposterior (AP, orange) components.
     </div>
   </div>
 
@@ -691,11 +682,7 @@ _HTML_TEMPLATE = """\
     <h2>3 · CoP Velocity Time Series</h2>
     {{ fig_velocity }}
     <div class="interpretation">
-      <strong>How to interpret:</strong> Velocity reflects the <em>speed</em> of postural corrections.
-      High-frequency bursts of large velocity indicate reactive balance responses; a persistently
-      elevated baseline may suggest inefficient postural strategy (excessive co-contraction) or
-      sensory reweighting difficulties. Mean velocity (shown in the feature table) is one of
-      the most clinically reproducible posturographic measures.
+      <strong>Caption:</strong> These plots show the instantaneous velocity of the center of pressure (CoP) in the mediolateral (ML) and anteroposterior (AP) directions as a function of time.
     </div>
   </div>
 
@@ -703,14 +690,7 @@ _HTML_TEMPLATE = """\
     <h2>4 · Power Spectral Density</h2>
     {{ fig_psd }}
     <div class="interpretation">
-      <strong>How to interpret:</strong> This shows how sway energy is distributed across
-      frequencies. In healthy adults, almost all energy lies in the
-      <span style="color:#4a7;font-weight:600">green band (0–1 Hz)</span>.
-      A shift of energy into the
-      <span style="color:#c44;font-weight:600">red band (1–3 Hz)</span>
-      may indicate impaired postural control (e.g., peripheral neuropathy, vestibular dysfunction,
-      or medication effects). The dashed vertical lines mark the frequency below which 95% of
-      the total power is contained.
+      <strong>Caption:</strong> This plot depicts the power spectral density (PSD) of the center of pressure (CoP) displacement in mediolateral (ML) and anteroposterior (AP) directions. Shaded regions indicate reference frequency bands, and vertical dashed lines mark selected frequency points.
     </div>
   </div>
 
@@ -723,12 +703,7 @@ _HTML_TEMPLATE = """\
     <h2>5 · Diffusion Plot (log-log MSD)</h2>
     {{ fig_diffusion }}
     <div class="interpretation">
-      <strong>How to interpret:</strong> Mean Square Displacement (MSD) is plotted against time
-      interval on logarithmic axes. At short time intervals (left), the slope is steeper
-      (&gt;1) indicating <em>persistent</em> open-loop sway. At longer intervals the slope
-      flattens (&lt;1), reflecting closed-loop corrective control. The dashed vertical lines mark
-      the <em>critical time</em> (t*) at which the control strategy transitions.
-      A very long t* may suggest delayed or absent feedback correction.
+      <strong>Caption:</strong> Mean square displacement (MSD) is shown as a function of time interval (Δt) on log–log axes for both mediolateral (ML) and anteroposterior (AP) directions. Dashed lines indicate estimated critical time points.
     </div>
   </div>
 
@@ -736,11 +711,7 @@ _HTML_TEMPLATE = """\
     <h2>6 · CoP Spatial Density</h2>
     {{ fig_density }}
     <div class="interpretation">
-      <strong>How to interpret:</strong> Contours show where the CoP spent most time during the
-      recording. A tightly clustered, central distribution indicates stable, symmetric weight
-      bearing. Contours displaced toward one side suggest unilateral loading — common after
-      stroke, lower-limb injury, or pain. Multiple separate clusters may indicate switching
-      between postural strategies.
+      <strong>Caption:</strong> Contour lines represent regions where the center of pressure (CoP) spent the most time during the test, overlaid on the overall CoP path. Densest regions correspond to more frequent CoP positions.
     </div>
   </div>
 

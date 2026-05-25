@@ -216,7 +216,9 @@ WIIBBLE/
    | test  | `pytest -v` with ≥80% coverage gate (after lint passes)  |
 - Both run on `windows-latest`.
 
-### (e) Posturographic Analysis Tools
+### (e) devPosturographic Analysis Tools
+
+
 - For offline analysis of recorded CSVs: `analysis.py`, `process_recordings.py`
 - Install extras:
    ```powershell
@@ -224,6 +226,29 @@ WIIBBLE/
    ```
 - For user-facing step-by-step instructions (commands, output), see the “Posturographic Analysis” section in [USER_MANUAL.md](USER_MANUAL.md).
 - See [DATA_PIPELINE.md](DATA_PIPELINE.md) for the feature extraction pipeline details.
+
+## Report Generation (HTML, Plotly)
+
+This is the canonical reference for session report generation in WIIBBLE.
+
+- **Purpose:**  
+  - `report.py` produces a self-contained, interactive HTML report with all posturography plots and features from a single session.
+- **How it works:**
+  - Needs a CSV and matching features JSON (see Data Pipeline).
+  - Jinja2 template and Plotly generate all figures and captions.
+  - Captions are strictly descriptive (not interpretive/clinical).
+- **How to run:**
+  ```powershell
+  uv run python report.py recordings/recording_YYYYMMDD_HHMMSS.csv --features recordings/features_YYYYMMDD_HHMMSS.json --out recordings/report_YYYYMMDD_HHMMSS.html
+  ```
+  - Omit `--out` for default output.
+- **Customizing:**  
+  - Edit `report.py` (charts, table, captions) or `_HTML_TEMPLATE` (layout).
+  - See `VISUALISATION_REFERENCES.md` for design/literature justifications.
+- **Dependencies:**  
+  - Plotly, Jinja2 — included in main/analysis extras, see `pyproject.toml`.
+
+For user and workflow context, cross-reference [Data Pipeline](DATA_PIPELINE.md#9-report-generation) or [User Manual](USER_MANUAL.md#session-reports-html).
 
 ---
 

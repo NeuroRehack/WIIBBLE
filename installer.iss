@@ -8,7 +8,7 @@
 ;   before running this script.
 
 #define AppName      "WIIBBLE"
-#define AppVersion   "0.1.0"
+#define AppVersion   "2.0.0"
 #define AppPublisher "NeuroRehack"
 #define AppURL       "https://github.com/NeuroRehack/WIIBBLE"
 #define AppExeName   "WIIBBLE.exe"

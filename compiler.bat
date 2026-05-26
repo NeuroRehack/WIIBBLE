@@ -9,7 +9,7 @@ if errorlevel 1 (
 )
 cd ..
 
-if not exist outputBuild\ mkdir outputBuild\
+@REM if not exist outputBuild\ mkdir outputBuild\
 call .venv\Scripts\activate.bat
 
 echo [compiler] Building with Nuitka (standalone)...

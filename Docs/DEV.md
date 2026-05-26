@@ -1,37 +1,49 @@
-# WIIBBLE — Developer Setup & Workflow Guide
+# WIIBBLE — Developer Guide
 
-This unified guide covers setup, usage, development workflow, packaging, troubleshooting, and contribution for WIIBBLE. Both new users and developers should start here.
+This guide covers environment setup, development workflow, packaging, and CI for WIIBBLE. For contribution guidelines see [CONTRIBUTING.md](../CONTRIBUTING.md). For interface usage see [USER_MANUAL.md](USER_MANUAL.md).
+
+---
+
+## Table of Contents
+
+1. [Prerequisites](#1-prerequisites)
+2. [Environment Setup](#2-environment-setup)
+3. [Running the App](#3-running-the-app)
+4. [Development Workflow](#4-development-workflow)
+5. [Posturographic Analysis and Reporting](#5-posturographic-analysis-and-reporting)
+6. [Packaging and Building](#6-packaging-and-building)
+7. [Troubleshooting](#7-troubleshooting)
+8. [Key Files and Directory Layout](#8-key-files-and-directory-layout)
+9. [Useful Commands Recap](#9-useful-commands-recap)
 
 ---
 
 ## 1. Prerequisites
 
-| Requirement         | Version           | Notes                                            |
-|--------------------|-------------------|--------------------------------------------------|
-| Windows            | 10 or 11          | Required for Bluetooth HID                       |
-| Python             | 3.11 or 3.12      | **3.14 unsupported**; [python.org](https://www.python.org/downloads/) |
-| .NET 8.0 SDK       | Latest            | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download) |
-| .NET Framework     | 4.8               | Usually present in Win 10/11. Check: `reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v Release` |
-| Git                | Any recent        | [git-scm.com](https://git-scm.com/)              |
-| uv                 | Latest            | Python dep manager; replaces pip                  |
-| Bluetooth adapter  | Built-in or USB   | For Wii Board; see **Pairing** below             |
+| Requirement | Version | Notes |
+|---|---|---|
+| Windows | 10 or 11 | Required for Bluetooth HID and DearPyGui viewport |
+| Python | 3.11 or 3.12 | **3.14 unsupported**; [python.org](https://www.python.org/downloads/) |
+| .NET 8.0 SDK | Latest | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download) |
+| .NET Framework | 4.8 | Usually pre-installed on Win 10/11. Verify: `reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v Release` |
+| Git | Any recent | [git-scm.com](https://git-scm.com/) |
+| uv | Latest | Python dependency manager; replaces pip |
+| Bluetooth adapter | Built-in or USB | For real board only — not needed in mock mode |
 
 ---
 
-## 2. Environment Setup (Windows)
+## 2. Environment Setup
 
-> **Why uv?** uv is a fast drop-in pip replacement that resolves and installs all dependencies in seconds, handles virtual environments automatically, and generates a lockfile (`uv.lock`) for pinned reproducibility.
+> **Why uv?** uv resolves and installs all dependencies in seconds, manages the virtual environment automatically, and produces a lockfile (`uv.lock`) for reproducibility.
 
 ### (a) Install uv
 
-Open a PowerShell terminal and run:
-
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-uv --version   # You should see something like 'uv 0.x.x'
+uv --version
 ```
 
-### (b) Clone the Repository
+### (b) Clone the repository
 
 ```powershell
 git clone https://github.com/NeuroRehack/WIIBBLE.git
@@ -39,253 +51,295 @@ cd WIIBBLE
 git checkout develop
 ```
 
-### (c) Install Python Dependencies
+### (c) Install Python dependencies
 
 ```powershell
-uv sync
+uv sync               # runtime dependencies
+uv sync --extra dev   # adds pytest, ruff, nuitka
 ```
 
-- Creates `.venv/` in the project directory
-- Installs all runtime dependencies from `pyproject.toml`
-- Writes `uv.lock`
-
-To install dev tools (lint, build, test, package):
+This creates `.venv/` in the project directory. You do not need to activate it manually — all `uv run` commands use it automatically. To activate interactively:
 
 ```powershell
-uv sync --extra dev
+.venv\Scripts\activate
 ```
 
-> **Note:** You do not need to activate the virtual environment manually. All `uv run` commands use it. To activate interactively:
->
-> ```powershell
-> .venv\Scripts\activate
-> ```
+### (d) Build the C# board library
 
-### (d) Build the C# Board Library
+Required for real hardware; not needed in mock mode.
 
 ```powershell
 cd WiiBalanceBoardLibrary
 dotnet build
 cd ..
 ```
-- Success looks like:
-  > Build succeeded.\n    0 Warning(s)\n    0 Error(s)
-- DLL is placed in `WiiBalanceBoardLibrary/bin/Debug/net48/WiiBalanceBoardLibrary.dll`. Used automatically by the app.
 
-### (e) Verify Setup With Mock Mode
+Success output ends with: `Build succeeded. 0 Warning(s) 0 Error(s)`
 
-Before connecting hardware, confirm the app runs with simulated data:
+The DLL is placed at `WiiBalanceBoardLibrary/bin/Debug/net48/WiiBalanceBoardLibrary.dll` and loaded automatically by the app.
+
+### (e) Verify setup with mock mode
 
 ```powershell
 uv run python main.py --mock --mock-scenario sway
 ```
 
-- App should launch and show calibration and main screens, cursor moving in a sway pattern.
-- Other scenarios:
-   ```powershell
-   uv run python main.py --mock --mock-scenario still
-   uv run python main.py --mock --mock-scenario lean_left
-   uv run python main.py --mock --mock-scenario lean_right
-   uv run python main.py --mock --mock-scenario hands
-   uv run python main.py --mock --mock-scenario step_on_off
-   ```
+The app should launch, show calibration screens, then the main screen with a moving cursor. If this works, the environment is correctly set up.
 
-### (f) Pair the Wii Balance Board (Bluetooth)
+### (f) Pair the Wii Balance Board (real hardware only)
 
-See the **Board Pairing** section in the `ReadMe.md` for detailed instructions and troubleshooting. In brief:
+See [USER_MANUAL.md — Board Pairing](USER_MANUAL.md#board-pairing) for the full pairing procedure and MAC address cases.
 
-- Find your Bluetooth MAC address with `getmac /v /fo list`.
-- If address **does NOT contain "00"**: Use WiiBalanceWalker v0.5 to permanently pair using generated PIN (see ReadMe).
-- If address **contains "00"**: Pair via `Control Panel > Hardware and Sound > Devices and Printers` *for each session* (cannot be permanently paired).
+### (g) Run with real hardware
 
-### (g) Run With Real Hardware
+Once the board is paired and the LED is blinking blue:
 
-1. Ensure the board is paired and blue LED is blinking.
-2. Run:
-
-   ```powershell
-   uv run python main.py
-   ```
+```powershell
+uv run python main.py
+```
 
 ---
 
-## 3. Application Usage & Controls
+## 3. Running the App
 
-- See [USER_MANUAL.md](USER_MANUAL.md) for interface, canvas, settings.
-- Command-line flags: `--mock`, `--mock-scenario sway|still|lean_left|lean_right|hands|step_on_off`
+| Command | Description |
+|---|---|
+| `uv run python main.py` | Run with real board |
+| `uv run python main.py --mock` | Run with simulated board (default scenario: sway) |
+| `uv run python main.py --mock --mock-scenario lean_left` | Run with specific mock scenario |
+
+Available mock scenarios: `sway`, `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.
+
+For interface usage, controls, and recording instructions see [USER_MANUAL.md](USER_MANUAL.md).
 
 ---
 
-## 4. Packaging, Building, and Installer
+## 4. Development Workflow
 
-### (a) Build Standalone Executable (optional)
+### Logging
 
-Requires `uv sync --extra dev` (for Nuitka and tools):
+Logs are written to `%USERPROFILE%\.wiibble\wiibble.log` and stdout.
+
+- `DEBUG` — raw sensor data
+- `INFO` — state transitions
+- `ERROR` — failures
+
+### Code formatting and linting
+
+[Ruff](https://github.com/astral-sh/ruff) is configured in `pyproject.toml`:
+
+```powershell
+uv run ruff check .              # lint
+uv run ruff check . --fix        # safe autofix
+uv run ruff format --check .     # verify formatting
+uv run ruff format .             # apply formatting
+```
+
+CI rejects PRs that fail either check.
+
+### Tests
+
+Tests live in `tests/` and use `pytest` + `pytest-cov`. A coverage gate of **≥ 80%** is enforced for `data_processing.py`, `state.py`, and `recording.py`. Hardware-dependent and UI code is excluded from the gate.
+
+```powershell
+uv run pytest -v
+```
+
+Current coverage:
+
+| Module | Coverage |
+|---|---|
+| `recording.py` | 95% |
+| `state.py` | 98% |
+| `data_processing.py` | ~53% |
+
+Use `MockHIDDevice` from `mock_board.py` for any test that touches the sensor pipeline. Never write tests that require a physical board.
+
+### Continuous integration
+
+GitHub Actions: `.github/workflows/ci.yml`
+
+| Job | What it does |
+|---|---|
+| `lint` | `ruff check .` and `ruff format --check .` |
+| `test` | `pytest -v` with ≥ 80% coverage gate (runs after lint passes) |
+
+Both jobs run on `windows-latest`.
+
+Pending CI additions: `dotnet build` job, Nuitka executable artifact — see [TODO.md](TODO.md).
+
+---
+
+## 5. Posturographic Analysis and Reporting
+
+Analysis and reporting run **offline**, outside the compiled app. This keeps the Nuitka build fast and free of heavy dependencies (pandas, sklearn, statsmodels).
+
+### Install analysis dependencies
+
+```powershell
+uv sync --extra analysis
+```
+
+### Analyse recordings
+
+Process all new (unanalysed) recordings in `recordings/`:
+```powershell
+uv run python process_recordings.py --new
+```
+
+Process a specific recording:
+```powershell
+uv run python process_recordings.py recordings/recording_YYYYMMDD_HHMMSS.csv
+```
+
+Re-analyse and overwrite all recordings:
+```powershell
+uv run python process_recordings.py --all
+```
+
+**Output:** `recordings/features_YYYYMMDD_HHMMSS.json` — ~80–90 posturographic features plus provenance metadata.
+
+**Minimum duration:** Recordings shorter than 20 s are skipped.
+
+For a full technical breakdown of each analysis step see [DATA_PIPELINE.md](DATA_PIPELINE.md).
+
+### Generate HTML reports
+
+```powershell
+uv run python report.py recordings/recording_YYYYMMDD_HHMMSS.csv \
+    --features recordings/features_YYYYMMDD_HHMMSS.json \
+    --out recordings/report_YYYYMMDD_HHMMSS.html
+```
+
+Omit `--out` for default output filename. If the `--features` JSON is missing, a partial report is generated.
+
+The report contains: sway path + 95% confidence ellipse, ML/AP time series, velocity, power spectral density, diffusion plot, spatial density, and feature summary table. All captions are strictly descriptive — no clinical interpretation.
+
+To customise report figures or layout, edit `report.py` and the `_HTML_TEMPLATE` Jinja2 template. See [VISUALISATION_REFERENCES.md](VISUALISATION_REFERENCES.md) for the literature justification of each figure.
+
+**Dependencies:** Plotly, Jinja2 — included in the `analysis` extras group.
+
+---
+
+## 6. Packaging and Building
+
+### Build the standalone executable
+
+Requires `uv sync --extra dev`:
 
 ```powershell
 .\compiler.bat
 ```
-- Output: `outputBuild/WIIBBLE/WIIBBLE.exe`
-- Run with hardware or use mock mode:
-   ```powershell
-   outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
-   ```
 
-### (b) Create Installer (optional; clinics)
+Output: `outputBuild/WIIBBLE/WIIBBLE.exe`
 
-Requires [Inno Setup 6](https://jrsoftware.org/isinfo.php):
-- `compiler.bat` auto-calls `iscc installer.iss` if `iscc` is in `PATH`.
-- Manual: `iscc installer.iss`
-- Output: `installer_output/WIIBBLE-<version>-Setup.exe`
-- Supports `/SILENT` or `/VERYSILENT` flags for managed install/uninstall.
+Test the build in mock mode before distributing:
+```powershell
+outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
+```
 
----
+### Create the installer (for clinic distribution)
 
-## 5. Troubleshooting
+Requires [Inno Setup 6](https://jrsoftware.org/isinfo.php) with `iscc` on `PATH`. `compiler.bat` calls `iscc installer.iss` automatically if it is available.
 
-**App crashes with DLL error:** Confirm you ran `dotnet build`. Check that `.NET Framework 4.8` is installed.
+Manual:
+```powershell
+iscc installer.iss
+```
 
-**`uv sync` fails:** Make sure Python 3.11 or 3.12 is installed and on PATH. Try `uv python install 3.11` to let `uv` set up its own Python.
+Output: `installer_output/WIIBBLE-<version>-Setup.exe`
 
-**Board not found:** Bluetooth must be enabled, board paired, and LED blinking blue. Try re-pairing; check battery level.
+Supports `/SILENT` and `/VERYSILENT` flags for managed deployment.
 
-**Black screen/no canvas:** Try restarting the app. Update your graphics drivers if persistent.
+### Non-obvious build requirements
 
-**Settings file issues/reset:**
-- User preferences stored in `.wiibble/settings.json` under your user profile.
-- To reset all settings to defaults, delete this file — it is recreated automatically on app restart.
+- **Windows only.** DearPyGui's `viewport_drawlist`, `ctypes.windll`, and the C# DLL are all Windows-specific.
+- **.NET Framework 4.8** must be present to build and run the C# DLL. Pre-installed on Windows 10/11; may be absent on server SKUs.
+- **Bluetooth pairing is separate from the app.** The board must be paired in Windows Bluetooth settings before launching.
+- **Settings are per-user**, stored at `~/.wiibble/settings.json`. The `recordings/` folder is relative to the working directory.
 
 ---
 
-## 6. File Structure (Key Files/Dirs)
+## 7. Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| DLL error on launch | Confirm `dotnet build` succeeded. Check .NET Framework 4.8 is installed. |
+| `uv sync` fails | Ensure Python 3.11 or 3.12 is installed and on PATH. Try `uv python install 3.11`. |
+| Board not found | Bluetooth must be on, board paired, LED blinking blue. Try re-pairing. Check battery. |
+| Black screen / no canvas | Restart the app. Update graphics drivers if persistent. |
+| Settings reset needed | Delete `~/.wiibble/settings.json` — recreated automatically on next launch. |
+| Analysis error (missing packages) | Run `uv sync --extra analysis`. |
+
+---
+
+## 8. Key Files and Directory Layout
 
 ```
 WIIBBLE/
-├── main.py                  # Entry point
-├── app.py                   # Session lifecycle, main loop
-├── ui.py                    # Canvas, screen rendering
-├── input.py                 # Mouse, canvas interaction
-├── theme.py                 # Colours, fonts
-├── data_processing.py       # Sensor & coordinate pipeline
-├── calibration.py           # Calibration/tare logic
-├── state.py                 # AppState, Settings dataclasses
-├── constants.py             # Hardware constants
-├── resources.py             # Path resolution
-├── mock_board.py            # Hardware simulator for dev/testing
-├── board_connection.py      # C# DLL bridge (Bluetooth handshake)
-├── WiiBalanceBoardLibrary/  # C# project (build for DLL)
-├── pyproject.toml           # Dependencies, tooling config
-├── ReadMe.md                # Project entrypoint, pairing help
+├── main.py                      # Entry point
+├── app.py                       # Session lifecycle, main loop
+├── ui.py                        # Canvas and screen rendering
+├── input.py                     # Mouse and canvas interaction
+├── theme.py                     # Colours, fonts
+├── data_processing.py           # Sensor and coordinate pipeline (pure functions)
+├── calibration.py               # Calibration and tare logic
+├── state.py                     # AppState, Settings dataclasses
+├── constants.py                 # Hardware constants — single source of truth
+├── resources.py                 # Path resolution for dev + Nuitka builds
+├── mock_board.py                # Hardware simulator for dev/testing
+├── board_connection.py          # C# DLL bridge (Bluetooth handshake)
+├── recording.py                 # CSV output
+├── analysis.py                  # Posturographic feature extraction pipeline
+├── process_recordings.py        # Offline CLI — batch analyse recordings/
+├── report.py                    # HTML report generator
+├── pyproject.toml               # Dependencies and tooling configuration
+├── compiler.bat                 # Nuitka + Inno Setup build script
+├── installer.iss                # Inno Setup installer script
+├── WiiBalanceBoardLibrary/      # C# project (build to produce DLL)
+├── tests/                       # pytest test suite
+├── recordings/                  # Default output directory (created at runtime)
+└── docs/
+    ├── USER_MANUAL.md
+    ├── ARCHITECTURE.md
+    ├── DEV.md                   # this file
+    ├── DATA_PIPELINE.md
+    ├── VISUALISATION_REFERENCES.md
+    └── decisions/
+        └── 0001-migrate-to-pyqt6.md
 ```
-
----
-
-## 7. Development Workflow
-
-### (a) Logging
-- Logs in `%USERPROFILE%\.wiibble\wiibble.log` and stdout.
-
-### (b) Code Formatting and Linting
-- [Ruff](https://github.com/astral-sh/ruff) config in `pyproject.toml`:
-   ```powershell
-   uv run ruff check .
-   uv run ruff check . --fix       # Safe autofix
-   uv run ruff format --check .    # Verify formatting
-   uv run ruff format .            # Apply formatting
-   ```
-
-### (c) Tests
-- Tests in `tests/`, use `pytest` + `pytest-cov`.
-- Enforced **≥80%** coverage for `data_processing.py`, `state.py`, `recording.py` (hardware UI code not counted).
-   ```powershell
-   uv run pytest -v
-   ```
-- Typical modules covered:
-   | Module            | Coverage |
-   |-------------------|----------|
-   | `recording.py`    | 95%      |
-   | `state.py`        | 98%      |
-   | `data_processing` | ~53%     |
-
-### (d) Continuous Integration (CI)
-- GitHub Actions: `.github/workflows/ci.yml`
-- Two jobs:
-   | Job   | What it does                                              |
-   |-------|----------------------------------------------------------|
-   | lint  | `ruff check .` & `ruff format --check .`                 |
-   | test  | `pytest -v` with ≥80% coverage gate (after lint passes)  |
-- Both run on `windows-latest`.
-
-### (e) devPosturographic Analysis Tools
-
-
-- For offline analysis of recorded CSVs: `analysis.py`, `process_recordings.py`
-- Install extras:
-   ```powershell
-   uv sync --extra analysis
-   ```
-- For user-facing step-by-step instructions (commands, output), see the “Posturographic Analysis” section in [USER_MANUAL.md](USER_MANUAL.md).
-- See [DATA_PIPELINE.md](DATA_PIPELINE.md) for the feature extraction pipeline details.
-
-## Report Generation (HTML, Plotly)
-
-This is the canonical reference for session report generation in WIIBBLE.
-
-- **Purpose:**  
-  - `report.py` produces a self-contained, interactive HTML report with all posturography plots and features from a single session.
-- **How it works:**
-  - Needs a CSV and matching features JSON (see Data Pipeline).
-  - Jinja2 template and Plotly generate all figures and captions.
-  - Captions are strictly descriptive (not interpretive/clinical).
-- **How to run:**
-  ```powershell
-  uv run python report.py recordings/recording_YYYYMMDD_HHMMSS.csv --features recordings/features_YYYYMMDD_HHMMSS.json --out recordings/report_YYYYMMDD_HHMMSS.html
-  ```
-  - Omit `--out` for default output.
-- **Customizing:**  
-  - Edit `report.py` (charts, table, captions) or `_HTML_TEMPLATE` (layout).
-  - See `VISUALISATION_REFERENCES.md` for design/literature justifications.
-- **Dependencies:**  
-  - Plotly, Jinja2 — included in main/analysis extras, see `pyproject.toml`.
-
-For user and workflow context, cross-reference [Data Pipeline](DATA_PIPELINE.md#9-report-generation) or [User Manual](USER_MANUAL.md#session-reports-html).
-
----
-
-## 8. Contribution Workflow
-
-1. Create a feature branch from `develop`.
-2. Make small, testable, well-linted changes.
-3. Keep the code style consistent.
-4. Update documentation when adding or changing functionality.
-5. Open a pull request with clear description and steps to reproduce.
 
 ---
 
 ## 9. Useful Commands Recap
 
-- **Run with mock scenario:**
-  ```powershell
-  uv run python main.py --mock --mock-scenario sway
-  ```
-- **Run with board:**
-  ```powershell
-  uv run python main.py
-  ```
-- **Build C# library:**
-  ```powershell
-  cd WiiBalanceBoardLibrary
-  dotnet build
-  cd ..
-  ```
-- **Build executable:**
-  ```powershell
-  .\compiler.bat
-  ```
-- **Update dependencies:**
-  ```powershell
-  uv sync
-  uv sync --extra dev
-  ```
-- **Reset all preferences:**
-  Delete `.wiibble/settings.json`
+```powershell
+# Run
+uv run python main.py --mock --mock-scenario sway
+uv run python main.py
+
+# Build C# library
+cd WiiBalanceBoardLibrary && dotnet build && cd ..
+
+# Lint and format
+uv run ruff check .
+uv run ruff format .
+
+# Tests
+uv run pytest -v
+
+# Analysis and reporting
+uv run python process_recordings.py --new
+uv run python report.py recordings/recording_*.csv --features recordings/features_*.json
+
+# Build executable
+.\compiler.bat
+
+# Dependency management
+uv sync
+uv sync --extra dev
+uv sync --extra analysis
+
+# Reset user preferences
+del %USERPROFILE%\.wiibble\settings.json
+```

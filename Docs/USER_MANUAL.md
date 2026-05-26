@@ -1,92 +1,65 @@
 # WIIBBLE User Manual
 
-## Overview
-
-WIIBBLE is a real-time visualization and recording tool for the Wii Balance Board, providing live feedback, calibration, and data recording. The interface is built with DearPyGui and is designed for both research and interactive use.
+This manual is written for **clinicians and end users**. For developer setup, analysis pipelines, and report generation, see the [Developer Guide](DEV.md).
 
 ---
 
-## Main UI Layout
+## Main Interface
 
-- **Canvas Area:**  
-  The main area displays your live center-of-pressure, targets, trails, and bounding box. All interactions (clicks, drags, zoom, pan) happen here.
+![WIIBBLE main screen](../images/main_screen.png)
+*Main screen: settings panel open on the left, live CoP cursor with sway trail on the canvas, weight and balance percentage in the stats bar at the bottom.*
 
-- **Settings Panel:**  
-  - Located on the left side of the screen.
-  - Can be collapsed to a floating gear button in the top-left corner.
+The interface has three areas:
 
+**Settings Panel** — Left side of the screen. Organised into sections: Session, Recording, Cursor & Movement, and Visualisation. Can be collapsed to a floating gear button to maximise canvas space; tap the gear button to reopen it.
 
-- **Stats Bar:**  
-  - At the bottom of the window, shows left/right weight distribution and total weight.
+**Canvas** — The main area. Shows the live centre-of-pressure cursor, sway trail, targets, and optional bounding box. All mouse interactions happen here.
+
+**Stats Bar** — Bottom of the window. Shows left/right weight distribution percentage and total weight in kg. Colour reflects the amount of weight currently detected on the board.
 
 ---
 
-## Settings Panel Controls
+## Settings Panel
 
 ### Gear Button
 
-- Opens and closes the left-hand settings panel.
-- When the panel is collapsed, a floating gear button remains visible in the top-left.
+Opens and closes the settings panel. When collapsed, a floating gear button remains visible in the top-left corner of the screen.
 
 ### Session
 
-- **Restart Session:**  
-  - Restart the current session from recalibration.
-  - This resets the connection and calibration flow.
+**Restart Session** — Restarts from the calibration step. Use this when a new patient steps on the board or if the board loses connection.
 
 ### Recording
 
-- **Duration Presets:**  
-  - Quickly choose from 10s, 20s, 30s, 60s, or indefinite (∞).
-  - The active preset is highlighted.
+**Duration Presets** — Choose from 10 s, 20 s, 30 s, 60 s, or indefinite (∞). The active selection is highlighted.
 
-- **Manual Duration:**  
-  - Type a custom duration in seconds.
-  - Use `0` to record indefinitely.
+**Manual Duration** — Type a custom duration in seconds. Enter `0` to record indefinitely until you press Stop.
 
-- **Start Recording / Stop Recording:**  
-  - Starts a recording session after a 3-second countdown.
-  - Click again to stop recording early.
-  - The current recording state is reflected in the button label.
+**Start Recording / Stop Recording** — Starts a 3-second countdown then begins capturing. The button label changes to reflect the current state. Click again to stop early.
 
-- **Save Location:**  
-  - Shows where recordings are saved.
-  - Use **Choose Folder...** to change the output directory.
+**Save Location** — Shows the folder where recordings are saved. Use **Choose Folder…** to change it. The app remembers your choice between sessions.
 
 ### Cursor & Movement
 
-- **Cursor Toggle:**  
-  - Switch between **Avatar** (person icon) and **Circle** cursor modes.
-  - You can also click the on-screen cursor itself to toggle modes.
+**Switch to Avatar / Switch to Circle** — Toggles the cursor between a person icon and a filled circle. You can also click the on-screen cursor directly to toggle.
 
-- **Cursor Size:**  
-  - Adjust the circle cursor radius with the slider.
-  - You can also drag the cursor directly on screen to resize it.
+**Cursor Size** — Adjusts the circle cursor radius. You can also drag the cursor on-screen to resize it.
 
-- **Sway Trail:**  
-  - Choose how much movement history is shown: **None**, **Medium**, or **Long**.
+**Sway Trail** — Controls how much movement history is visible: **None**, **Medium**, or **Long**.
 
-- **Smoothing Filter:**  
-  - Control how many frames are averaged to reduce noise.
-  - Lower values are more responsive; higher values are smoother.
+**Smoothing Filter** — Number of frames averaged to smooth the cursor. Lower = more responsive; higher = smoother. This affects display only — recordings always save raw unfiltered data.
 
 ### Visualisation
 
-- **Zoom:**  
-  - Adjust the movement canvas zoom level.
-  - The slider controls the overall zoom scale.
+**Zoom** — Adjusts the canvas zoom level. Also controllable with `Ctrl + Mouse Wheel`.
 
-- **Fit View to Bounding Box:**  
-  - Automatically zooms and pans to fit all recorded movement.
+**Fit View to Bounding Box** — Automatically zooms and pans to fit all recorded movement on screen.
 
-- **Show bounding box:**  
-  - Toggle the movement bounding box overlay.
+**Show Bounding Box** — Toggles the movement extent overlay on the canvas.
 
-- **Target jelly effect:**  
-  - Animate targets with a jelly wobble when they are hit.
+**Target Jelly Effect** — Animates targets with a wobble when hit.
 
-- **Clear Screen:**  
-  - Remove all targets and the sway trail from the canvas.
+**Clear Screen** — Removes all targets and the sway trail from the canvas.
 
 ---
 
@@ -94,198 +67,148 @@ WIIBBLE is a real-time visualization and recording tool for the Wii Balance Boar
 
 ### Mouse
 
-- **Left Click on the canvas:**
-  - If you click the cursor, the app begins a cursor drag operation.
-  - If you click elsewhere, the app starts a new target at that location.
-
-- **Drag after clicking on the canvas:**
-  - Dragging from the cursor changes its size.
-  - Dragging from the canvas creates a target radius in real time.
-
-- **Release mouse button:**
-  - Finalizes the cursor size or the new target.
-
-- **Right Click on a target:**
-  - Removes that target from the canvas.
-
-- **Ctrl + Left Click & Drag:**
-  - Pans the canvas.
-
-- **Ctrl + Mouse Wheel:**
-  - Zooms in and out around the mouse pointer.
+| Action | Effect |
+|---|---|
+| Left-click cursor | Begin resizing cursor (drag to resize) |
+| Left-click canvas (not cursor) | Start placing a new target; drag to set radius |
+| Release | Finalise cursor size or new target |
+| Right-click a target | Remove that target |
+| Ctrl + Left-click drag | Pan the canvas |
+| Ctrl + Mouse Wheel | Zoom in/out around the pointer |
 
 ### Keyboard
 
-- **Enter (on connection failed screen):**
-  - Retries the board connection.
+| Key | Context | Effect |
+|---|---|---|
+| Enter | Connection failed screen | Retry board connection |
 
 ---
 
-## Canvas Features
+## Canvas Elements
 
-- **Cursor:**  
-  - Represents your current center-of-pressure.
-  - Can be displayed as a circle or an avatar icon.
+**Cursor** — Represents the patient's current centre of pressure. Circle or avatar mode.
 
-- **Targets:**  
-  - Created by left-clicking and dragging on the canvas.
-  - Targets scale with zoom and remain fixed relative to the movement space.
+**Targets** — Created by left-clicking and dragging. Targets remain fixed to the movement space and scale with zoom. Right-click to remove.
 
-- **Trail:**  
-  - Shows recent movement history.
-  - Can be toggled between no trail, medium trail, or a long fading trail.
+**Sway Trail** — Fading history of recent movement.
 
-- **Bounding Box:**  
-  - Displays the extent of movement on the canvas.
+**Bounding Box** — Dashed rectangle showing the extent of movement since last clear.
 
-- **Stats Bar:**  
-  - Shows real-time left/right weight distribution and total weight.
+**Stats Bar** — Real-time left/right distribution and total weight.
 
-- **Recording Indicator:**  
-  - Displays countdown and recording status when data is being captured.
+**Recording Indicator** — Countdown and elapsed time during active recording.
 
 ---
 
-## Data Recording
+## Recording Data
 
-- **Start Recording:**  
-  - Begins a recording after a short countdown.
-  - Recording saves data to the selected folder.
+Starting a recording triggers a 3-second countdown, then captures data until the set duration elapses or you press Stop. Recordings are saved as CSV files to the selected folder:
 
-- **Record Duration:**  
-  - Use the preset buttons or enter a custom value.
-  - Setting `0` records indefinitely until you stop it.
+**CSV format:**
+```
+# total_weight_kg=71.2000
+# ui_filter_window=5
+time (s),x (kg),y (kg)
+0.000,0.123,-0.045
+...
+```
 
-- **Save Location:**  
-  - Choose where CSV output is stored.
-  - The app remembers the selected folder between sessions.
+- `time` — elapsed seconds from recording start
+- `x (kg)` — left-right force deviation (raw, unfiltered)
+- `y (kg)` — front-back force deviation (raw, unfiltered)
 
-- **CSV Format:**  
-  - Columns: `time (s)`, `x (kg)`, `y (kg)`
-  - Time is relative to the start of recording, and x/y are displacement values in kg.
+The comment lines at the top record the patient body weight and display smoothing level for traceability.
 
 ---
 
 ## Board Pairing
 
-Pairing the Wii Balance Board to your computer over Bluetooth can vary depending on your device's Bluetooth adapter.
+Pairing the Wii Balance Board to your computer over Bluetooth depends on your Bluetooth adapter type.
 
 ### Check your Bluetooth MAC address
-- Open a command prompt and type:
-  ```
-  getmac /v /fo list
-  ```
-  Look for the Physical Address of your Bluetooth adapter.
 
-### Case 1: Bluetooth MAC address **does NOT** contain "00"
-- Permanent pairing is possible:
-  1. Download WiiBalanceWalker v0.5 from [here](https://github.com/lshachar/WiiBalanceWalker/releases).
-  2. Open it and click `Add/Remove Bluetooth Wii device`.
-  3. Copy the Permanent PIN Code.
-  4. In Windows: Settings ➔ Bluetooth & devices ➔ Add device.
-  5. On the board: Remove battery cover, press red button (blue light should blink).
-  6. On the computer: Select `Nintendo RVL-WBC-01` ➔ Pair ➔ paste Permanent PIN.
+Open a Command Prompt and run:
+```
+getmac /v /fo list
+```
+Find the Physical Address for your Bluetooth adapter.
 
-### Case 2: Bluetooth MAC address **does** contain "00"
-- Permanent pairing may not be supported. Pair **each session** via:
-  - Control Panel ➔ Hardware and Sound ➔ Devices and Printers
-  - You may need to remove and re-pair if you switch Bluetooth adapter or restart.
+### Case 1 — MAC address does NOT contain "00" (permanent pairing)
+
+1. Download [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker/releases).
+2. Open it and click **Add/Remove Bluetooth Wii device**.
+3. Copy the **Permanent PIN Code**.
+4. In Windows: **Settings → Bluetooth & devices → Add device**.
+5. On the board: remove the battery cover and press the red button (blue LED blinks).
+6. On the computer: select **Nintendo RVL-WBC-01**, click **Pair**, and paste the Permanent PIN.
+
+This pairing persists — you do not need to repeat it each session.
+
+### Case 2 — MAC address contains "00" (per-session pairing)
+
+Permanent pairing is not supported by this adapter type. Pair each session via:  
+**Control Panel → Hardware and Sound → Devices and Printers**
+
+You may need to remove and re-pair if you switch adapters or restart Windows.
 
 ---
+
 ## Connection & Calibration
 
-- **Startup:**  
-  - The app attempts to connect to the Wii Balance Board on launch.
-  - If the board is unavailable, follow the on-screen troubleshooting instructions.
+On launch the app immediately attempts to connect to the board. If the board is unavailable, an error screen appears with instructions; press **Enter** to retry.
 
-- **Tare & Calibration:**  
-  - The app guides you through taring (zeroing) and setting sensitivity before the main screen appears.
+Once connected, the app guides you through two steps before the main screen appears:
+
+1. **Tare** — stand clear of the board until it confirms it is empty.
+2. **Sensitivity calibration** — step on the board and stand still until body weight is registered.
+
+The settings panel remains hidden during this sequence to prevent accidental changes before a body weight is confirmed.
 
 ---
 
 ## Tips
 
-- **Collapse the settings panel** to maximize canvas space; reopen it with the floating gear button.
-- **Use the zoom slider** or `Ctrl+Mouse Wheel` to zoom in on movement details.
-- **Use the target controls** for training tasks or visual feedback exercises.
-- **The app saves settings** between sessions so your preferences persist.
+- Collapse the settings panel to maximise canvas space; the floating gear button re-opens it.
+- Use `Ctrl + Mouse Wheel` to zoom into a specific area of the canvas.
+- The app saves your preferences between sessions — zoom, save location, trail length, and cursor mode all persist.
+- If the cursor feels jittery, increase the **Smoothing Filter** slider.
+- If the gear icon is missing, check that `assets/fonts/fa-solid-900.ttf` is present.
 
 ---
 
 ## Troubleshooting
 
-If you have trouble:
-- **Board does not connect**: Ensure Bluetooth is enabled, the board is paired, and powered on.
-- **Mock mode**: Use `--mock` for testing without hardware.
-- **Library Issues**: If the application fails to run due to library problems, try installing the required packages one at a time (`uv sync`, see DEV.md).
-- **Connection Issues**: If the application fails to connect to the Wii Balance Board, check:
-    - Bluetooth is enabled
-    - Board is correctly paired and LED is blinking blue
-    - Battery level is sufficient (replace batteries if in doubt)
-- **DLL Loading Issues**: Ensure `WiiBalanceBoardLibrary.dll` is built and is in the location required by `board_connection.py`.
+| Symptom | Solution |
+|---|---|
+| Board does not connect | Ensure Bluetooth is on, board is paired, and the LED is blinking blue. Check battery level. |
+| DLL loading error | Make sure `WiiBalanceBoardLibrary.dll` is built. See [DEV.md](DEV.md). |
+| Black screen / no canvas | Restart the app. Update graphics drivers if persistent. |
+| Cursor very jittery | Increase the Smoothing Filter slider. |
+| Gear icon missing | Check `assets/fonts/fa-solid-900.ttf` is present. |
+| Settings lost | Delete `~/.wiibble/settings.json` to reset to defaults. |
+| Library error on startup | Run `uv sync` — see [DEV.md](DEV.md). |
 
-**Cursor feels jittery**
-- Increase the **Filter** slider in the settings panel.
-
-**Cannot see the gear icon**
-- Make sure the font file `assets/fonts/fa-solid-900.ttf` is present.
-
-For more, see [Developer Setup & Workflow Guide](DEV.md)
+For developer and build issues see [DEV.md](DEV.md).
 
 ---
 
 ## Command-Line Options
 
-- `--mock`  
-  Run with simulated data (no hardware required).
-- `--mock-scenario sway|still|lean_left|lean_right|hands|step_on_off`  
-  Choose the mock data scenario.
+```
+WIIBBLE.exe [--mock] [--mock-scenario <scenario>]
+```
 
-> Note: these same flags also work with the compiled executable in `outputBuild\WIIBBLE\WIIBBLE.exe`.
+| Flag | Description |
+|---|---|
+| `--mock` | Run with simulated data — no board required |
+| `--mock-scenario <name>` | Choose simulation scenario: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off` |
+
+These flags work with both `python main.py` and the compiled `WIIBBLE.exe`.
 
 ---
 
-## Posturographic Analysis: Analyzing Session Recordings
+## Posturographic Analysis & Reports
 
+After recording, sessions can be analysed to extract clinical posturographic features, and an interactive HTML report can be generated for clinical records.
 
-After you record balance data, you can extract clinically-relevant posturographic features from your CSVs. This post-processing is done outside the app using a command-line tool. 
-
-**What you need:**
-- Make sure analysis dependencies are installed (**see installation steps in [DEV.md](DEV.md), "Development Workflow"**).
-
-### Typical Analysis Tasks
-
-**Analyze all new (unanalyzed) recordings in `recordings/`:**
-```powershell
-python process_recordings.py --new
-```
-
-**Analyze a specific recording:**
-```powershell
-python process_recordings.py recordings/recording_YYYYMMDD_HHMMSS.csv
-```
-
-**Re-analyze (overwrite) all recordings:**
-```powershell
-python process_recordings.py --all
-```
-
-**Where does the output go?**
-- Results are written as `.json` files beside the original CSVs (e.g.,
-  `recordings/features_YYYYMMDD_HHMMSS.json`).
-- Each file contains ~80-90 posturographic features plus provenance (patient weight, smoothing, etc).
-
-**Tip:** If you get an error about missing packages, make sure to install analysis dependencies as described in [DEV.md](DEV.md).
-
-**For a technical explanation of each analysis step and data flow, see [DATA_PIPELINE.md](DATA_PIPELINE.md)**.
-
-## Session Reports (HTML)
-
-WIIBBLE can generate a detailed HTML summary report for each session, viewable in any web browser or saved as PDF for clinical records. These reports show all analysis figures and a full numerical feature table.
-
-- Reports appear in your data folder (`recordings/`).
-- Ask your clinic IT, administrator, or advanced user to generate these if you do not see them automatically.
-- For technical instructions on running or customizing the reporter, see [Data Pipeline](DATA_PIPELINE.md#9-report-generation) or [Developer Guide](DEV.md#report-generation-html-plotly).
-
-Each plot includes a neutral caption describing what is displayed.
-
+These steps require technical setup and are intended for **administrators or developers**. If you need analysis or reports and do not see them generated automatically, ask your clinic IT administrator or the project technical lead, and point them to the [Developer Guide](DEV.md#posturographic-analysis-and-reporting).

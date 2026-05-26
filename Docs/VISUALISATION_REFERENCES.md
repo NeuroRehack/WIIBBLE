@@ -1,6 +1,10 @@
 # Visualisation References & Justifications
 
-This document provides the literature basis for each visualisation included in the WIIBBLE posturographic report (`report.py`). Where a visualisation has been revised or added relative to the original `VISUALISATION_IDEAS.md`, the rationale is noted.
+**Applies to:** `report.py` v1.x  
+**Last reviewed:** 2025-01  
+**Maintainer:** Update this document whenever a figure is added, removed, or changed in `report.py`.
+
+This document provides the literature basis for each visualisation included in the WIIBBLE posturographic report. Where a visualisation has been revised or added relative to the original `VISUALISATION_IDEAS.md`, the rationale is noted.
 
 ---
 
@@ -40,7 +44,7 @@ This visualisation was **not** in the original `VISUALISATION_IDEAS.md` but was 
 
 **Justification**: Frequency-domain analysis reveals the control bandwidth of the postural system. Diener et al. (1984) established that healthy quiet standing is dominated by sway frequencies below 1 Hz. Pathological states — peripheral neuropathy, cerebellar ataxia, vestibular dysfunction — systematically shift spectral energy toward the 1–3 Hz band. The Welch method (used internally by `Stabilogram`) is preferred over simple FFT because it provides a more stable PSD estimate for short, non-stationary signals.
 
-The shaded frequency bands (0–1 Hz and 1–3 Hz) are clinically standard but originate in:
+The shaded frequency bands (0–1 Hz and 1–3 Hz) are clinically standard.
 
 **Key references**:
 - Diener, H. C., Dichgans, J., Bacher, M., & Gompf, B. (1984). Quantification of postural sway in normals and patients with cerebellar diseases. *Electroencephalography and Clinical Neurophysiology*, 57(2), 134–142.
@@ -78,9 +82,9 @@ A contour representation (`go.Histogram2dContour`) is used in preference to a ra
 
 The features selected for the radar (`confidence_ellipse_area`, `mean_velocity`, `mean_distance_Radius`, `rms_ML`, `rms_AP`, `mean_frequency`, `fractal_dimension`, `LFS`) represent the major posturographic domains: area, velocity, displacement, frequency, and complexity.
 
-Reference ranges used for normalisation are approximate and drawn from:
+Reference ranges used for normalisation are approximate, drawn from:
 - Prieto et al. (1996) — area, displacement, velocity
-- Goldie et al. (1989) for typical healthy adult ranges
+- Goldie et al. (1989) — typical healthy adult ranges
 - Expert consensus in the WIIBBLE team
 
 **Key references**:

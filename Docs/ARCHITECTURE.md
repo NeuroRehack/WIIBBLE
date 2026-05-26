@@ -8,6 +8,8 @@ The key technical challenge is bridging a consumer gaming peripheral into a clin
 
 An intentional design constraint is that the app must run on computers that cannot have Python installed — clinicians get a single `.exe`. All business logic is in Python; a small C# DLL (`WiiBalanceBoardLibrary`) handles the one-time Bluetooth handshake that Windows requires before HID data flows.
 
+For developer setup, build instructions, and running the app, see [DEV.md](DEV.md).
+
 ---
 
 ## Architecture Overview
@@ -26,6 +28,8 @@ graph TD
     board["board_connection.py<br/>(C# DLL bridge)"]
     mock["mock_board.py<br/>(hardware simulator)"]
     rec["recording.py<br/>(CSV output)"]
+    ana["analysis.py<br/>(posturographic pipeline)"]
+    cdpc["code_descriptors_postural_control"]
 
     main -->|"create_context\nload_fonts\ncreate_viewport"| app
     app -->|"draw calls"| ui
@@ -34,7 +38,7 @@ graph TD
     app -->|"startup flow"| calib
     app -->|"save buffer"| rec
     app -->|"trigger analysis"| ana
-    ana -->|"CoP features"| cdpc["code_descriptors_postural_control"]
+    ana -->|"CoP features"| cdpc
     app -->|"read/write"| state
     calib -->|"measure_weight"| dp
     input -->|"session_state action"| app
@@ -132,7 +136,7 @@ sequenceDiagram
         app->>ana: analyse_recording(csv_path)
         ana->>ana: load_recording() → parse CSV + metadata
         ana->>ana: to_cop_array() → CoP in cm (Leach 2014 Eq.1)
-        ana->>cdpc: Stabilogram.from_array() → SWARII →25 Hz + Butterworth
+        ana->>cdpc: Stabilogram.from_array() → SWARII → 25 Hz + Butterworth
         cdpc->>ana: compute_all_features() → ~80-90 features
         ana->>ana: save recordings/features_YYYYMMDD_HHMMSS.json
     end
@@ -192,67 +196,22 @@ The toolbar and gear button are created at startup but hidden until `Calibrating
 
 ## Dependencies
 
-| Package | Purpose | Why this one |
-|---|---|---|
-| `dearpygui==2.1.1` | Immediate-mode GPU GUI | Redraws full canvas every frame — the natural model for real-time sensor data. `viewport_drawlist` gives true full-screen drawing. API breaks between minor versions; pin strictly. |
-| `hidapi==0.14.0.post2` | Read raw 32-byte HID reports from the board | Only Python library that reads raw HID without a kernel driver. Board exposes itself as a standard HID device after pairing. |
-| `pythonnet==3.0.3` | Load the C# DLL at runtime via `clr.AddReference()` | The Bluetooth handshake logic already existed in C# (WiiBalanceWalker lineage); `pythonnet` bridges it without a rewrite. Must be 3.x — 2.x API is incompatible. |
-| `numpy==1.24.4` | Array averaging in `tare()` | Used in one place only. Pinned to last version supporting Python 3.8. |
-| `pytz` | Timezone-aware timestamps in filenames | Standard choice; no constraint. |
-| `nuitka>=2.0` *(dev)* | Compile to standalone `.exe` | Produces a true compiled binary — fewer AV false-positives, faster startup, no Python runtime required on clinical machines. |
-| `pytest` / `pytest-cov` *(dev)* | Test runner + coverage | Standard; coverage gate ≥ 80% enforced in CI. |
-| `ruff>=0.4` *(dev)* | Lint and format | Fast; configured in `pyproject.toml`; runs in CI. |
+| Package | Purpose | Why this one | Notes / risks |
+|---|---|---|---|
+| `dearpygui==2.1.1` | Immediate-mode GPU GUI | Redraws full canvas every frame — the natural model for real-time sensor data. `viewport_drawlist` gives true full-screen drawing. | **Pin strictly** — API breaks between minor versions. See [ADR-0001](decisions/0001-migrate-to-pyqt6.md) for migration proposal. |
+| `hidapi==0.14.0.post2` | Read raw 32-byte HID reports from the board | Only Python library that reads raw HID without a kernel driver. Board exposes itself as a standard HID device after pairing. | |
+| `pythonnet==3.0.3` | Load the C# DLL at runtime via `clr.AddReference()` | The Bluetooth handshake logic already existed in C# (WiiBalanceWalker lineage); `pythonnet` bridges it without a rewrite. | Must be 3.x — 2.x API is incompatible. |
+| `numpy==1.24.4` | Array averaging in `tare()` | Used in one place only. | **Pinned to last version supporting Python 3.8** — can be relaxed if minimum Python version is raised. |
+| `pytz` | Timezone-aware timestamps in filenames | Standard choice. | |
+| `nuitka>=2.0` *(dev)* | Compile to standalone `.exe` | Produces a true compiled binary — fewer AV false-positives, faster startup, no Python runtime required on clinical machines. | |
+| `pytest` / `pytest-cov` *(dev)* | Test runner + coverage | Standard. | Coverage gate ≥ 80% enforced in CI. |
+| `ruff>=0.4` *(dev)* | Lint and format | Fast; configured in `pyproject.toml`. | Runs in CI. |
 
 ---
 
-## Getting Started
-
-### Running from source
-
-```powershell
-# 1. Clone and install
-git clone https://github.com/NeuroRehack/WIIBBLE.git
-cd WIIBBLE
-uv sync               # runtime deps
-uv sync --extra dev   # adds pytest, ruff, nuitka
-
-# 2. Build the C# DLL (required for real hardware; not needed for mock)
-cd WiiBalanceBoardLibrary
-dotnet build
-cd ..
-
-# 3. Run in mock mode (no board needed)
-python main.py --mock
-python main.py --mock --mock-scenario lean_left
-```
-
-Available `--mock-scenario` values: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.
-
-### Running tests
-
-```powershell
-uv run pytest -v          # tests + coverage report
-uv run ruff check .       # lint
-uv run ruff format --check .   # format check
-```
-
-### Building the executable
-
-```powershell
-.\compiler.bat
-# Output: outputBuild\WIIBBLE\WIIBBLE.exe
-```
-
-### Non-obvious environment requirements
-
-- **Windows only.** DearPyGui's `viewport_drawlist`, `ctypes.windll`, and the C# DLL are all Windows-specific.
-- **.NET Framework 4.8** must be installed to build (and run) the C# DLL. This is pre-installed on Windows 10/11 but may be missing on some server SKUs.
-- **Bluetooth pairing is separate from the app.** The board must be paired in Windows Bluetooth settings before the app can connect. See `ReadMe.md` for MAC address edge cases.
-- **Settings are per-user**, stored at `~/.wiibble/settings.json`. The `recordings/` folder is relative to the working directory you run the app from.
-
-### Where to start reading
+## Where to Start Reading
 
 1. **`state.py`** — understand `AppState` and `Settings` first; almost every module touches them.
-2. **`data_processing.py`** — the pure sensor pipeline; read this alongside `constants.py`.
+2. **`data_processing.py`** — the pure sensor pipeline; read alongside `constants.py`.
 3. **`app.py / _run_session()`** — the main session flow from connection to render loop.
 4. **`ui.py / draw_main_screen()`** — how the canvas is rendered each frame.

@@ -124,3 +124,10 @@ See [User Manual — Troubleshooting](Docs/USER_MANUAL.md#troubleshooting) for c
 - Thanks to the physiotherapists at the [Princess Alexandra Hospital — Geriatric and Rehabilitation Unit](https://www.healthdirect.gov.au/australian-health-services/healthcare-service/woolloongabba-4102-qld/princess-alexandra-hospital-geriatric-and-rehabilitation-unit/geriatric-medicine/efcf3c01-fc12-46fc-2912-691b09238616) for their feedback and guidance.
 - [WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) — Wii Balance Board connection library.
 - [code_descriptors_postural_control](https://github.com/Jythen/code_descriptors_postural_control) by **Jythen** — vendored at `code_descriptors_postural_control/` and used for posturographic feature extraction ([details](code_descriptors_postural_control/VENDOR.md)).
+
+---
+
+## 📝 License
+
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
+© 2026 NeuroRehack. See the LICENSE file for details.

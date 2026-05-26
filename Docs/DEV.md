@@ -299,7 +299,7 @@ WIIBBLE/
 ├── WiiBalanceBoardLibrary/      # C# project (build to produce DLL)
 ├── tests/                       # pytest test suite
 ├── recordings/                  # Default output directory (created at runtime)
-└── docs/
+└── Docs/
     ├── USER_MANUAL.md
     ├── ARCHITECTURE.md
     ├── DEV.md                   # this file

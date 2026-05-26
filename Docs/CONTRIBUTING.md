@@ -20,7 +20,7 @@ Thank you for taking the time to contribute. This document covers everything you
 
 ## Getting Set Up
 
-Follow the full developer setup in [docs/DEV.md](docs/DEV.md). In short:
+Follow the full developer setup in [Docs/DEV.md](Docs/DEV.md). In short:
 
 ```powershell
 git clone https://github.com/NeuroRehack/WIIBBLE.git
@@ -40,7 +40,7 @@ uv run python main.py --mock  --mock-scenario sway # verify it runs without hard
 | `develop` | Integration branch — all PRs target here |
 | `feature/<name>` | New features and non-urgent improvements |
 | `fix/<name>` | Bug fixes |
-| `docs/<name>` | Documentation-only changes |
+| `Docs/<name>` | Documentation-only changes |
 
 Always branch from `develop`, never from `main`.
 
@@ -112,7 +112,7 @@ When adding a new feature:
 2. Target `develop`, not `main`.
 3. Keep PRs focused — one logical change per PR makes review faster.
 4. Fill in the PR description: what changed, why, and how to test it.
-5. If the change affects the data pipeline, recording format, or analysis output, update the relevant doc in `docs/`.
+5. If the change affects the data pipeline, recording format, or analysis output, update the relevant doc in `Docs/`.
 6. At least one approving review is required before merging.
 
 ---

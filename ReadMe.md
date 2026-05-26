@@ -66,10 +66,10 @@ Each step is covered in the documentation below. A clinician typically handles t
 ## 🚀 Getting Started
 
 1. **Download the latest release** from the [Releases page](https://github.com/NeuroRehack/WIIBBLE/releases).
-2. **Pair your Wii Balance Board** — see [Board Pairing](docs/USER_MANUAL.md#board-pairing) in the User Manual.
+2. **Pair your Wii Balance Board** — see [Board Pairing](Docs/USER_MANUAL.md#board-pairing) in the User Manual.
 3. **Run WIIBBLE.exe**, follow the on-screen calibration steps, then use the settings panel to start recording.
 
-For full usage instructions see the [User Manual](docs/USER_MANUAL.md).
+For full usage instructions see the [User Manual](Docs/USER_MANUAL.md).
 
 ---
 
@@ -82,7 +82,7 @@ python main.py --mock --mock-scenario sway
 ```
 
 Scenarios: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.  
-See [User Manual — Command-Line Options](docs/USER_MANUAL.md#command-line-options) for details.
+See [User Manual — Command-Line Options](Docs/USER_MANUAL.md#command-line-options) for details.
 
 ---
 
@@ -94,13 +94,13 @@ cd WIIBBLE
 uv sync
 ```
 
-For full setup, build, test, and packaging instructions see the [Developer Guide](docs/DEV.md).
+For full setup, build, test, and packaging instructions see the [Developer Guide](Docs/DEV.md).
 
 ---
 
 ## 🚑 Troubleshooting
 
-See [User Manual — Troubleshooting](docs/USER_MANUAL.md#troubleshooting) for common issues (board not found, DLL errors, black screen, settings reset).
+See [User Manual — Troubleshooting](Docs/USER_MANUAL.md#troubleshooting) for common issues (board not found, DLL errors, black screen, settings reset).
 
 ---
 
@@ -108,11 +108,11 @@ See [User Manual — Troubleshooting](docs/USER_MANUAL.md#troubleshooting) for c
 
 | Document | Audience | Purpose |
 |---|---|---|
-| [User Manual](docs/USER_MANUAL.md) | Clinicians | Interface, recording, board pairing |
-| [Developer Guide](docs/DEV.md) | Developers | Setup, workflow, packaging, CI |
-| [Architecture](docs/ARCHITECTURE.md) | Developers | System design, module guide, data flows |
-| [Data Pipeline](docs/DATA_PIPELINE.md) | Developers | Sensor → CSV → features → report |
-| [Visualisation References](docs/VISUALISATION_REFERENCES.md) | Researchers | Literature basis for each report figure |
+| [User Manual](Docs/USER_MANUAL.md) | Clinicians | Interface, recording, board pairing |
+| [Developer Guide](Docs/DEV.md) | Developers | Setup, workflow, packaging, CI |
+| [Architecture](Docs/ARCHITECTURE.md) | Developers | System design, module guide, data flows |
+| [Data Pipeline](Docs/DATA_PIPELINE.md) | Developers | Sensor → CSV → features → report |
+| [Visualisation References](Docs/VISUALISATION_REFERENCES.md) | Researchers | Literature basis for each report figure |
 | [Changelog](CHANGELOG.md) | All | What changed between versions |
 | [Contributing](CONTRIBUTING.md) | Contributors | Branching, style, PR process |
 

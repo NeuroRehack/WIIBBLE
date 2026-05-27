@@ -1,11 +1,64 @@
-@REM build c# project and move content of \bin\Debug\net8.0
+@echo off
+
+echo [compiler] Building C# library...
 cd WiiBalanceBoardLibrary
 dotnet build
+if errorlevel 1 (
+    echo [compiler] C# BUILD FAILED.
+    exit /b 1
+)
 cd ..
-if not exist outputBuild\ mkdir outputBuild\
-call venv\Scripts\activate.bat
-pyinstaller --clean --onefile --noconsole main.py --icon=images\\logo.ico --name=WIIBBLE --hidden-import=hid --add-data="images;images" --add-data="WiiBalanceBoardLibrary;WiiBalanceBoardLibrary"
-move dist\\WIIBBLE.exe outputBuild\\WIIBBLE.exe
-rmdir /s /q build
-del /f /q WIIBBLE.spec
-rmdir /s /q dist
+
+@REM if not exist outputBuild\ mkdir outputBuild\
+call .venv\Scripts\activate.bat
+
+echo [compiler] Building with Nuitka (standalone)...
+python -m nuitka --standalone --follow-imports ^
+    --jobs=%NUMBER_OF_PROCESSORS% ^
+    --windows-icon-from-ico=images\logo.ico ^
+    --output-filename=WIIBBLE.exe ^
+    --output-dir=dist_nuitka ^
+    --windows-console-mode=disable ^
+    --include-package=dearpygui ^
+    --include-package=hid ^
+    --include-package=numpy ^
+    --include-package=pygments ^
+    --include-module=tkinter ^
+    --nofollow-import-to=wiibble.analysis.analysis ^
+    --nofollow-import-to=wiibble.cli.report ^
+    --nofollow-import-to=wiibble.cli.process_recordings ^
+    --nofollow-import-to=code_descriptors_postural_control ^
+    --nofollow-import-to=scipy ^
+    --nofollow-import-to=pandas ^
+    --nofollow-import-to=sklearn ^
+    --nofollow-import-to=statsmodels ^
+    --nofollow-import-to=joblib ^
+    --nofollow-import-to=patsy ^
+    --include-data-dir=images=images ^
+    --include-data-dir=assets\fonts=assets\fonts ^
+    --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.dll=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
+    --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.pdb=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
+    src\wiibble
+if errorlevel 1 (
+    echo [compiler] BUILD FAILED.
+    exit /b 1
+)
+@REM if exist outputBuild\WIIBBLE rmdir /s /q outputBuild\WIIBBLE
+@REM move dist_nuitka\main.dist outputBuild\WIIBBLE
+echo [compiler] Build complete. Output: dist_nuitka\wiibble.dist\WIIBBLE.exe
+
+echo.
+where iscc >nul 2>&1
+if errorlevel 1 (
+    echo [installer] Inno Setup ^(iscc^) not found on PATH — skipping installer build.
+    echo [installer] Install Inno Setup 6.x from https://jrsoftware.org/isinfo.php to enable.
+) else (
+    echo [installer] Building installer with Inno Setup...
+    if not exist installer_output\ mkdir installer_output\
+    iscc installer.iss
+    if errorlevel 1 (
+        echo [installer] INSTALLER BUILD FAILED.
+        exit /b 1
+    )
+    echo [installer] Installer ready: installer_output\WIIBBLE-2.0.0-Setup.exe
+)

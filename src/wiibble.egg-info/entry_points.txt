@@ -1,0 +1,4 @@
+[console_scripts]
+wiibble = wiibble.__main__:main
+wiibble-process-recordings = wiibble.cli.process_recordings:main
+wiibble-report = wiibble.cli.report:main

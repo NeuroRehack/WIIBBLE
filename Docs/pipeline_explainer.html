@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WIIBBLE — Data Processing Pipeline</title>
+  <script>
+    // MathJax configuration
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea'] }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #222636;
+      --border:    #2e334a;
+      --accent:    #5c7cfa;
+      --accent2:   #74c0fc;
+      --green:     #69db7c;
+      --orange:    #ffa94d;
+      --purple:    #cc5de8;
+      --text:      #e8eaf6;
+      --muted:     #8892b0;
+      --code-bg:   #161b2e;
+      --radius:    12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #0d1128 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 40px 48px;
+      text-align: center;
+    }
+    header .badge {
+      display: inline-block;
+      background: rgba(92,124,250,0.15);
+      border: 1px solid rgba(92,124,250,0.4);
+      color: var(--accent2);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    header h1 {
+      font-size: clamp(26px, 4vw, 44px);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    header h1 span { color: var(--accent); }
+    header p {
+      color: var(--muted);
+      font-size: 17px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── Layout ──────────────────────────────────── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ── Section headings ────────────────────────── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      margin-top: 64px;
+    }
+    .section-label:first-child { margin-top: 0; }
+    .step-num {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .section-label h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .section-label p { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+    /* ── Cards ───────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent2);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 14px;
+    }
+    .card p { color: var(--muted); margin-bottom: 10px; }
+    .card p:last-child { margin-bottom: 0; }
+
+    /* ── Math blocks ─────────────────────────────── */
+    .math-block {
+      background: var(--code-bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+    .math-block .MJX-TEX { color: var(--text); }
+
+    /* ── Pipeline flow ───────────────────────────── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 32px 0;
+    }
+    .pipeline-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .pipeline-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 40px;
+      flex-shrink: 0;
+    }
+    .pipeline-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 3px rgba(92,124,250,0.3);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .pipeline-line {
+      width: 2px;
+      flex: 1;
+      min-height: 32px;
+      background: linear-gradient(to bottom, var(--accent), rgba(92,124,250,0.1));
+      margin: 4px 0;
+    }
+    .pipeline-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 0;
+      flex: 1;
+    }
+    .pipeline-content h4 { color: #fff; font-size: 15px; margin-bottom: 6px; }
+    .pipeline-content p { color: var(--muted); font-size: 14px; }
+    .pipeline-content code {
+      background: var(--code-bg);
+      color: var(--green);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+    .pipeline-spacer { height: 8px; }
+
+    /* ── Board diagram ───────────────────────────── */
+    .board-diagram {
+      display: flex;
+      justify-content: center;
+      margin: 28px 0;
+    }
+    .board-outer {
+      position: relative;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      width: 340px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .board-label {
+      position: absolute;
+      top: -26px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .sensor {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .sensor-tl { background: rgba(92,124,250,0.2); border: 1px solid var(--accent); color: var(--accent2); top: 20px; left: 20px; }
+    .sensor-tr { background: rgba(92,124,250,0.2); border: 1px solid var(--accent); color: var(--accent2); top: 20px; right: 20px; }
+    .sensor-bl { background: rgba(92,124,250,0.2); border: 1px solid var(--accent); color: var(--accent2); bottom: 20px; left: 20px; }
+    .sensor-br { background: rgba(92,124,250,0.2); border: 1px solid var(--accent); color: var(--accent2); bottom: 20px; right: 20px; }
+    .board-centre { color: var(--muted); font-size: 12px; text-align: center; }
+    .board-dims {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .board-dims span { background: var(--code-bg); padding: 2px 8px; border-radius: 4px; }
+
+    /* ── Axis annotation ─────────────────────────── */
+    .axis-row {
+      display: flex;
+      gap: 16px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .axis-card {
+      flex: 1;
+      min-width: 220px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .axis-card .axis-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .ml-tag { background: rgba(116,192,252,0.15); color: var(--accent2); border: 1px solid rgba(116,192,252,0.3); }
+    .ap-tag { background: rgba(105,219,124,0.15); color: var(--green); border: 1px solid rgba(105,219,124,0.3); }
+    .axis-card h4 { font-size: 14px; color: #fff; margin-bottom: 6px; }
+    .axis-card p { font-size: 13px; color: var(--muted); }
+
+    /* ── Formula highlight ───────────────────────── */
+    .formula-highlight {
+      background: linear-gradient(135deg, rgba(92,124,250,0.08) 0%, rgba(116,192,252,0.05) 100%);
+      border: 1px solid rgba(92,124,250,0.25);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin: 24px 0;
+      text-align: center;
+    }
+    .formula-highlight .formula-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    /* ── Two-column grid ─────────────────────────── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Code block ──────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 22px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      margin: 16px 0;
+    }
+    .kw  { color: #cc99ff; }
+    .fn  { color: #74c0fc; }
+    .num { color: #ffa94d; }
+    .cm  { color: #5a6a8a; font-style: italic; }
+    .str { color: #69db7c; }
+    .var { color: #e8eaf6; }
+
+    /* ── Table ───────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th {
+      background: var(--surface2);
+      color: var(--accent2);
+      font-weight: 600;
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(46,51,74,0.5);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    td code {
+      background: var(--code-bg);
+      color: var(--green);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Note box ────────────────────────────────── */
+    .note {
+      display: flex;
+      gap: 14px;
+      background: rgba(255,169,77,0.07);
+      border: 1px solid rgba(255,169,77,0.25);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 20px 0;
+    }
+    .note-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .note p { color: #c0a060; font-size: 14px; }
+
+    /* ── Reference ───────────────────────────────── */
+    .ref {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 20px;
+    }
+    .ref a { color: var(--accent2); text-decoration: none; }
+    .ref a:hover { text-decoration: underline; }
+
+    /* ── Footer ──────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 32px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    footer span { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Technical Reference</div>
+  <h1>WIIBBLE — <span>Data Processing Pipeline</span></h1>
+  <p>From raw HID bytes off the Wii Balance Board to Centre of Pressure in centimetres and posturographic feature extraction.</p>
+</header>
+
+<main>
+
+  <!-- ── Overview pipeline ──────────────────────────────────────────────── -->
+  <div class="section-label" style="margin-top:0">
+    <div class="step-num" style="background:var(--accent)">▶</div>
+    <div><h2>Pipeline Overview</h2><p>Seven stages from hardware to features</p></div>
+  </div>
+
+  <div class="pipeline">
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot"></div><div class="pipeline-line"></div></div>
+      <div class="pipeline-content">
+        <h4>1 · Raw HID Read</h4>
+        <p>32 bytes read from the board each frame via <code>read_data(device)</code>. ~75–100 Hz, non-uniform intervals.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot"></div><div class="pipeline-line"></div></div>
+      <div class="pipeline-content">
+        <h4>2 · Parse &amp; Tare</h4>
+        <p>Bytes decoded to kg per corner via <code>parse_data()</code>. Baseline (tare) subtracted; scaled by <code>SCALE_FACTOR</code>.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot" style="background:var(--orange)"></div><div class="pipeline-line" style="background:linear-gradient(to bottom,var(--orange),rgba(255,169,77,0.1))"></div></div>
+      <div class="pipeline-content">
+        <h4>3a · Force Deviation (Recording path — raw)</h4>
+        <p>Net ML and AP forces computed from <code>raw_corners</code> via <code>calculate_force_deviation_kg()</code>. Written to CSV — <strong>never filtered</strong>.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot" style="background:var(--purple)"></div><div class="pipeline-line" style="background:linear-gradient(to bottom,var(--purple),rgba(204,93,232,0.1))"></div></div>
+      <div class="pipeline-content">
+        <h4>3b · Moving Average Filter (Display path only)</h4>
+        <p>Window of N frames smoothed via <code>apply_filter()</code>. Only affects the live cursor — has no effect on recorded data.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot" style="background:var(--green)"></div><div class="pipeline-line" style="background:linear-gradient(to bottom,var(--green),rgba(105,219,124,0.1))"></div></div>
+      <div class="pipeline-content">
+        <h4>4 · CoP Conversion</h4>
+        <p>Force deviations converted to Centre of Pressure in centimetres using the WBB geometry (Leach et al. 2014, Eq. 1). ML and AP coordinates independently.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot"></div><div class="pipeline-line"></div></div>
+      <div class="pipeline-content">
+        <h4>5 · SWARII Resampling → 25 Hz</h4>
+        <p>Non-uniform timestamps resampled to a uniform 25 Hz grid using the Sliding Window Weighted Averaged Interpolation algorithm.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot"></div><div class="pipeline-line"></div></div>
+      <div class="pipeline-content">
+        <h4>6 · Butterworth Filter (0–10 Hz, order 4)</h4>
+        <p>Zero-phase bandpass applied by the Stabilogram class. Removes drift (&lt;0 Hz) and high-frequency noise (&gt;10 Hz) from the CoP signal.</p>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="pipeline-connector"><div class="pipeline-dot" style="background:var(--accent2)"></div></div>
+      <div class="pipeline-content">
+        <h4>7 · Feature Extraction (~80–90 features)</h4>
+        <p>Posturographic descriptors computed by <code>compute_all_features()</code>. Saved alongside the CSV as <code>features_YYYYMMDD_HHMMSS.json</code>.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Step 1: HID Read ───────────────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">1</div>
+    <div><h2>HID Data Acquisition</h2><p><code>read_data(device)</code> · <code>data_processing.py</code></p></div>
+  </div>
+
+  <div class="card">
+    <h3>32-byte HID report</h3>
+    <p>Each frame the board transmits a 32-byte Human Interface Device (HID) report. Only bytes at fixed offsets correspond to sensor data — the rest are status or padding bytes.</p>
+    <table>
+      <tr><th>Corner</th><th>Integer byte index</th><th>Fractional byte index</th></tr>
+      <tr><td>Top-right</td><td><code>data[3]</code></td><td><code>data[4]</code></td></tr>
+      <tr><td>Bottom-right</td><td><code>data[5]</code></td><td><code>data[6]</code></td></tr>
+      <tr><td>Top-left</td><td><code>data[7]</code></td><td><code>data[8]</code></td></tr>
+      <tr><td>Bottom-left</td><td><code>data[9]</code></td><td><code>data[10]</code></td></tr>
+    </table>
+    <p>Each corner uses two bytes: the first carries the integer part and the second carries the fractional part scaled over 255 (i.e. it is an 8-bit fixed-point fraction).</p>
+  </div>
+
+  <!-- ── Step 2: Parse & Tare ───────────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">2</div>
+    <div><h2>Parse &amp; Tare Correction</h2><p><code>parse_data()</code> · <code>data_processing.py</code></p></div>
+  </div>
+
+  <div class="card">
+    <h3>Raw byte → kg per corner</h3>
+    <p>The two bytes for each corner are combined into a single dimensionless raw value, then scaled to kilograms using an empirically derived calibration constant and baseline-subtracted.</p>
+    <div class="math-block">
+      $$F_{\text{corner}} \; [\text{kg}] \;=\; \Bigl(\underbrace{B_i}_{\text{integer byte}} + \underbrace{\frac{B_{i+1}}{255}}_{\text{fractional byte}} \;-\; T_{\text{corner}}\Bigr) \;\times\; K$$
+    </div>
+    <p>Where:</p>
+    <table>
+      <tr><th>Symbol</th><th>Meaning</th><th>Value / Source</th></tr>
+      <tr><td>$B_i$</td><td>Integer HID byte for the corner</td><td>Runtime</td></tr>
+      <tr><td>$B_{i+1}$</td><td>Fractional HID byte (÷ 255)</td><td>Runtime</td></tr>
+      <tr><td>$T_{\text{corner}}$</td><td>Tare offset (empty-board average over 10 readings)</td><td>Measured on startup</td></tr>
+      <tr><td>$K$</td><td><code>SCALE_FACTOR</code> — empirical kg/raw-unit calibration</td><td><code>2.6441910</code></td></tr>
+    </table>
+    <p>This yields four independent force measurements $F_{TL},\, F_{TR},\, F_{BL},\, F_{BR}$ (top-left, top-right, bottom-left, bottom-right) each in kilograms.</p>
+  </div>
+
+  <!-- ── Board diagram ──────────────────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">3</div>
+    <div><h2>Board Geometry &amp; Sensor Layout</h2><p>Leach et al. (2014), Sensors 14:18244 — Figure 3</p></div>
+  </div>
+
+  <div class="board-diagram">
+    <div style="position:relative; padding-bottom: 60px;">
+      <div class="board-label">Wii Balance Board — top view</div>
+      <div class="board-outer">
+        <div class="sensor sensor-tl">TL<br/>$F_{TL}$</div>
+        <div class="sensor sensor-tr">TR<br/>$F_{TR}$</div>
+        <div class="sensor sensor-bl">BL<br/>$F_{BL}$</div>
+        <div class="sensor sensor-br">BR<br/>$F_{BR}$</div>
+        <div class="board-centre">
+          <div style="color:var(--accent);font-size:18px;">✛</div>
+          <div>CoP</div>
+        </div>
+        <!-- dimension annotations via absolute SVG -->
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 340 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- ML double arrow -->
+          <defs>
+            <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5c7cfa"/></marker>
+            <marker id="b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto-start-reverse"><path d="M0,0 L6,3 L0,6 Z" fill="#5c7cfa"/></marker>
+          </defs>
+          <line x1="24" y1="170" x2="316" y2="170" stroke="#5c7cfa" stroke-width="1.5" marker-start="url(#b)" marker-end="url(#a)" stroke-dasharray="4 3"/>
+          <text x="170" y="186" text-anchor="middle" fill="#5c7cfa" font-size="11" font-family="monospace">433 mm  (ML)</text>
+          <!-- AP double arrow -->
+          <line x1="316" y1="24" x2="316" y2="150" stroke="#69db7c" stroke-width="1.5" marker-start="url(#b)" marker-end="url(#a)" stroke-dasharray="4 3"/>
+          <text x="330" y="92" text-anchor="start" fill="#69db7c" font-size="11" font-family="monospace" transform="rotate(90 330 92)">238 mm (AP)</text>
+          <!-- Centre cross arms -->
+          <line x1="150" y1="100" x2="190" y2="100" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+          <line x1="170" y1="80" x2="170" y2="120" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="axis-row">
+    <div class="axis-card">
+      <div class="axis-tag ml-tag">ML — Mediolateral</div>
+      <h4>Left ↔ Right</h4>
+      <p>Sensor-to-sensor distance: <strong>433 mm</strong>. Half-distance used in CoP formula: $d_{ML} = 21.65\,\text{cm}$.</p>
+    </div>
+    <div class="axis-card">
+      <div class="axis-tag ap-tag">AP — Anteroposterior</div>
+      <h4>Front ↔ Back</h4>
+      <p>Sensor-to-sensor distance: <strong>238 mm</strong>. Half-distance used in CoP formula: $d_{AP} = 11.9\,\text{cm}$.</p>
+    </div>
+  </div>
+
+  <!-- ── Step 3a: Force deviation ───────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">4</div>
+    <div><h2>Force Deviations</h2><p><code>calculate_force_deviation_kg()</code> · <code>data_processing.py</code></p></div>
+  </div>
+
+  <div class="card">
+    <h3>Net mediolateral and anteroposterior forces</h3>
+    <p>The four corner forces are combined into two net force deviation values — one per axis. These are the quantities recorded to CSV and later used for CoP conversion.</p>
+
+    <div class="two-col">
+      <div>
+        <p style="color:var(--accent2);font-weight:600;margin-bottom:8px">Mediolateral (x)</p>
+        <div class="math-block">
+          $$x_{\text{kg}} = (F_{TR} + F_{BR}) - (F_{TL} + F_{BL})$$
+        </div>
+        <p>Positive $x$ = weight shifted right. Negative $x$ = weight shifted left.</p>
+      </div>
+      <div>
+        <p style="color:var(--green);font-weight:600;margin-bottom:8px">Anteroposterior (y)</p>
+        <div class="math-block">
+          $$y_{\text{kg}} = (F_{TL} + F_{TR}) - (F_{BL} + F_{BR})$$
+        </div>
+        <p>Positive $y$ = weight shifted forward. Negative $y$ = weight shifted backward.</p>
+      </div>
+    </div>
+    <p>The total body weight used for normalisation is captured independently during the calibration phase:</p>
+    <div class="math-block">
+      $$W_{\text{total}} = F_{TL} + F_{TR} + F_{BL} + F_{BR}$$
+    </div>
+  </div>
+
+  <!-- ── Step 4: CoP ────────────────────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">5</div>
+    <div><h2>Centre of Pressure Conversion</h2><p><code>to_cop_array()</code> · <code>analysis.py</code> · Leach et al. 2014, Eq. 1</p></div>
+  </div>
+
+  <div class="formula-highlight">
+    <div class="formula-title">CoP Formula — Leach et al. (2014), citing Winter (2004)</div>
+    $$\text{CoP}_{ML}\;[\text{cm}] \;=\; d_{ML} \;\times\; \frac{x_{\text{kg}}}{W_{\text{total}}}$$
+    $$\text{CoP}_{AP}\;[\text{cm}] \;=\; d_{AP} \;\times\; \frac{y_{\text{kg}}}{W_{\text{total}}}$$
+  </div>
+
+  <div class="card">
+    <h3>Derivation</h3>
+    <p>This formula follows directly from the rigid lever arm model of a four-point force platform. Assuming each sensor pair acts as a fulcrum at distance $d$ from the geometric centre:</p>
+
+    <div class="math-block">
+      $$\text{CoP}_{ML} = \frac{d_{ML} \cdot (F_{TR} + F_{BR}) \;-\; d_{ML} \cdot (F_{TL} + F_{BL})}{F_{TL} + F_{TR} + F_{BL} + F_{BR}}$$
+    </div>
+
+    <p>Since $d_{ML}$ is constant, it factors out of the numerator:</p>
+
+    <div class="math-block">
+      $$= d_{ML} \;\cdot\; \frac{(F_{TR} + F_{BR}) - (F_{TL} + F_{BL})}{W_{\text{total}}} \;=\; d_{ML} \;\cdot\; \frac{x_{\text{kg}}}{W_{\text{total}}}$$
+    </div>
+
+    <p>The same derivation applies to the AP axis using $d_{AP}$ and $y_{\text{kg}}$. The result is expressed in centimetres because $d_{ML}$ and $d_{AP}$ are in centimetres.</p>
+
+    <table>
+      <tr><th>Constant</th><th>Value</th><th>Source</th></tr>
+      <tr><td>$d_{ML}$</td><td>21.65 cm</td><td>Leach et al. 2014, Fig. 3: $X = 433\,\text{mm},\ d = X/2$</td></tr>
+      <tr><td>$d_{AP}$</td><td>11.9 cm</td><td>Leach et al. 2014, Fig. 3: $Y = 238\,\text{mm},\ d = Y/2$</td></tr>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="note-icon">⚠</div>
+    <p>The recorded CSV always contains <strong>raw, unfiltered</strong> $(x_{\text{kg}},\, y_{\text{kg}})$ values. The display cursor moving-average filter is applied only to the live visualisation and has no effect on the data used for CoP conversion. The <code>ui_filter_window</code> metadata comment in the CSV is provenance only.</p>
+  </div>
+
+  <!-- ── Step 5–6: SWARII + Butterworth ────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">6</div>
+    <div><h2>SWARII Resampling &amp; Butterworth Filter</h2><p><code>Stabilogram.from_array()</code> · <code>code_descriptors_postural_control</code></p></div>
+  </div>
+
+  <div class="two-col">
+    <div class="card" style="margin-bottom:0">
+      <h3>SWARII — 25 Hz uniform grid</h3>
+      <p>WBB sampling is non-uniform (~75–100 Hz with jitter). The Sliding Window Weighted Averaged Interpolation (SWARII) algorithm produces a uniform 25 Hz time series without introducing the interpolation artefacts of simple linear resampling.</p>
+      <p>The 25 Hz target is sufficient to capture all clinically relevant postural sway frequencies (0–10 Hz, practically 0–3 Hz).</p>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <h3>Butterworth Bandpass</h3>
+      <p>A zero-phase 4th-order Butterworth filter is applied after resampling:</p>
+      <div class="math-block" style="text-align:center">
+        $$0\,\text{Hz} \;\leq\; f \;\leq\; 10\,\text{Hz}$$
+      </div>
+      <p>Zero-phase (forward + backward pass via <code>filtfilt</code>) ensures no temporal shift is introduced. The lower cut removes slow drift artefacts; the upper cut removes high-frequency noise above the sway band.</p>
+    </div>
+  </div>
+
+  <!-- ── Step 7: Features ───────────────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num">7</div>
+    <div><h2>Feature Extraction</h2><p><code>compute_all_features()</code> · ~80–90 posturographic descriptors</p></div>
+  </div>
+
+  <div class="card">
+    <h3>Feature families</h3>
+    <table>
+      <tr><th>Family</th><th>Examples</th><th>Clinical relevance</th></tr>
+      <tr>
+        <td>Positional</td>
+        <td>Mean displacement, RMS, 95% ellipse area, sway range</td>
+        <td>Overall sway magnitude; asymmetry detection</td>
+      </tr>
+      <tr>
+        <td>Dynamic</td>
+        <td>Mean velocity, path length, mean speed</td>
+        <td>Neuromuscular response speed; fatigue</td>
+      </tr>
+      <tr>
+        <td>Frequentist</td>
+        <td>Mean frequency, 95% power frequency, PSD peak</td>
+        <td>Shift toward higher frequencies indicates pathology</td>
+      </tr>
+      <tr>
+        <td>Stochastic (SDA)</td>
+        <td>Hurst exponent, short/long-interval scaling, critical time</td>
+        <td>Open vs. closed loop control boundary (Winter 1996)</td>
+      </tr>
+    </table>
+    <p>Results are written to <code>recordings/features_YYYYMMDD_HHMMSS.json</code> alongside the corresponding CSV. Analysis runs in a background daemon thread and only triggers for recordings ≥ 20 seconds.</p>
+  </div>
+
+  <!-- ── Code ───────────────────────────────────────────────────────────── -->
+  <div class="section-label">
+    <div class="step-num" style="background:var(--surface2);color:var(--accent);border:1px solid var(--border)">&lt;/&gt;</div>
+    <div><h2>Implementation Reference</h2><p>Key functions and where to find them</p></div>
+  </div>
+
+  <pre><span class="cm"># 1. Parse raw HID bytes to corner kg values</span>
+<span class="var">corners</span> = <span class="fn">parse_data</span>(data, data_struct)          <span class="cm"># data_processing.py</span>
+
+<span class="cm"># 2. Store raw values before any filtering (for recording)</span>
+<span class="var">app_state.raw_corners</span> = corners
+
+<span class="cm"># 3. Apply moving average (display only)</span>
+<span class="var">smoothed</span> = <span class="fn">apply_filter</span>(corners, filter_buffer, ui_filter_window)
+
+<span class="cm"># ── In analysis.py (offline, after recording ends) ──────────────────────</span>
+
+<span class="cm"># 4. Load CSV and parse metadata</span>
+<span class="var">data</span>, <span class="var">metadata</span> = <span class="fn">load_recording</span>(path)            <span class="cm"># → (N,3): time_s, x_kg, y_kg</span>
+
+<span class="cm"># 5. Convert force deviations to CoP in cm  (Leach 2014, Eq.1)</span>
+<span class="var">cop</span> = <span class="fn">to_cop_array</span>(data, total_weight_kg)        <span class="cm"># → (N,3): time_s, ML_cm, AP_cm</span>
+<span class="cm">#  ML_cm = 21.65 × x_kg / W_total</span>
+<span class="cm">#  AP_cm = 11.90 × y_kg / W_total</span>
+
+<span class="cm"># 6. SWARII → 25 Hz + Butterworth 0–10 Hz (inside Stabilogram)</span>
+<span class="var">stab</span> = <span class="fn">Stabilogram</span>()
+<span class="var">stab</span>.<span class="fn">from_array</span>(cop)
+
+<span class="cm"># 7. Extract ~80–90 posturographic features</span>
+<span class="var">features</span> = <span class="fn">compute_all_features</span>(stab)            <span class="cm"># → dict</span></pre>
+
+  <!-- ── Reference ──────────────────────────────────────────────────────── -->
+  <div class="ref">
+    <strong style="color:var(--accent2)">Primary reference</strong><br/>
+    Leach, J.M., Mancini, M., Peterka, R.J., Hayes, T.L., &amp; Horak, F.B. (2014).
+    <em>Validating and Calibrating the Nintendo Wii Balance Board to Derive Reliable Center of Pressure Measures.</em>
+    <em>Sensors</em>, 14(10), 18244–18267.
+    <a href="https://doi.org/10.3390/s141018244" target="_blank">doi:10.3390/s141018244</a>
+    <br/><br/>
+    <strong style="color:var(--accent2)">Supporting reference</strong><br/>
+    Winter, D.A. (2004). <em>Biomechanics and Motor Control of Human Movement</em> (3rd ed.). Wiley. [CoP lever-arm formula derivation]
+  </div>
+
+</main>
+
+<footer>
+  WIIBBLE — Wii Balance Board Live Environment &nbsp;·&nbsp;
+  <span>feature/posturographic-analysis</span> &nbsp;·&nbsp;
+  NeuroRehack / EPIC-Tech
+</footer>
+
+</body>
+</html>

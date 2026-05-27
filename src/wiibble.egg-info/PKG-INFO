@@ -1,3 +1,35 @@
+Metadata-Version: 2.4
+Name: wiibble
+Version: 0.1.0
+Summary: Wii Balance Board Live Environment — clinical rehabilitation tool
+License: GPL-3.0-or-later
+Requires-Python: <3.13,>=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: hidapi>=0.14.0.post4
+Requires-Dist: numpy<3,>=1.26
+Requires-Dist: pythonnet==3.0.3
+Requires-Dist: dearpygui==2.1.1
+Requires-Dist: pytz
+Requires-Dist: tk
+Requires-Dist: scipy==1.15.3
+Requires-Dist: pandas>=1.5
+Requires-Dist: scikit-learn>=1.2
+Requires-Dist: statsmodels>=0.14
+Requires-Dist: plotly>=5.0
+Requires-Dist: jinja2>=3.1
+Provides-Extra: analysis
+Requires-Dist: scipy<2,>=1.13; extra == "analysis"
+Requires-Dist: pandas>=1.5; extra == "analysis"
+Requires-Dist: scikit-learn>=1.2; extra == "analysis"
+Requires-Dist: statsmodels>=0.14.2; extra == "analysis"
+Provides-Extra: dev
+Requires-Dist: nuitka>=2.0; extra == "dev"
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: ruff>=0.4; extra == "dev"
+Dynamic: license-file
+
 ![CI](https://github.com/NeuroRehack/WIIBBLE/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/github/license/NeuroRehack/WIIBBLE)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)

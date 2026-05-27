@@ -24,7 +24,9 @@ python -m nuitka --standalone --follow-imports ^
     --include-package=numpy ^
     --include-package=pygments ^
     --include-module=tkinter ^
-    --nofollow-import-to=analysis ^
+    --nofollow-import-to=wiibble.analysis.analysis ^
+    --nofollow-import-to=wiibble.cli.report ^
+    --nofollow-import-to=wiibble.cli.process_recordings ^
     --nofollow-import-to=code_descriptors_postural_control ^
     --nofollow-import-to=scipy ^
     --nofollow-import-to=pandas ^
@@ -36,14 +38,14 @@ python -m nuitka --standalone --follow-imports ^
     --include-data-dir=assets\fonts=assets\fonts ^
     --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.dll=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
     --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.pdb=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
-    main.py
+    src\wiibble
 if errorlevel 1 (
     echo [compiler] BUILD FAILED.
     exit /b 1
 )
 @REM if exist outputBuild\WIIBBLE rmdir /s /q outputBuild\WIIBBLE
 @REM move dist_nuitka\main.dist outputBuild\WIIBBLE
-echo [compiler] Build complete. Output: dist_nuitka\main.dist\WIIBBLE.exe
+echo [compiler] Build complete. Output: dist_nuitka\wiibble.dist\WIIBBLE.exe
 
 echo.
 where iscc >nul 2>&1
@@ -58,5 +60,5 @@ if errorlevel 1 (
         echo [installer] INSTALLER BUILD FAILED.
         exit /b 1
     )
-    echo [installer] Installer ready: installer_output\WIIBBLE-0.1.0-Setup.exe
+    echo [installer] Installer ready: installer_output\WIIBBLE-2.0.0-Setup.exe
 )

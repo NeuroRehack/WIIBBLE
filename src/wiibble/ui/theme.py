@@ -7,7 +7,7 @@ import os
 
 import dearpygui.dearpygui as dpg
 
-from resources import FA_SOLID_FONT_PATH, resource_path
+from wiibble.utils.resources import FA_SOLID_FONT_PATH, resource_path
 
 log = logging.getLogger(__name__)
 

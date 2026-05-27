@@ -10,7 +10,7 @@ import math
 import random
 import time
 
-from constants import SCALE_FACTOR
+from wiibble.utils.constants import SCALE_FACTOR
 
 log = logging.getLogger(__name__)
 

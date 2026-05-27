@@ -11,19 +11,12 @@ import time
 import dearpygui.dearpygui as dpg
 import hid
 
-import theme as _theme_module
-from board_connection import try_connection
-from calibration import sensitivity_calibration, wait_for_tare
-from constants import (
-    COORD_SCALE,
-    DLL_RELATIVE_PATH,
-    PRODUCT_ID,
-    VENDOR_ID,
-    ZOOM_MAX,
-    ZOOM_MIN,
-    ZOOM_SCALE,
-)
-from data_processing import (
+import wiibble.ui.theme as _theme_module
+from wiibble.analysis.calibration import sensitivity_calibration, wait_for_tare
+from wiibble.board.board_connection import try_connection
+from wiibble.board.mock_board import MockHIDDevice
+from wiibble.board.recording import _save_recording_csv
+from wiibble.features.data_processing import (
     apply_filter,
     calculate_coordinates,
     calculate_force_deviation_kg,
@@ -31,12 +24,9 @@ from data_processing import (
     read_data,
     tare,
 )
-from input import register_input_handlers
-from mock_board import MockHIDDevice
-from recording import _save_recording_csv
-from resources import resource_path
-from theme import ICON_COG
-from ui import (
+from wiibble.ui.input import register_input_handlers
+from wiibble.ui.theme import ICON_COG
+from wiibble.ui.ui import (
     build_panel_controls,
     build_panel_toggle_btn,
     build_panel_window,
@@ -47,6 +37,16 @@ from ui import (
     ensure_textures_loaded,
     update_stats_bar,
 )
+from wiibble.utils.constants import (
+    COORD_SCALE,
+    DLL_RELATIVE_PATH,
+    PRODUCT_ID,
+    VENDOR_ID,
+    ZOOM_MAX,
+    ZOOM_MIN,
+    ZOOM_SCALE,
+)
+from wiibble.utils.resources import resource_path
 
 log = logging.getLogger(__name__)
 

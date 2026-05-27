@@ -3,9 +3,9 @@ import logging
 
 import dearpygui.dearpygui as dpg
 
-from constants import CALIB_MIN_WEIGHT_DELTA, TARE_MAX_WEIGHT
-from data_processing import measure_weight
-from ui import draw_step_instruction, ensure_textures_loaded
+from wiibble.features.data_processing import measure_weight
+from wiibble.ui.ui import draw_step_instruction, ensure_textures_loaded
+from wiibble.utils.constants import CALIB_MIN_WEIGHT_DELTA, TARE_MAX_WEIGHT
 
 log = logging.getLogger(__name__)
 

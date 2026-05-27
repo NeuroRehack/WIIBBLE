@@ -3,8 +3,8 @@ name = "wiibble"
 version = "0.1.0"
 description = "Wii Balance Board Live Environment — clinical rehabilitation tool"
 readme = "ReadMe.md"
-requires-python = ">=3.10,<3.14"
-license = { text = "MIT" }
+requires-python = ">=3.11,<3.13"
+license = { text = "GPL-3.0-or-later" }
 
 dependencies = [
     "hidapi>=0.14.0.post4",
@@ -12,29 +12,23 @@ dependencies = [
     "pythonnet==3.0.3",
     "dearpygui==2.1.1",
     "pytz",
-    "tk",  # Ensure tkinter is installed for native folder picker
+    "tk",
     # Analysis pipeline (code_descriptors_postural_control transitive deps)
     "scipy==1.15.3",
     "pandas>=1.5",
     "scikit-learn>=1.2",
     "statsmodels>=0.14",
-    # Reporting
     "plotly>=5.0",
     "jinja2>=3.1",
-    # FontAwesome 5 Solid TTF vendored at assets/fonts/fa-solid-900.ttf (OFL-1.1)
 ]
 
 [project.optional-dependencies]
-# Offline posturographic analysis — not compiled into the clinical executable.
-# Install with: uv sync --extra analysis
-# Run with:     python process_recordings.py
 analysis = [
     "scipy>=1.13,<2",
     "pandas>=1.5",
     "scikit-learn>=1.2",
     "statsmodels>=0.14.2",
 ]
-# Development extras — not needed on the clinical machine
 dev = [
     "nuitka>=2.0",
     "pytest>=7.0",
@@ -42,32 +36,38 @@ dev = [
     "ruff>=0.4",
 ]
 
-# No [build-system] section — WIIBBLE is a runnable application, not a
-# distributable library. uv sync installs dependencies only, no wheel build.
-# Run the app with: python main.py  or  python main.py --mock
+[project.scripts]
+wiibble = "wiibble.__main__:main"
+wiibble-report = "wiibble.cli.report:main"
+wiibble-process-recordings = "wiibble.cli.process_recordings:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [tool.uv]
 # uv generates uv.lock from this file.
 # To install:            uv sync
 # To install dev extras: uv sync --extra dev
 # To add a dependency:   uv add <package>
+package = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
-exclude = ["code_descriptors_postural_control"]
+target-version = "py311"
+exclude = ["src/code_descriptors_postural_control"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]  # pycodestyle, pyflakes, isort
-ignore = ["E501"]               # line length handled separately
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = [
-    "--cov=data_processing",
-    "--cov=state",
-    "--cov=recording",
+    "--cov=wiibble.features.data_processing",
+    "--cov=wiibble.utils.state",
+    "--cov=wiibble.board.recording",
     "--cov-report=term-missing",
     "--cov-fail-under=80",
 ]
@@ -75,12 +75,12 @@ addopts = [
 [tool.coverage.run]
 omit = [
     "tests/*",
-    "main.py",
-    "app.py",
-    "ui.py",
-    "theme.py",
-    "calibration.py",
-    "board_connection.py",
-    "mock_board.py",
-    "resources.py",
+    "src/wiibble/__main__.py",
+    "src/wiibble/app.py",
+    "src/wiibble/ui/ui.py",
+    "src/wiibble/ui/theme.py",
+    "src/wiibble/analysis/calibration.py",
+    "src/wiibble/board/board_connection.py",
+    "src/wiibble/board/mock_board.py",
+    "src/wiibble/utils/resources.py",
 ]

@@ -20,9 +20,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dev dependencies
-        run: uv sync --extra dev
-
-      - name: Check lint
+        run: |
+          uv sync --extra dev
+          uv pip install -e .
         run: uv run ruff check .
 
       - name: Check formatting
@@ -42,7 +42,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dev dependencies
-        run: uv sync --extra dev
+        run: |
+          uv sync --extra dev
+          uv pip install -e .
 
       - name: Run tests with coverage
         run: uv run pytest -v

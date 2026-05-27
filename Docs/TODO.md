@@ -14,8 +14,8 @@ For major architectural proposals see [Docs/decisions/](decisions/).
 
 ## 🟡 Code Quality
 
-- [ ] Further refactor `app.py` (e.g. extract `session.py`) for remaining logic
-- [ ] Move C# interop code from `board_connection.py` into a dedicated `hardware_interface.py`
+- [ ] Further refactor `wiibble/app.py` (e.g. extract `wiibble/session.py`) for remaining logic
+- [ ] Move C# interop code from `wiibble/board/board_connection.py` into a dedicated `wiibble/board/hardware_interface.py`
 - [ ] Add `utils.py` for shared helper functions that don't fit elsewhere
 
 ---

@@ -51,18 +51,27 @@ cd WIIBBLE
 git checkout develop
 ```
 
-### (c) Install Python dependencies
+### (c) Create a Python 3.12 virtual environment and install dependencies
 
+Ensure Python 3.12 is installed. Check with:
 ```powershell
-uv sync               # runtime dependencies
-uv sync --extra dev   # adds pytest, ruff, nuitka
+python --version
+# Or specify path:
+uv venv --python=python3.12
 ```
 
-This creates `.venv/` in the project directory. You do not need to activate it manually — all `uv run` commands use it automatically. To activate interactively:
+Then install dependencies and set up as a package:
+```powershell
+uv sync               # install dependencies from pyproject.toml/uv.lock
+uv sync --extra dev   # if you want dev dependencies (pytest, ruff, nuitka)
+uv pip install -e .   # REQUIRED: Install WIIBBLE as a package for CLI tools/entrypoints
+```
 
+This creates `.venv/` in the project directory. You can activate manually with:
 ```powershell
 .venv\Scripts\activate
 ```
+But most `uv run` commands will detect the venv automatically.
 
 ### (d) Build the C# board library
 
@@ -81,7 +90,7 @@ The DLL is placed at `WiiBalanceBoardLibrary/bin/Debug/net48/WiiBalanceBoardLibr
 ### (e) Verify setup with mock mode
 
 ```powershell
-uv run python main.py --mock --mock-scenario sway
+uv run python -m wiibble --mock --mock-scenario sway
 ```
 
 The app should launch, show calibration screens, then the main screen with a moving cursor. If this works, the environment is correctly set up.
@@ -95,7 +104,7 @@ See [USER_MANUAL.md — Board Pairing](USER_MANUAL.md#board-pairing) for the ful
 Once the board is paired and the LED is blinking blue:
 
 ```powershell
-uv run python main.py
+uv run python -m wiibble
 ```
 
 ---
@@ -104,9 +113,9 @@ uv run python main.py
 
 | Command | Description |
 |---|---|
-| `uv run python main.py` | Run with real board |
-| `uv run python main.py --mock` | Run with simulated board (default scenario: sway) |
-| `uv run python main.py --mock --mock-scenario lean_left` | Run with specific mock scenario |
+| `uv run python -m wiibble` | Run with real board |
+| `uv run python -m wiibble --mock` | Run with simulated board (default scenario: sway) |
+| `uv run python -m wiibble --mock --mock-scenario lean_left` | Run with specific mock scenario |
 
 Available mock scenarios: `sway`, `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.
 
@@ -139,7 +148,7 @@ CI rejects PRs that fail either check.
 
 ### Tests
 
-Tests live in `tests/` and use `pytest` + `pytest-cov`. A coverage gate of **≥ 80%** is enforced for `data_processing.py`, `state.py`, and `recording.py`. Hardware-dependent and UI code is excluded from the gate.
+Tests live in `tests/` and use `pytest` + `pytest-cov`. A coverage gate of **≥ 80%** is enforced for `wiibble/features/data_processing.py`, `wiibble/utils/state.py`, and `wiibble/board/recording.py`. Hardware-dependent and UI code is excluded from the gate.
 
 ```powershell
 uv run pytest -v
@@ -149,11 +158,11 @@ Current coverage:
 
 | Module | Coverage |
 |---|---|
-| `recording.py` | 95% |
-| `state.py` | 98% |
-| `data_processing.py` | ~53% |
+| `wiibble/board/recording.py` | 95% |
+| `wiibble/utils/state.py` | 98% |
+| `wiibble/features/data_processing.py` | ~53% |
 
-Use `MockHIDDevice` from `mock_board.py` for any test that touches the sensor pipeline. Never write tests that require a physical board.
+Use `MockHIDDevice` from `wiibble/board/mock_board.py` for any test that touches the sensor pipeline. Never write tests that require a physical board.
 
 ### Continuous integration
 
@@ -174,6 +183,8 @@ Pending CI additions: `dotnet build` job, Nuitka executable artifact — see [TO
 
 Analysis and reporting run **offline**, outside the compiled app. This keeps the Nuitka build fast and free of heavy dependencies (pandas, sklearn, statsmodels).
 
+**Note:** The first time you run the analysis, it may look like nothing is happening for a minute or two. This is because the dependency-heavy libraries (especially `statsmodels`) are being imported and cached by Python. Subsequent runs will be much faster.
+
 ### Install analysis dependencies
 
 ```powershell
@@ -184,17 +195,17 @@ uv sync --extra analysis
 
 Process all new (unanalysed) recordings in `recordings/`:
 ```powershell
-uv run python process_recordings.py --new
+uv run wiibble-process-recordings --new
 ```
 
 Process a specific recording:
 ```powershell
-uv run python process_recordings.py recordings/recording_YYYYMMDD_HHMMSS.csv
+uv run wiibble-process-recordings recordings/recording_YYYYMMDD_HHMMSS.csv
 ```
 
 Re-analyse and overwrite all recordings:
 ```powershell
-uv run python process_recordings.py --all
+uv run wiibble-process-recordings --all
 ```
 
 **Output:** `recordings/features_YYYYMMDD_HHMMSS.json` — ~80–90 posturographic features plus provenance metadata.
@@ -206,7 +217,7 @@ For a full technical breakdown of each analysis step see [DATA_PIPELINE.md](DATA
 ### Generate HTML reports
 
 ```powershell
-uv run python report.py recordings/recording_YYYYMMDD_HHMMSS.csv \
+uv run wiibble-report recordings/recording_YYYYMMDD_HHMMSS.csv \
     --features recordings/features_YYYYMMDD_HHMMSS.json \
     --out recordings/report_YYYYMMDD_HHMMSS.html
 ```
@@ -215,7 +226,7 @@ Omit `--out` for default output filename. If the `--features` JSON is missing, a
 
 The report contains: sway path + 95% confidence ellipse, ML/AP time series, velocity, power spectral density, diffusion plot, spatial density, and feature summary table. All captions are strictly descriptive — no clinical interpretation.
 
-To customise report figures or layout, edit `report.py` and the `_HTML_TEMPLATE` Jinja2 template. See [VISUALISATION_REFERENCES.md](VISUALISATION_REFERENCES.md) for the literature justification of each figure.
+To customise report figures or layout, edit `src/wiibble/cli/report.py` and the `_HTML_TEMPLATE` Jinja2 template. See [Docs/VISUALISATION_REFERENCES.md](VISUALISATION_REFERENCES.md) for the literature justification of each figure.
 
 **Dependencies:** Plotly, Jinja2 — included in the `analysis` extras group.
 
@@ -231,11 +242,11 @@ Requires `uv sync --extra dev`:
 .\compiler.bat
 ```
 
-Output: `outputBuild/WIIBBLE/WIIBBLE.exe`
+Output: `dist_nuitka/main.dist/WIIBBLE.exe`
 
 Test the build in mock mode before distributing:
 ```powershell
-outputBuild\WIIBBLE\WIIBBLE.exe --mock --mock-scenario sway
+dist_nuitka\main.dist\WIIBBLE.exe --mock --mock-scenario sway
 ```
 
 ### Create the installer (for clinic distribution)
@@ -277,28 +288,22 @@ Supports `/SILENT` and `/VERYSILENT` flags for managed deployment.
 
 ```
 WIIBBLE/
-├── main.py                      # Entry point
-├── app.py                       # Session lifecycle, main loop
-├── ui.py                        # Canvas and screen rendering
-├── input.py                     # Mouse and canvas interaction
-├── theme.py                     # Colours, fonts
-├── data_processing.py           # Sensor and coordinate pipeline (pure functions)
-├── calibration.py               # Calibration and tare logic
-├── state.py                     # AppState, Settings dataclasses
-├── constants.py                 # Hardware constants — single source of truth
-├── resources.py                 # Path resolution for dev + Nuitka builds
-├── mock_board.py                # Hardware simulator for dev/testing
-├── board_connection.py          # C# DLL bridge (Bluetooth handshake)
-├── recording.py                 # CSV output
-├── analysis.py                  # Posturographic feature extraction pipeline
-├── process_recordings.py        # Offline CLI — batch analyse recordings/
-├── report.py                    # HTML report generator
-├── pyproject.toml               # Dependencies and tooling configuration
-├── compiler.bat                 # Nuitka + Inno Setup build script
-├── installer.iss                # Inno Setup installer script
+└── src/
+    ├── wiibble/
+    │    ├── __main__.py            # App entry point (`python -m wiibble` / `wiibble` CLI)
+    │    ├── app.py                 # Session lifecycle, main loop
+    │    ├── analysis/              # CoP feature extraction, calibration
+    │    ├── board/                 # Board connection, mock board, CSV recording
+    │    ├── features/              # Sensor data processing pipeline
+    │    ├── ui/                    # Rendering, theme, input handlers
+    │    ├── cli/
+    │    │    ├── process_recordings.py  # `wiibble-process-recordings` entrypoint
+    │    │    └── report.py              # `wiibble-report` entrypoint
+    │    └── utils/                 # Constants, state, resources
+    └── code_descriptors_postural_control/  # Vendored posturographic library
 ├── WiiBalanceBoardLibrary/      # C# project (build to produce DLL)
-├── tests/                       # pytest test suite
-├── recordings/                  # Default output directory (created at runtime)
+├── tests/                      # pytest test suite
+├── recordings/                 # Default output directory (created at runtime)
 └── Docs/
     ├── USER_MANUAL.md
     ├── ARCHITECTURE.md
@@ -315,8 +320,8 @@ WIIBBLE/
 
 ```powershell
 # Run
-uv run python main.py --mock --mock-scenario sway
-uv run python main.py
+uv run python -m wiibble --mock --mock-scenario sway
+uv run python -m wiibble
 
 # Build C# library
 cd WiiBalanceBoardLibrary && dotnet build && cd ..
@@ -329,8 +334,8 @@ uv run ruff format .
 uv run pytest -v
 
 # Analysis and reporting
-uv run python process_recordings.py --new
-uv run python report.py recordings/recording_*.csv --features recordings/features_*.json
+uv run wiibble-process-recordings --new
+uv run wiibble-report recordings/recording_*.csv --features recordings/features_*.json
 
 # Build executable
 .\compiler.bat

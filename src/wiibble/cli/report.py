@@ -40,8 +40,8 @@ import plotly.graph_objects as go
 from jinja2 import Template
 from plotly.subplots import make_subplots
 
-from analysis import load_recording, to_cop_array
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
+from wiibble.analysis.analysis import load_recording, to_cop_array
 
 start_all = time.time()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")

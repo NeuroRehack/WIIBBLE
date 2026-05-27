@@ -31,7 +31,7 @@ import numpy as np
 
 from code_descriptors_postural_control.descriptors import compute_all_features
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
-from constants import WBB_SENSOR_DIST_AP_CM, WBB_SENSOR_DIST_ML_CM
+from wiibble.utils.constants import WBB_SENSOR_DIST_AP_CM, WBB_SENSOR_DIST_ML_CM
 
 log = logging.getLogger(__name__)
 

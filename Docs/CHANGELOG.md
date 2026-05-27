@@ -10,7 +10,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ### Planned
 - Manual board recalibration option (adjustable `SCALE_FACTOR` per board)
-- Further refactor of `app.py` into `session.py`
+- Further refactor of `wiibble/app.py` into `wiibble/session.py`
 - Move C# interop into dedicated `hardware_interface.py`
 - Add `utils.py` for shared helpers
 - Organise assets into `assets/fonts/`, `assets/images/` subfolders
@@ -22,7 +22,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 ## [2.x.0] — current
 
 ### Added
-- Posturographic feature extraction pipeline (`analysis.py`): CoP conversion (Leach 2014) → SWARII resampling → Butterworth filter → ~80–90 features via `code_descriptors_postural_control`
+- Posturographic feature extraction pipeline (`wiibble/analysis/analysis.py`): CoP conversion (Leach 2014) → SWARII resampling → Butterworth filter → ~80–90 features via `code_descriptors_postural_control`
 - `process_recordings.py` CLI for offline batch analysis
 - HTML session report generation (`report.py`) with Plotly/Jinja2: sway path, time series, velocity, PSD, diffusion, spatial density, feature table
 - `VISUALISATION_REFERENCES.md` — literature justification for every report figure
@@ -48,8 +48,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Spurious red marker on settings bar click removed
 
 ### Refactored
-- Recording logic extracted from `app.py` into `recording.py` for testability
-- `app.py` large code blocks broken into smaller functions
+- Recording logic extracted from `wiibble/app.py` into `wiibble/board/recording.py` for testability
+- `wiibble/app.py` large code blocks broken into smaller functions
 - `print()` calls replaced with `logging` module (DEBUG/INFO/ERROR); log at `~/.wiibble/wiibble.log`
 
 ---

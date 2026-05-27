@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from state import AppState, Settings
+from wiibble.utils.state import AppState, Settings
 
 
 # Automatically set WIIBBLE_SETTINGS_PATH to a temp file for all tests in this module

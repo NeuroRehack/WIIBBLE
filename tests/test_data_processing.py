@@ -3,13 +3,13 @@
 # No hardware, no DearPyGui — all inputs are constructed in-process.
 import pytest
 
-from constants import COORD_SCALE, SCALE_FACTOR
-from data_processing import (
+from wiibble.features.data_processing import (
     apply_filter,
     calculate_coordinates,
     calculate_force_deviation_kg,
     parse_data,
 )
+from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR
 
 # ---------------------------------------------------------------------------
 # parse_data

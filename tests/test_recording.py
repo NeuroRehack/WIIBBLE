@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from recording import _save_recording_csv
+from wiibble.board.recording import _save_recording_csv
 
 
 def _find_csv(recordings_dir) -> str:

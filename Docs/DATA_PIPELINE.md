@@ -91,7 +91,7 @@ After parsing, the pipeline splits into two independent paths.
 
 ## 5. Buffering for Recording
 
-- **Location:** `_update_recording_frame()` in `app.py`
+- **Location:** `_update_recording_frame()` in `wiibble/app.py`
 - Each frame during recording, appends `(timestamp, x_kg, y_kg)` to `app_state.record_buffer` using raw corners.
 - Timestamp is relative to recording start.
 
@@ -118,8 +118,8 @@ After parsing, the pipeline splits into two independent paths.
 
 Analysis runs offline via `process_recordings.py`, **not** inside the compiled app. This keeps the Nuitka build fast and free of pandas, sklearn, and statsmodels, which cannot be compiled efficiently.
 
-- **Script:** `process_recordings.py` — CLI at the repository root
-- **Core function:** `analyse_recording(path, total_weight_kg)` in `analysis.py`
+- **Script:** `wiibble-process-recordings` — CLI entry point
+- **Core function:** `analyse_recording(path, total_weight_kg)` in `wiibble/analysis/analysis.py`
 - **Minimum duration:** 20 s (shorter recordings are skipped)
 
 **Steps:**
@@ -140,13 +140,13 @@ Analysis runs offline via `process_recordings.py`, **not** inside the compiled a
 
 - **Target:** 100 Hz maximum (capped in main loop)
 - **Actual:** Depends on system performance
-- **Post-resampling:** 25 Hz uniform grid (SWARII, applied inside `analysis.py`)
+- **Post-resampling:** 25 Hz uniform grid (SWARII, applied inside `wiibble/analysis/analysis.py`)
 
 ---
 
 ## 9. Report Generation
 
-`report.py` converts a session CSV and its features JSON into a self-contained interactive HTML document.
+`wiibble-report` converts a session CSV and its features JSON into a self-contained interactive HTML document.
 
 **Inputs:**
 - `recordings/recording_YYYYMMDD_HHMMSS.csv`
@@ -169,7 +169,7 @@ Each section has a **neutral, descriptive caption** — no clinical interpretati
 
 **CLI:**
 ```powershell
-uv run python report.py recordings/recording_YYYYMMDD_HHMMSS.csv \
+uv run wiibble-report recordings/recording_YYYYMMDD_HHMMSS.csv \
     --features recordings/features_YYYYMMDD_HHMMSS.json \
     --out recordings/report_YYYYMMDD_HHMMSS.html
 ```

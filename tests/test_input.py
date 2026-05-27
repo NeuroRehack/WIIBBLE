@@ -1,7 +1,7 @@
 import math
 
-import input as input_module
-from state import AppState
+import wiibble.ui.input as input_module
+from wiibble.utils.state import AppState
 
 
 class DummySettings:

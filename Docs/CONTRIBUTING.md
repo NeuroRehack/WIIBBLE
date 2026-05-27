@@ -27,7 +27,7 @@ git clone https://github.com/NeuroRehack/WIIBBLE.git
 cd WIIBBLE
 uv sync --extra dev
 cd WiiBalanceBoardLibrary && dotnet build && cd ..
-uv run python main.py --mock  --mock-scenario sway # verify it runs without hardware
+uv run wiibble --mock --mock-scenario sway # verify it runs without hardware
 ```
 
 ---
@@ -64,7 +64,7 @@ Examples:
 ```
 feat(recording): add manual stop button during countdown
 fix(ui): restore gear icon visibility after screen resize
-docs(architecture): update module guide with analysis.py changes
+docs(architecture): update module guide with `wiibble/analysis/analysis.py` changes
 ```
 
 ---
@@ -84,16 +84,16 @@ CI will reject PRs that fail either check.
 
 A few conventions to follow beyond what Ruff enforces:
 
-- No magic numbers in `app.py` or `ui.py` — add them to `constants.py`.
-- No DPG or state imports in `data_processing.py` — keep it a pure functional pipeline.
-- Use `resource_path()` from `resources.py` for all asset access (required for Nuitka builds).
+- No magic numbers in `wiibble/app.py` or `wiibble/ui/ui.py` — add them to `wiibble/utils/constants.py`.
+- No DPG or state imports in `wiibble/features/data_processing.py` — keep it a pure functional pipeline.
+- Use `resource_path()` from `wiibble/utils/resources.py` for all asset access (required for Nuitka builds).
 - Comments explain *why*, not *what*.
 
 ---
 
 ## Tests
 
-Tests live in `tests/` and run with `pytest`. A coverage gate of **≥ 80%** is enforced for the testable modules (`data_processing.py`, `state.py`, `recording.py`). Hardware-dependent and UI code is excluded from the gate.
+Tests live in `tests/` and run with `pytest`. A coverage gate of **≥ 80%** is enforced for the testable modules (`wiibble/features/data_processing.py`, `wiibble/utils/state.py`, `wiibble/board/recording.py`). Hardware-dependent and UI code is excluded from the gate.
 
 ```powershell
 uv run pytest -v                 # run all tests with coverage report
@@ -101,7 +101,7 @@ uv run pytest -v                 # run all tests with coverage report
 
 When adding a new feature:
 - Add tests in `tests/` before or alongside the implementation.
-- Use `MockHIDDevice` from `mock_board.py` for anything that touches the sensor pipeline.
+- Use `MockHIDDevice` from `wiibble/board/mock_board.py` for anything that touches the sensor pipeline.
 - Never add tests that require a physical Wii Balance Board to pass.
 
 ---

@@ -4,7 +4,7 @@
 ;
 ; Prerequisites:
 ;   Inno Setup 6.x  https://jrsoftware.org/isinfo.php
-;   The Nuitka standalone output must exist at dist_nuitka\main.dist\
+;   The Nuitka standalone output must exist at dist_nuitka\wiibble.dist\
 ;   before running this script.
 
 #define AppName      "WIIBBLE"
@@ -12,7 +12,7 @@
 #define AppPublisher "NeuroRehack"
 #define AppURL       "https://github.com/NeuroRehack/WIIBBLE"
 #define AppExeName   "WIIBBLE.exe"
-#define SourceDir    "dist_nuitka\main.dist"
+#define SourceDir    "dist_nuitka\wiibble.dist"
 
 [Setup]
 AppId={{A3F2C1D4-8B7E-4F6A-9C2D-1E5B3A7F4C8D}

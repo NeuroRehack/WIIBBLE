@@ -203,7 +203,7 @@ WIIBBLE.exe [--mock] [--mock-scenario <scenario>]
 | `--mock` | Run with simulated data — no board required |
 | `--mock-scenario <name>` | Choose simulation scenario: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off` |
 
-These flags work with both `python main.py` and the compiled `WIIBBLE.exe`.
+These flags work with both `python -m wiibble` (`wiibble`) and the compiled `WIIBBLE.exe`.
 
 ---
 

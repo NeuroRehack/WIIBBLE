@@ -12,7 +12,7 @@ However, as the project matures and the settings panel grows more complex, sever
 
 - **Styling is severely constrained.** DearPyGui theming is limited to colour and font changes. Rounded panels, smooth transitions, and clinician-friendly layouts require hacks or are simply not achievable.
 - **No panel animations.** The collapsible settings panel cannot animate smoothly — it snaps open/closed. This is a minor but visible quality gap vs clinical software peers.
-- **Widget testing is not possible.** DearPyGui widgets cannot be instantiated headlessly, so UI logic cannot be unit-tested. Only the pure-pipeline modules (`data_processing.py`, `recording.py`, `state.py`) are currently testable.
+- **Widget testing is not possible.** DearPyGui widgets cannot be instantiated headlessly, so UI logic cannot be unit-tested. Only the pure-pipeline modules (`wiibble/features/data_processing.py`, `wiibble/board/recording.py`, `wiibble/utils/state.py`) are currently testable.
 - **Minor-version API breakage.** DearPyGui breaks its API between minor releases, requiring strict pinning and periodic migration effort.
 - **Canvas drawing model.** The `viewport_drawlist` full-screen approach works, but `QPainter` on a `QWidget` with a `QTimer` driving updates is equivalent and more portable.
 
@@ -22,7 +22,7 @@ PyQt6/PySide6 addresses all of these while remaining a viable Nuitka/PyInstaller
 
 *Not yet made. This ADR is in Proposed state pending team discussion and a prototype spike.*
 
-The candidate decision is: **migrate the UI layer to PyQt6 (LGPL) or PySide6 (LGPL)**, keeping all non-UI modules (`data_processing.py`, `analysis.py`, `recording.py`, `state.py`, `board_connection.py`, `mock_board.py`) completely unchanged.
+The candidate decision is: **migrate the UI layer to PyQt6 (LGPL) or PySide6 (LGPL)**, keeping all non-UI modules (`wiibble/features/data_processing.py`, `wiibble/analysis/analysis.py`, `wiibble/board/recording.py`, `wiibble/utils/state.py`, `wiibble/board/board_connection.py`, `wiibble/board/mock_board.py`) completely unchanged.
 
 ## Migration Surface
 
@@ -45,8 +45,8 @@ The candidate decision is: **migrate the UI layer to PyQt6 (LGPL) or PySide6 (LG
 - Larger ecosystem of Qt-native components
 
 **Negative**
-- Non-trivial migration effort — all draw calls and layout code in `ui.py` must be rewritten
-- `calibration.py` inline frame rendering must be redesigned as proper Qt dialogs
+- Non-trivial migration effort — all draw calls and layout code in `wiibble/ui/ui.py` must be rewritten
+- `wiibble/analysis/calibration.py` inline frame rendering must be redesigned as proper Qt dialogs
 - Build pipeline changes — Nuitka Qt bundle or switch to PyInstaller
 - Team must learn Qt layout/signal-slot model
 - Risk of introducing regressions in real-time rendering performance (requires benchmarking in spike)
@@ -62,5 +62,5 @@ Before committing, a prototype spike should:
 ## Related
 
 - TODO.md Phase 2 item (now tracked here)
-- `ui.py` — primary migration target
-- `calibration.py` — secondary migration target
+- `wiibble/ui/ui.py` — primary migration target
+- `wiibble/analysis/calibration.py` — secondary migration target

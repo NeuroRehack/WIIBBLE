@@ -8,7 +8,8 @@ import math
 
 import dearpygui.dearpygui as dpg
 
-from constants import (
+from wiibble.ui.ui import _on_zoom_change
+from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
     CURSOR_HIT_FRACTION,
     CURSOR_SIZE_MAX,
@@ -20,7 +21,6 @@ from constants import (
     ZOOM_SCALE,
     ZOOM_SPEED,
 )
-from ui import _on_zoom_change
 
 
 def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:

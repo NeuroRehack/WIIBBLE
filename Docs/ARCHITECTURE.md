@@ -14,21 +14,21 @@ For developer setup, build instructions, and running the app, see [DEV.md](DEV.m
 
 ## Architecture Overview
 
-The codebase is flat (all `.py` files in the repo root) and divided into six clear layers: entry point, session orchestration, UI rendering, input handling, sensor pipeline, and support utilities.
+The codebase uses a `src/` layout (`src/wiibble/`) and is divided into six clear layers: entry point, session orchestration, UI rendering, input handling, sensor pipeline, and support utilities.
 
 ```mermaid
 graph TD
-    main["main.py<br/>(entry point)"]
-    app["app.py<br/>(session & loop)"]
-    ui["ui.py<br/>(all drawing)"]
-    input["input.py<br/>(mouse handlers)"]
-    dp["data_processing.py<br/>(sensor pipeline)"]
-    state["state.py<br/>(AppState + Settings)"]
-    calib["calibration.py<br/>(tare & calibration)"]
-    board["board_connection.py<br/>(C# DLL bridge)"]
-    mock["mock_board.py<br/>(hardware simulator)"]
-    rec["recording.py<br/>(CSV output)"]
-    ana["analysis.py<br/>(posturographic pipeline)"]
+    main["wiibble (__main__.py) or CLI entrypoint"]
+    app["wiibble/app.py<br/>(session & loop)"]
+    ui["wiibble/ui/ui.py<br/>(all drawing)"]
+    input["wiibble/ui/input.py<br/>(mouse handlers)"]
+    dp["wiibble/features/data_processing.py<br/>(sensor pipeline)"]
+    state["wiibble/utils/state.py<br/>(AppState + Settings)"]
+    calib["wiibble/analysis/calibration.py<br/>(tare & calibration)"]
+    board["wiibble/board/board_connection.py<br/>(C# DLL bridge)"]
+    mock["wiibble/board/mock_board.py<br/>(hardware simulator)"]
+    rec["wiibble/board/recording.py<br/>(CSV output)"]
+    ana["wiibble/analysis/analysis.py<br/>(posturographic pipeline)"]
     cdpc["code_descriptors_postural_control"]
 
     main -->|"create_context\nload_fonts\ncreate_viewport"| app
@@ -46,7 +46,7 @@ graph TD
     mock -.->|"--mock flag"| app
 ```
 
-`app.py` is the hub. It owns the session lifecycle and reaches into every other module, but it never draws — that is entirely delegated to `ui.py`. Input callbacks in `input.py` communicate back to `app.py` only through `session_state["action"]`, keeping the input layer decoupled from session logic. `data_processing.py` has no DPG or state imports at all — it is a pure functional pipeline that can be tested without any hardware or GUI.
+`wiibble/app.py` is the hub. It owns the session lifecycle and reaches into every other module, but it never draws — that is entirely delegated to `wiibble/ui/ui.py`. Input callbacks in `wiibble/ui/input.py` communicate back to `app.py` only through `session_state["action"]`, keeping the input layer decoupled from session logic. `wiibble/features/data_processing.py` has no DPG or state imports at all — it is a pure functional pipeline that can be tested without any hardware or GUI.
 
 ---
 
@@ -60,8 +60,8 @@ Every frame, raw bytes from the board are transformed into a pixel position and 
 sequenceDiagram
     participant HID as HID Device
     participant dp as data_processing
-    participant app as app.py
-    participant ui as ui.py
+    participant app as wiibble/app.py
+    participant ui as wiibble/ui/ui.py
 
     HID->>dp: read_data() → 32 bytes
     dp->>dp: parse_data() → corners (kg each)
@@ -79,7 +79,7 @@ Before any data is shown, the board must be connected, zeroed, and the patient's
 
 ```mermaid
 sequenceDiagram
-    participant app as app.py
+    participant app as wiibble/app.py
     participant bc as board_connection
     participant hid as hid.device
     participant calib as calibration
@@ -110,9 +110,9 @@ A clinician starts a recording (with optional countdown), the app buffers force-
 ```mermaid
 sequenceDiagram
     participant cli as Clinician (toolbar)
-    participant app as app.py
+    participant app as wiibble/app.py
     participant dp as data_processing
-    participant rec as recording.py
+    participant rec as wiibble/board/recording.py
 
     cli->>app: click "Start Recording"
     app->>app: is_countdown=True, countdown_value=3
@@ -146,24 +146,24 @@ sequenceDiagram
 
 ## Module Guide
 
-| File / Module | Responsibility | Notes |
+| Module | Responsibility | Notes |
 |---|---|---|
-| `main.py` | DPG context, argparse, logging, screen-size detection | Deliberately thin — safe to import in tests; all logic guarded by `if __name__ == "__main__"` |
-| `app.py` | Session lifecycle, render loop, recording state machine, action dispatch | The largest file; still being refactored (see TODO) |
-| `ui.py` | Every DPG draw call — canvas, cursor, trail, targets, calibration screens, stats bar, toolbar | Never reads `AppState` directly during draws; receives values as arguments |
-| `input.py` | Mouse click/drag/release/wheel handlers; target creation; Ctrl+pan; Ctrl+zoom | Communicates back to `app.py` only via `session_state["action"]` |
-| `data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
-| `calibration.py` | Tare detection and body-weight calibration blocking loops | Renders its own screens inline; calls `dpg.render_dearpygui_frame()` directly |
-| `state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
-| `constants.py` | All magic numbers: hardware IDs, byte offsets, `SCALE_FACTOR`, thresholds, UI sizes | Single source of truth — never put literals in `app.py` or `ui.py` |
-| `theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
-| `recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata | Extracted from `app.py` specifically for testability |
-| `analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Lazy-imports `code_descriptors_postural_control`; safe to use standalone. Auto-triggered by `app.py` for recordings ≥ 20 s. |
-| `mock_board.py` | `MockHIDDevice` — drop-in for `hid.device()`, six named scenarios | Phase model (tare → step_on_stable → normal) mirrors real board calibration flow |
-| `board_connection.py` | C# DLL loader via `pythonnet`; `try_connection()` triggers the Bluetooth handshake | Called once at startup then never again — all data flows through `hidapi` |
-| `resources.py` | `resource_path()` — resolves asset paths in dev and Nuitka standalone builds | Pre-resolves common paths at import time; use this for all asset access |
+| `wiibble/__main__.py` | DPG context, argparse, logging, screen-size detection | Deliberately thin — safe to import in tests; provides WIIBBLE's Python entrypoint |
+| `wiibble/app.py` | Session lifecycle, render loop, recording state machine, action dispatch | The largest file; still being refactored (see TODO) |
+| `wiibble/ui/ui.py` | Every DPG draw call — canvas, cursor, trail, targets, calibration screens, stats bar, toolbar | Never reads `AppState` directly during draws; receives values as arguments |
+| `wiibble/ui/input.py` | Mouse click/drag/release/wheel handlers; target creation; Ctrl+pan; Ctrl+zoom | Communicates back to `app.py` only via `session_state["action"]` |
+| `wiibble/features/data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
+| `wiibble/analysis/calibration.py` | Tare detection and body-weight calibration blocking loops | Renders its own screens inline; calls `dpg.render_dearpygui_frame()` directly |
+| `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
+| `wiibble/utils/constants.py` | All magic numbers: hardware IDs, byte offsets, `SCALE_FACTOR`, thresholds, UI sizes | Single source of truth — never put literals in `app.py` or `ui.py` |
+| `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
+| `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata | Extracted from `app.py` specifically for testability |
+| `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; safe to use standalone. Auto-triggered by `app.py` for recordings ≥ 20 s. |
+| `wiibble/board/mock_board.py` | `MockHIDDevice` — drop-in for `hid.device()`, six named scenarios | Phase model (tare → step_on_stable → normal) mirrors real board calibration flow |
+| `wiibble/board/board_connection.py` | C# DLL loader via `pythonnet`; `try_connection()` triggers the Bluetooth handshake | Called once at startup then never again — all data flows through `hidapi` |
+| `wiibble/utils/resources.py` | `resource_path()` — resolves asset paths in dev and Nuitka standalone builds | Pre-resolves common paths at import time; use this for all asset access |
 
-**Boundary worth noting:** `board_connection.py` and `hid.device()` look like they do the same thing but serve entirely different purposes. The C# DLL is needed to trigger the OS-level Bluetooth handshake (a Nintendo quirk); once that succeeds and the DLL disconnects, `hidapi` opens the board as a plain HID device for all data. A developer who removes `board_connection.py` because "we're already using hidapi" will break real-hardware connects.
+**Boundary worth noting:** `wiibble/board/board_connection.py` and `hid.device()` look like they do the same thing but serve entirely different purposes. The C# DLL is needed to trigger the OS-level Bluetooth handshake (a Nintendo quirk); once that succeeds and the DLL disconnects, `hidapi` opens the board as a plain HID device for all data. A developer who removes `board_connection.py` because "we're already using hidapi" will break real-hardware connects.
 
 ---
 
@@ -211,7 +211,7 @@ The toolbar and gear button are created at startup but hidden until `Calibrating
 
 ## Where to Start Reading
 
-1. **`state.py`** — understand `AppState` and `Settings` first; almost every module touches them.
-2. **`data_processing.py`** — the pure sensor pipeline; read alongside `constants.py`.
-3. **`app.py / _run_session()`** — the main session flow from connection to render loop.
-4. **`ui.py / draw_main_screen()`** — how the canvas is rendered each frame.
+1. **`wiibble/utils/state.py`** — understand `AppState` and `Settings` first; almost every module touches them.
+2. **`wiibble/features/data_processing.py`** — the pure sensor pipeline; read alongside `wiibble/utils/constants.py`.
+3. **`wiibble/app.py / _run_session()`** — the main session flow from connection to render loop.
+4. **`wiibble/ui/ui.py / draw_main_screen()`** — how the canvas is rendered each frame.

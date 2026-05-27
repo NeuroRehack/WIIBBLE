@@ -32,9 +32,9 @@ log = logging.getLogger(__name__)
 
 import dearpygui.dearpygui as dpg  # noqa: E402
 
-from app import run  # noqa: E402
-from state import AppState, Settings  # noqa: E402
-from theme import apply_global_theme, load_fonts  # noqa: E402
+from wiibble.app import run  # noqa: E402
+from wiibble.ui.theme import apply_global_theme, load_fonts  # noqa: E402
+from wiibble.utils.state import AppState, Settings  # noqa: E402
 
 
 def parse_args():

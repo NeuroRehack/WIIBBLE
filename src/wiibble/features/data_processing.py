@@ -3,7 +3,7 @@ import logging
 
 import numpy as np
 
-from constants import COORD_SCALE, SCALE_FACTOR
+from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR
 
 log = logging.getLogger(__name__)
 

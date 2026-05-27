@@ -29,7 +29,7 @@ import os
 import sys
 import time
 
-from analysis import analyse_recording
+from wiibble.analysis.analysis import analyse_recording
 
 start_all = time.time()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -117,7 +117,7 @@ def _process_file(
         if with_report:
             try:
                 log.info("    Generating HTML report…")
-                from report import generate_report
+                from wiibble.cli.report import generate_report
 
                 out_html = generate_report(csv_path, features_path=json_path)
                 log.info(f"    HTML report written: {os.path.basename(out_html)}")

@@ -9,24 +9,8 @@ import time
 
 import dearpygui.dearpygui as dpg
 
-import theme as _theme_module
-from constants import (
-    CURSOR_SIZE_MAX,
-    CURSOR_SIZE_MIN,
-    FILTER_MAX,
-    FILTER_MIN,
-    PANEL_BTN_H,
-    PANEL_BTN_W,
-    PANEL_SECTION_SPACING,
-    PANEL_SLIDER_W,
-    PANEL_TOGGLE_BTN_SIZE,
-    PANEL_W,
-    ZOOM_MAX,
-    ZOOM_MIN,
-    ZOOM_SCALE,
-)
-from resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
-from theme import (
+import wiibble.ui.theme as _theme_module
+from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
     BBOX_THICKNESS,
@@ -43,6 +27,22 @@ from theme import (
     bind_text_font,
     get_stats_bar_color,
 )
+from wiibble.utils.constants import (
+    CURSOR_SIZE_MAX,
+    CURSOR_SIZE_MIN,
+    FILTER_MAX,
+    FILTER_MIN,
+    PANEL_BTN_H,
+    PANEL_BTN_W,
+    PANEL_SECTION_SPACING,
+    PANEL_SLIDER_W,
+    PANEL_TOGGLE_BTN_SIZE,
+    PANEL_W,
+    ZOOM_MAX,
+    ZOOM_MIN,
+    ZOOM_SCALE,
+)
+from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
 
 # ---------------------------------------------------------------------------
 # Layout constants — all proportional to viewport dimensions.
@@ -876,7 +876,7 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
 
     dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
 
-    tag = _wii_texture_tags[2]
+    tag = _wii_texture_tags[2 if step == "on" else 0]
     cfg = dpg.get_item_configuration(tag)
     iw_orig, ih_orig = cfg["width"], cfg["height"]
     scaled_h = int(CALIB_IMG_HEIGHT * sh)

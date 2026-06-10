@@ -8,7 +8,11 @@
 ;   before running this script.
 
 #define AppName      "WIIBBLE"
-#define AppVersion   "2.0.0"
+; Override at build time: iscc /DAppVersion=2.0.0 installer.iss
+; Default matches pyproject.toml — keep in sync when bumping releases locally.
+#ifndef AppVersion
+  #define AppVersion "2.0.1"
+#endif
 #define AppPublisher "NeuroRehack"
 #define AppURL       "https://github.com/NeuroRehack/WIIBBLE"
 #define AppExeName   "WIIBBLE.exe"

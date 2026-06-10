@@ -4,6 +4,8 @@ This module contains the main session lifecycle, device connection flow,
 DearPyGui UI glue code, and the primary render + recording loop.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import time
@@ -395,9 +397,10 @@ def _render_main_screen_frame(
     top_right: float,
     bottom_left: float,
     bottom_right: float,
+    diagnostics: _LoopDiagnostics | None = None,
 ):
     """Render the main session frame when sensor data is available."""
-    frame_state, _reports_drained = _process_frame_data(
+    frame_state, reports_drained = _process_frame_data(
         device,
         app_state,
         settings,
@@ -406,6 +409,8 @@ def _render_main_screen_frame(
         bottom_left,
         bottom_right,
     )
+    if diagnostics is not None:
+        diagnostics.tick_frame(frame_state is not None, reports_drained)
     if frame_state is None:
         return top_left, top_right, bottom_left, bottom_right
 
@@ -547,6 +552,70 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
 # This eliminates the sub-pixel jitter that caused blurry text.
 _stats_cache = {"left": -1, "weight": -1, "right": -1}
 
+# Approximate Wii Balance Board HID report interval (used for backlog lag estimate).
+_HID_REPORT_INTERVAL_S = 0.01
+
+
+class _LoopDiagnostics:
+    """Aggregate main-loop timing and HID backlog metrics; log once per second."""
+
+    LOG_INTERVAL_S = 1.0
+
+    def __init__(self) -> None:
+        self._window_start = time.perf_counter()
+        self._frames = 0
+        self._sensor_updates = 0
+        self._empty_reads = 0
+        self._max_reports_drained = 0
+        self._sum_reports_drained = 0
+
+    def tick_frame(self, had_sensor_data: bool, reports_drained: int) -> None:
+        """Record one main-loop iteration."""
+        self._frames += 1
+        if had_sensor_data:
+            self._sensor_updates += 1
+            self._max_reports_drained = max(self._max_reports_drained, reports_drained)
+            self._sum_reports_drained += reports_drained
+        else:
+            self._empty_reads += 1
+        self._maybe_log()
+
+    def _maybe_log(self) -> None:
+        elapsed = time.perf_counter() - self._window_start
+        if elapsed < self.LOG_INTERVAL_S:
+            return
+        fps = self._frames / elapsed
+        sensor_hz = self._sensor_updates / elapsed
+        avg_drained = (
+            self._sum_reports_drained / self._sensor_updates if self._sensor_updates else 0.0
+        )
+        # If N reports were queued, the oldest would lag ~(N-1) report periods behind.
+        est_backlog_lag_ms = max(0, self._max_reports_drained - 1) * _HID_REPORT_INTERVAL_S * 1000
+        log.info(
+            "Loop perf: fps=%.1f sensor_hz=%.1f empty_reads=%d "
+            "max_hid_batch=%d avg_hid_batch=%.1f est_backlog_lag_ms=%.0f",
+            fps,
+            sensor_hz,
+            self._empty_reads,
+            self._max_reports_drained,
+            avg_drained,
+            est_backlog_lag_ms,
+        )
+        if self._max_reports_drained >= 3:
+            log.warning(
+                "HID backlog: up to %d reports drained in one frame "
+                "(~%.0f ms stale if only oldest had been used); "
+                "render loop may be slower than board ~100 Hz",
+                self._max_reports_drained,
+                est_backlog_lag_ms,
+            )
+        self._window_start = time.perf_counter()
+        self._frames = 0
+        self._sensor_updates = 0
+        self._empty_reads = 0
+        self._max_reports_drained = 0
+        self._sum_reports_drained = 0
+
 
 # ---------------------------------------------------------------------------
 # Main run loop
@@ -629,6 +698,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     # Corner values — initialised here so recording logic can reference them
     # even if the first data frame hasn't arrived yet.
     top_left = top_right = bottom_left = bottom_right = 0.0
+    diagnostics = _LoopDiagnostics()
 
     while dpg.is_dearpygui_running():
         now = time.time()
@@ -663,6 +733,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
             top_right,
             bottom_left,
             bottom_right,
+            diagnostics=diagnostics,
         )
 
         dpg.render_dearpygui_frame()

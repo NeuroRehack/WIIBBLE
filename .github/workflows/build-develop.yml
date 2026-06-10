@@ -1,0 +1,56 @@
+name: Build (develop)
+
+# Manual builds from develop for QA — uploads artifacts, does not create a release.
+on:
+  workflow_dispatch:
+    branches: [develop]
+
+concurrency:
+  group: build-develop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Windows executable
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Add Inno Setup to PATH
+        run: echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Resolve version
+        shell: pwsh
+        run: |
+          $version = uv run python scripts/get_version.py
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          "WIIBBLE_VERSION=$version" >> $env:GITHUB_ENV
+          "ARTIFACT_LABEL=$version-dev-$sha" >> $env:GITHUB_ENV
+
+      - name: Build
+        shell: pwsh
+        run: .\scripts\ci_build.ps1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wiibble-${{ env.ARTIFACT_LABEL }}
+          path: |
+            installer_output/WIIBBLE-*-Setup.exe
+            WIIBBLE-*-portable.zip
+          if-no-files-found: warn

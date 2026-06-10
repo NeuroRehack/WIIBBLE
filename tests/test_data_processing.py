@@ -8,8 +8,70 @@ from wiibble.features.data_processing import (
     calculate_coordinates,
     calculate_force_deviation_kg,
     parse_data,
+    read_latest_data,
 )
 from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR
+
+# ---------------------------------------------------------------------------
+# read_latest_data
+# ---------------------------------------------------------------------------
+
+
+class _QueueDevice:
+    """Test double that returns queued read() results in order."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+
+    def read(self, size):
+        if self._responses:
+            return self._responses.pop(0)
+        return []
+
+
+class TestReadLatestData:
+    def test_empty_buffer_returns_none(self):
+        device = _QueueDevice([[], []])
+        data, drained = read_latest_data(device)
+        assert data is None
+        assert drained == 0
+
+    def test_single_report(self):
+        report = [0] * 32
+        device = _QueueDevice([report])
+        data, drained = read_latest_data(device)
+        assert data == report
+        assert drained == 1
+
+    def test_drains_queue_and_returns_last(self):
+        r1, r2, r3 = [1] * 32, [2] * 32, [3] * 32
+        device = _QueueDevice([r1, r2, r3, []])
+        data, drained = read_latest_data(device)
+        assert data == r3
+        assert drained == 3
+
+    def test_stops_at_first_empty_after_reports(self):
+        r1, r2 = [1] * 32, [2] * 32
+        device = _QueueDevice([r1, [], r2])
+        data, drained = read_latest_data(device)
+        assert data == r1
+        assert drained == 1
+
+    def test_read_error_returns_partial_latest(self):
+        class ErrDevice:
+            def __init__(self):
+                self._n = 0
+
+            def read(self, size):
+                self._n += 1
+                if self._n == 1:
+                    return [5] * 32
+                raise OSError("disconnected")
+
+        data, drained = read_latest_data(ErrDevice())
+        assert data == [5] * 32
+        assert drained == 1
+
 
 # ---------------------------------------------------------------------------
 # parse_data

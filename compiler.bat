@@ -1,4 +1,10 @@
 @echo off
+setlocal EnableDelayedExpansion
+
+if not defined WIIBBLE_VERSION (
+    for /f "delims=" %%V in ('python scripts\get_version.py') do set WIIBBLE_VERSION=%%V
+)
+echo [compiler] Version: %WIIBBLE_VERSION%
 
 echo [compiler] Building C# library...
 cd WiiBalanceBoardLibrary
@@ -13,7 +19,9 @@ cd ..
 call .venv\Scripts\activate.bat
 
 echo [compiler] Building with Nuitka (standalone)...
-python -m nuitka --standalone --follow-imports ^
+set NUITKA_OPTS=
+if defined CI set NUITKA_OPTS=--assume-yes-for-downloads
+python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --jobs=%NUMBER_OF_PROCESSORS% ^
     --windows-icon-from-ico=images\logo.ico ^
     --output-filename=WIIBBLE.exe ^
@@ -55,10 +63,10 @@ if errorlevel 1 (
 ) else (
     echo [installer] Building installer with Inno Setup...
     if not exist installer_output\ mkdir installer_output\
-    iscc installer.iss
+    iscc /DAppVersion=%WIIBBLE_VERSION% installer.iss
     if errorlevel 1 (
         echo [installer] INSTALLER BUILD FAILED.
         exit /b 1
     )
-    echo [installer] Installer ready: installer_output\WIIBBLE-2.0.0-Setup.exe
+    echo [installer] Installer ready: installer_output\WIIBBLE-%WIIBBLE_VERSION%-Setup.exe
 )

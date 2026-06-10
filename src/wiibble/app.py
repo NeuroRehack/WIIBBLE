@@ -21,7 +21,7 @@ from wiibble.features.data_processing import (
     calculate_coordinates,
     calculate_force_deviation_kg,
     parse_data,
-    read_data,
+    read_latest_data,
     tare,
 )
 from wiibble.ui.input import register_input_handlers
@@ -397,7 +397,7 @@ def _render_main_screen_frame(
     bottom_right: float,
 ):
     """Render the main session frame when sensor data is available."""
-    frame_state = _process_frame_data(
+    frame_state, _reports_drained = _process_frame_data(
         device,
         app_state,
         settings,
@@ -452,9 +452,9 @@ def _process_frame_data(
     bottom_right: float,
 ):
     """Read sensor data and update runtime cursor state for the current frame."""
-    data = read_data(device)
+    data, reports_drained = read_latest_data(device)
     if not data:
-        return None
+        return None, reports_drained
 
     corners = parse_data(data, app_state.data_struct)
     app_state.raw_corners = corners  # store unfiltered values for recording
@@ -514,7 +514,7 @@ def _process_frame_data(
         "top_right": top_right,
         "bottom_left": bottom_left,
         "bottom_right": bottom_right,
-    }
+    }, reports_drained
 
 
 # ---------------------------------------------------------------------------

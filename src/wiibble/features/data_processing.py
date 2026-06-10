@@ -33,6 +33,34 @@ def read_data(device):
         return None
 
 
+def read_latest_data(device) -> tuple:
+    """Drain the HID input buffer and return the most recent 32-byte report.
+
+    In non-blocking mode the OS may queue multiple reports between render
+    frames. Reading only once per frame processes stale (FIFO) data and can
+    add hundreds of milliseconds of display lag. This function reads until
+    the buffer is empty and keeps the last report.
+
+    Returns:
+        (data, reports_drained): ``data`` is the latest report or None if no
+        report was available; ``reports_drained`` is how many reports were
+        consumed (0 when ``data`` is None).
+    """
+    latest = None
+    reports_drained = 0
+    while True:
+        try:
+            data = device.read(32)
+        except Exception as e:
+            log.warning("Failed to read data: %s", e)
+            break
+        if not data:
+            break
+        latest = data
+        reports_drained += 1
+    return latest, reports_drained
+
+
 def parse_data(data: list, data_struct: dict) -> dict:
     """
     Parse raw HID bytes into kg values per corner, applying tare offsets.

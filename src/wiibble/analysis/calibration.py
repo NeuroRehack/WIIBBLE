@@ -3,7 +3,7 @@ import logging
 
 import dearpygui.dearpygui as dpg
 
-from wiibble.features.data_processing import measure_weight
+from wiibble.features.data_processing import measure_weight, tare
 from wiibble.ui.ui import draw_step_instruction, ensure_textures_loaded
 from wiibble.utils.constants import CALIB_MIN_WEIGHT_DELTA, TARE_MAX_WEIGHT
 
@@ -84,3 +84,40 @@ def sensitivity_calibration(device, dl, app_state, on_start=None) -> float:
 
     log.info("sensitivity_calibration: calibrated body weight = %.2f kg", weight)
     return weight
+
+
+def run_board_weight_calibration(device, dl, app_state) -> float:
+    """
+    Full on-board weight calibration: empty-board wait → tare → step-on measurement.
+
+    Returns calibrated body weight in kg, or -1 if aborted (window closed).
+    """
+    # Calibration loops call read() in tight bursts; non-blocking HID (enabled in the
+    # main loop) causes empty reads and stalls the stability counter mid-flight.
+    restore_nonblocking = False
+    if hasattr(device, "set_nonblocking"):
+        device.set_nonblocking(0)
+        restore_nonblocking = True
+
+    try:
+        if hasattr(device, "reset_calibration_phase"):
+            device.reset_calibration_phase()
+
+        result = wait_for_tare(device, dl, app_state)
+        if result == -1:
+            return -1
+
+        try:
+            tare(device, app_state.data_struct)
+        except Exception:
+            log.exception("run_board_weight_calibration: tare failed")
+            return -1
+
+        on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
+        weight = sensitivity_calibration(device, dl, app_state, on_start=on_start)
+        return weight
+    finally:
+        if hasattr(device, "enter_running_mode"):
+            device.enter_running_mode()
+        if restore_nonblocking:
+            device.set_nonblocking(1)

@@ -47,6 +47,9 @@ class TestSettingsDefaults:
     def test_cursor_mode_default(self):
         assert Settings().cursor_mode == "avatar"
 
+    def test_body_weight_kg_default(self):
+        assert Settings().body_weight_kg == 70.0
+
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file
@@ -80,6 +83,7 @@ class TestSettingsRoundTrip:
             filter_window=10,
             record_duration=30,
             cursor_mode="circle",
+            body_weight_kg=82.5,
         )
         original.save()
         loaded = Settings.load()
@@ -89,6 +93,7 @@ class TestSettingsRoundTrip:
         assert loaded.filter_window == 10
         assert loaded.record_duration == 30
         assert loaded.cursor_mode == "circle"
+        assert loaded.body_weight_kg == 82.5
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -123,6 +128,7 @@ class TestSettingsLoadFallback:
         # All other fields fall back to default
         assert loaded.zoom_factor == 1.0
         assert loaded.cursor_mode == "avatar"
+        assert loaded.body_weight_kg == 70.0
 
     def test_corrupt_json_returns_defaults(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

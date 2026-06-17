@@ -14,7 +14,7 @@ import dearpygui.dearpygui as dpg
 import hid
 
 import wiibble.ui.theme as _theme_module
-from wiibble.analysis.calibration import sensitivity_calibration, wait_for_tare
+from wiibble.analysis.calibration import run_board_weight_calibration, wait_for_tare
 from wiibble.board.mock_board import MockHIDDevice
 from wiibble.board.recording import _save_recording_csv
 from wiibble.features.data_processing import (
@@ -341,6 +341,16 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
     if action == "pan_changed":
         _clear_session_action(session_state)
         return None
+    if action == "calibrate":
+        weight = run_board_weight_calibration(device, dl, app_state)
+        if weight > 0:
+            settings.body_weight_kg = weight
+            app_state.weight = weight
+            settings.save()
+            if dpg.does_item_exist("body_weight_input"):
+                dpg.set_value("body_weight_input", weight)
+        _clear_session_action(session_state)
+        return None
     if action == "toolbar_toggled":
         _clear_session_action(session_state)
         return None
@@ -348,7 +358,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
 
 
 def _prepare_session(dl, app_state, settings, session_state, args):
-    """Run connection, tare, and calibration startup steps before the main loop."""
+    """Run connection and tare startup steps before the main loop."""
     try:
         connected = _try_connection_loop(dl, app_state, use_mock=args.mock)
         if not connected:
@@ -373,17 +383,12 @@ def _prepare_session(dl, app_state, settings, session_state, args):
         device.close()
         return None
 
-    on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
-    calibrated_weight = sensitivity_calibration(device, dl, app_state, on_start=on_start)
-    if calibrated_weight == -1:
-        log.warning("Calibration aborted — window closed before subject stepped on.")
-        device.close()
-        return None
-
-    app_state.weight = calibrated_weight
+    app_state.weight = settings.body_weight_kg
     session_state["toolbar_enabled"] = True
     if dpg.does_item_exist("panel_toggle_window"):
         dpg.configure_item("panel_toggle_window", show=True)
+    if hasattr(device, "enter_running_mode"):
+        device.enter_running_mode()
 
     return device
 
@@ -633,7 +638,7 @@ def run(app_state, settings, args) -> None:
 
 def _run_session(app_state, settings, args) -> int:
     """
-    One full session: connect → tare → calibrate → main loop.
+    One full session: connect → tare → main loop.
     Returns 0 to restart, 1 to quit.
     """
     log.info(

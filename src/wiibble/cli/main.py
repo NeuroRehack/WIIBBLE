@@ -49,7 +49,7 @@ def parse_args():
         "--mock-scenario",
         type=str,
         default="sway",
-        choices=["sway", "still", "lean_left", "lean_right", "hands", "step_on_off"],
+        choices=["sway", "still", "lean_left", "lean_right", "hands", "step_on_off", "calibration"],
         help="Simulation scenario (default: sway)",
     )
     return parser.parse_args()

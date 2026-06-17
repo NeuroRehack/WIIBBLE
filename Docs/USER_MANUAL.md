@@ -25,9 +25,15 @@ The interface has three areas:
 
 Opens and closes the settings panel. When collapsed, a floating gear button remains visible in the top-left corner of the screen.
 
+### Calibration
+
+**Body weight (kg)** — Reference weight for cursor normalization and CSV recordings. Defaults to 70 kg when not set. Valid range: 1–150 kg.
+
+**Calibrate on board** — Runs step-off / step-on calibration to measure body weight on the board. Updates the weight field when complete.
+
 ### Session
 
-**Restart Session** — Restarts from the calibration step. Use this when a new patient steps on the board or if the board loses connection.
+**Restart Session** — Reconnects and re-tares the board. Use when a new patient is assessed or if the board loses connection.
 
 ### Recording
 
@@ -157,12 +163,9 @@ You may need to remove and re-pair if you switch adapters or restart Windows.
 
 On launch the app immediately attempts to connect to the board. If the board is unavailable, an error screen appears with instructions; press **Enter** to retry.
 
-Once connected, the app guides you through two steps before the main screen appears:
+Once connected, the app tares the board (step off until the empty-board screen completes), then opens the main canvas. Body weight comes from **Settings → Calibration** (default 70 kg). You can type a weight manually or use **Calibrate on board** to measure it from the board at any time.
 
-1. **Tare** — stand clear of the board until it confirms it is empty.
-2. **Sensitivity calibration** — step on the board and stand still until body weight is registered.
-
-The settings panel remains hidden during this sequence to prevent accidental changes before a body weight is confirmed.
+The settings panel (gear button) is available as soon as the main canvas appears.
 
 ---
 
@@ -201,7 +204,7 @@ WIIBBLE.exe [--mock] [--mock-scenario <scenario>]
 | Flag | Description |
 |---|---|
 | `--mock` | Run with simulated data — no board required |
-| `--mock-scenario <name>` | Choose simulation scenario: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off` |
+| `--mock-scenario <name>` | Choose simulation scenario: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`, `calibration` |
 
 These flags work with both `python -m wiibble` (`wiibble`) and the compiled `WIIBBLE.exe`.
 

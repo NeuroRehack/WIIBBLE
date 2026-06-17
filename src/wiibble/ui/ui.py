@@ -28,6 +28,8 @@ from wiibble.ui.theme import (
     get_stats_bar_color,
 )
 from wiibble.utils.constants import (
+    BODY_WEIGHT_MAX,
+    BODY_WEIGHT_MIN,
     CURSOR_SIZE_MAX,
     CURSOR_SIZE_MIN,
     FILTER_MAX,
@@ -460,7 +462,63 @@ def _build_session_buttons(session_state: dict) -> None:
         height=PANEL_BTN_H,
     )
     with dpg.tooltip(parent="restart_session_btn"):
-        dpg.add_text("Restart the current session from recalibration.")
+        dpg.add_text("Reconnect and re-tare the board.")
+
+
+def _clamp_body_weight(value: float) -> float:
+    """Clamp body weight to the allowed settings range."""
+    return max(BODY_WEIGHT_MIN, min(BODY_WEIGHT_MAX, float(value)))
+
+
+def _on_body_weight_change(value: float, settings, app_state) -> None:
+    """Persist a manual body weight and sync it to runtime state."""
+    if value <= 0:
+        return
+    value = _clamp_body_weight(value)
+    settings.body_weight_kg = value
+    app_state.weight = value
+    settings.save()
+    if dpg.does_item_exist("body_weight_input"):
+        dpg.set_value("body_weight_input", value)
+
+
+def _on_calibrate_board(session_state: dict) -> None:
+    """Request on-board weight calibration from the main loop."""
+    session_state.update({"action": "calibrate"})
+
+
+def _build_calibration_controls(app_state, settings, session_state: dict) -> None:
+    """Add body weight input and on-board calibration button to the panel."""
+    dpg.add_text("Body weight (kg)")
+    input_w = 180
+    btn_w = PANEL_BTN_W - input_w - 4
+    with dpg.group(horizontal=True):
+        dpg.add_input_float(
+            tag="body_weight_input",
+            default_value=settings.body_weight_kg,
+            min_value=BODY_WEIGHT_MIN,
+            max_value=BODY_WEIGHT_MAX,
+            format="%.1f",
+            width=input_w,
+            callback=lambda s, v: _on_body_weight_change(v, settings, app_state),
+        )
+        dpg.add_button(
+            tag="calibrate_board_btn",
+            label="Auto",
+            width=btn_w,
+            height=PANEL_BTN_H,
+            callback=lambda: _on_calibrate_board(session_state),
+        )
+    with dpg.tooltip(parent="body_weight_input"):
+        dpg.add_text(
+            "Reference body weight for cursor normalization and recordings.\n"
+            "Default is 70 kg if not set."
+        )
+    with dpg.tooltip(parent="calibrate_board_btn"):
+        dpg.add_text(
+            "Run step-off / step-on calibration to measure weight on the board.\n"
+            "Updates this field when complete."
+        )
 
 
 def _open_recording_dir_picker(settings) -> None:
@@ -807,6 +865,9 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
 
 def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
+    _build_section_header("CALIBRATION", accent_color=_theme_module.C_ACCENT_SESSION)
+    _build_calibration_controls(app_state, settings, session_state)
+
     _build_section_header("SESSION", accent_color=_theme_module.C_ACCENT_SESSION)
     _build_session_buttons(session_state)
 

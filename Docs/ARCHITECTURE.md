@@ -73,9 +73,9 @@ sequenceDiagram
     ui->>ui: render to viewport_drawlist
 ```
 
-### 2. Session startup (connect → tare → calibrate)
+### 2. Session startup (connect → tare → main canvas)
 
-Before any data is shown, the board must be connected, zeroed, and the patient's body weight captured. This sequence runs once per session and is not skippable.
+Before any data is shown, the board must be connected and zeroed. Body weight is loaded from persisted settings (default 70 kg). On-board weight calibration is optional and triggered from the settings panel.
 
 ```mermaid
 sequenceDiagram
@@ -84,6 +84,7 @@ sequenceDiagram
     participant hid as hid.device
     participant calib as calibration
     participant dp as data_processing
+    participant settings as Settings
 
     app->>bc: try_connection(dll_path)
     bc->>bc: load C# DLL, Connect(), Disconnect()
@@ -98,9 +99,23 @@ sequenceDiagram
     app->>dp: tare(device, data_struct)
     dp->>dp: average 10 reads → store baseline in data_struct
 
-    app->>calib: sensitivity_calibration(device, dl, app_state)
-    calib->>dp: measure_weight() until stable > baseline + 5 kg
-    calib-->>app: calibrated body weight
+    app->>settings: body_weight_kg (default 70)
+    app->>app: app_state.weight = settings.body_weight_kg
+    app->>app: enable toolbar, enter main loop
+```
+
+On-demand board calibration (settings panel):
+
+```mermaid
+sequenceDiagram
+    participant cli as Clinician
+    participant app as wiibble/app.py
+    participant calib as calibration
+
+    cli->>app: Calibrate on board
+    app->>calib: run_board_weight_calibration()
+    calib-->>app: measured weight kg
+    app->>app: update settings.body_weight_kg + app_state.weight
 ```
 
 ### 3. Recording a session to CSV
@@ -159,7 +174,7 @@ sequenceDiagram
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
 | `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata | Extracted from `app.py` specifically for testability |
 | `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; safe to use standalone. Auto-triggered by `app.py` for recordings ≥ 20 s. |
-| `wiibble/board/mock_board.py` | `MockHIDDevice` — drop-in for `hid.device()`, six named scenarios | Phase model (tare → step_on_stable → normal) mirrors real board calibration flow |
+| `wiibble/board/mock_board.py` | `MockHIDDevice` — drop-in for `hid.device()`, named scenarios | Phase model (tare → step_on_stable → normal); `enter_running_mode()` after startup tare |
 | `wiibble/board/board_connection.py` | C# DLL loader via `pythonnet`; `try_connection()` triggers the Bluetooth handshake | Called once at startup then never again — all data flows through `hidapi` |
 | `wiibble/utils/resources.py` | `resource_path()` — resolves asset paths in dev and Nuitka standalone builds | Pre-resolves common paths at import time; use this for all asset access |
 
@@ -177,10 +192,11 @@ stateDiagram-v2
     ConnectionFailed --> Connecting : Enter key pressed (retry)
 
     Connecting --> Tare : connection succeeded
-    Tare --> Calibrating : board stable and empty (20 reads)
-    Calibrating --> Running : stable body weight detected
+    Tare --> Running : tare complete, weight from settings
 
     Running --> Running : each frame (sensor read → render)
+    Running --> Calibrating : Calibrate on board (optional)
+    Calibrating --> Running : measured weight saved
     Running --> Recording : Start Recording clicked (after countdown)
     Recording --> Running : duration elapsed or Stop clicked
 
@@ -190,7 +206,7 @@ stateDiagram-v2
     ConnectionFailed --> [*] : window closed
 ```
 
-The toolbar and gear button are created at startup but hidden until `Calibrating → Running` transitions. This prevents clinicians from changing settings before a body weight is registered.
+The toolbar and gear button are created at startup but hidden until tare completes and the main canvas is shown.
 
 ---
 

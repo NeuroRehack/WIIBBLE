@@ -27,9 +27,8 @@ class MockHIDDevice:
                          wait_for_tare() and tare() record a clean zero baseline.
                          This is the initial state on open().
 
-      "step_on_stable" - User has just stepped on. Returns stable ~18 kg per
-                         sensor (very low noise) so sensitivity_calibration()
-                         detects stable weight > tare + 20 kg and passes.
+      "step_on_stable" - User has stepped on. Returns stable ~18 kg per
+                         sensor until enter_running_mode() is called.
 
       "normal"         - Running mode. Returns scenario-based sway simulation.
 
@@ -78,6 +77,9 @@ class MockHIDDevice:
                 "step_duration": 2.0,  # seconds on
                 "off_duration": 2.0,  # seconds off
             }
+        elif scenario == "calibration":
+            # Stable load for testing on-demand board calibration without hardware
+            self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.03, "sway": 0.0}
         else:  # "sway" default
             self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
 
@@ -97,14 +99,25 @@ class MockHIDDevice:
         """Close the mock device and release any simulated resources."""
         log.debug("Mock HID device closed.")
 
+    def enter_running_mode(self):
+        """Leave tare phase and simulate the configured scenario (post startup tare)."""
+        self._phase = "normal"
+        self.start_time = time.time()
+
+    def reset_calibration_phase(self):
+        """Return to empty-board phase before on-demand calibration."""
+        self._phase = "tare"
+        self._stable_until = None
+
     def trigger_step_on(self):
         """
-        Call this from main() after tare() completes.
-        Switches to stable weight for 3 seconds then normal running mode.
+        Call before sensitivity_calibration() so the mock simulates stepping on.
+
+        Enters step_on_stable until enter_running_mode() is called after calibration.
         """
         if self._phase == "tare":
             self._phase = "step_on_stable"
-            self._stable_until = time.time() + 3.0
+            self._stable_until = None
             self.start_time = time.time()
 
     def read(self, size):
@@ -143,12 +156,8 @@ class MockHIDDevice:
             return [0.0, 0.0, 0.0, 0.0]
 
         if self._phase == "step_on_stable":
-            if time.time() < self._stable_until:
-                base = self._scenario_params["base"]
-                return [v + random.gauss(0, 0.02) for v in base]
-            else:
-                self._phase = "normal"
-                self.start_time = time.time()
+            base = self._scenario_params["base"]
+            return [v + random.gauss(0, 0.02) for v in base]
 
         return self._simulate_normal()
 
@@ -159,7 +168,7 @@ class MockHIDDevice:
         base = p["base"]
         noise = p["noise"]
 
-        if self.scenario == "still":
+        if self.scenario == "still" or self.scenario == "calibration":
             return [v + random.gauss(0, noise) for v in base]
 
         elif self.scenario == "lean_left":

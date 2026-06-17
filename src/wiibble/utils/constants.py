@@ -48,6 +48,13 @@ TARE_MAX_WEIGHT = 530
 CALIB_MIN_WEIGHT_DELTA = 5
 
 # ---------------------------------------------------------------------------
+# Body weight reference (settings panel manual entry and defaults)
+# ---------------------------------------------------------------------------
+BODY_WEIGHT_DEFAULT = 70.0
+BODY_WEIGHT_MIN = 1.0
+BODY_WEIGHT_MAX = 150.0  # Wii Balance Board rated capacity
+
+# ---------------------------------------------------------------------------
 # Zoom slider range
 # ---------------------------------------------------------------------------
 ZOOM_SCALE = 1.01  # base of exponential zoom scaling (1.01^x)

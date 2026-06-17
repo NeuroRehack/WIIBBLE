@@ -94,7 +94,7 @@ The DLL is placed at `WiiBalanceBoardLibrary/bin/Debug/net48/WiiBalanceBoardLibr
 uv run python -m wiibble --mock --mock-scenario sway
 ```
 
-The app should launch, show calibration screens, then the main screen with a moving cursor. If this works, the environment is correctly set up.
+The app should launch, show the tare screen, then the main screen with a moving cursor. If this works, the environment is correctly set up.
 
 ### (f) Pair the Wii Balance Board (real hardware only)
 
@@ -118,7 +118,7 @@ uv run python -m wiibble
 | `uv run python -m wiibble --mock` | Run with simulated board (default scenario: sway) |
 | `uv run python -m wiibble --mock --mock-scenario lean_left` | Run with specific mock scenario |
 
-Available mock scenarios: `sway`, `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.
+Available mock scenarios: `sway`, `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`, `calibration`.
 
 For interface usage, controls, and recording instructions see [USER_MANUAL.md](USER_MANUAL.md).
 
@@ -137,7 +137,15 @@ You can develop and test UI features on Linux using mock mode. Real hardware, th
 uv run python -m wiibble --mock --mock-scenario sway
 ```
 
-The app should show calibration screens, then the main canvas with a simulated swaying cursor.
+The app should show the tare screen, then the main canvas with a simulated swaying cursor.
+
+To test on-board calibration without hardware:
+
+```powershell
+uv run python -m wiibble --mock --mock-scenario calibration
+```
+
+Open **Settings → Calibrate on board** to run the step-off / step-on flow.
 
 **What works on Linux**
 

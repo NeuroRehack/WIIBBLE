@@ -36,6 +36,7 @@ class Settings:
     show_bbox: bool = True  # whether to show the bounding box on canvas
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
+    body_weight_kg: float = 70.0  # reference body weight for cursor normalization and recordings
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""

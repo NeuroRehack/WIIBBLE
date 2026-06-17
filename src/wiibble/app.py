@@ -36,6 +36,7 @@ from wiibble.ui.ui import (
     draw_connection_screen,
     draw_main_screen,
     ensure_textures_loaded,
+    set_stats_bar_visible,
     update_stats_bar,
 )
 from wiibble.utils.constants import (
@@ -140,6 +141,32 @@ def _toggle_toolbar(session_state: dict) -> None:
         if dpg.does_item_exist("panel_toggle_window"):
             dpg.configure_item("panel_toggle_window", show=True)
     session_state["action"] = "toolbar_toggled"
+
+
+def _collapse_ui_for_calibration(session_state: dict) -> bool:
+    """Hide settings panel, gear button, and stats bar during calibration."""
+    was_visible = session_state.get("toolbar_visible", False)
+    session_state["toolbar_visible"] = False
+    if dpg.does_item_exist("control_panel"):
+        dpg.configure_item("control_panel", show=False)
+    if dpg.does_item_exist("panel_toggle_window"):
+        dpg.configure_item("panel_toggle_window", show=False)
+    set_stats_bar_visible(False)
+    return was_visible
+
+
+def _restore_ui_after_calibration(session_state: dict, was_toolbar_visible: bool) -> None:
+    """Restore settings panel and stats bar after calibration completes."""
+    session_state["toolbar_visible"] = was_toolbar_visible
+    toolbar_enabled = session_state.get("toolbar_enabled", False)
+    if dpg.does_item_exist("control_panel"):
+        dpg.configure_item("control_panel", show=was_toolbar_visible)
+    if dpg.does_item_exist("panel_toggle_window"):
+        dpg.configure_item(
+            "panel_toggle_window",
+            show=toolbar_enabled and not was_toolbar_visible,
+        )
+    set_stats_bar_visible(True)
 
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
@@ -342,13 +369,17 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _clear_session_action(session_state)
         return None
     if action == "calibrate":
-        weight = run_board_weight_calibration(device, dl, app_state)
-        if weight > 0:
-            settings.body_weight_kg = weight
-            app_state.weight = weight
-            settings.save()
-            if dpg.does_item_exist("body_weight_input"):
-                dpg.set_value("body_weight_input", weight)
+        was_toolbar_visible = _collapse_ui_for_calibration(session_state)
+        try:
+            weight = run_board_weight_calibration(device, dl, app_state)
+            if weight > 0:
+                settings.body_weight_kg = weight
+                app_state.weight = weight
+                settings.save()
+                if dpg.does_item_exist("body_weight_input"):
+                    dpg.set_value("body_weight_input", weight)
+        finally:
+            _restore_ui_after_calibration(session_state, was_toolbar_visible)
         _clear_session_action(session_state)
         return None
     if action == "toolbar_toggled":

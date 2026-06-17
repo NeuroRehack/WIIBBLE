@@ -151,6 +151,18 @@ def build_stats_bar(app_state) -> None:
     _stats_cache["right"] = -1
 
 
+def set_stats_bar_visible(visible: bool) -> None:
+    """Show or hide the bottom stats overlay (e.g. during calibration screens)."""
+    if not dpg.does_item_exist("stats_dl"):
+        return
+    dpg.configure_item("stats_dl", show=visible)
+    if not visible:
+        dpg.delete_item("stats_dl", children_only=True)
+        _stats_cache["left"] = -1
+        _stats_cache["weight"] = -1
+        _stats_cache["right"] = -1
+
+
 def update_stats_bar(
     perc_left: float, perc_right: float, curr_weight: float, calib_weight: float
 ) -> None:

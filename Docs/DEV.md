@@ -145,7 +145,11 @@ To test on-board calibration without hardware:
 uv run python -m wiibble --mock --mock-scenario calibration
 ```
 
-Open **Settings → Calibrate on board** to run the step-off / step-on flow.
+Open **Settings → Cal scale** to test board scale calibration (set board reference to e.g. 20 kg).
+
+```powershell
+uv run python -m wiibble --mock --mock-scenario calibration
+```
 
 **What works on Linux**
 

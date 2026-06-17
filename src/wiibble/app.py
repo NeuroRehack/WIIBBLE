@@ -14,7 +14,11 @@ import dearpygui.dearpygui as dpg
 import hid
 
 import wiibble.ui.theme as _theme_module
-from wiibble.analysis.calibration import run_board_weight_calibration, wait_for_tare
+from wiibble.analysis.calibration import (
+    run_board_scale_calibration,
+    run_board_weight_calibration,
+    wait_for_tare,
+)
 from wiibble.board.mock_board import MockHIDDevice
 from wiibble.board.recording import _save_recording_csv
 from wiibble.features.data_processing import (
@@ -37,6 +41,7 @@ from wiibble.ui.ui import (
     draw_main_screen,
     ensure_textures_loaded,
     set_stats_bar_visible,
+    update_scale_factor_label,
     update_stats_bar,
 )
 from wiibble.utils.constants import (
@@ -58,10 +63,14 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def connect_wii_board(use_mock: bool = False, mock_scenario: str = "sway"):
+def connect_wii_board(
+    use_mock: bool = False, mock_scenario: str = "sway", scale_factor: float | None = None
+):
     """Return an open HID device (real or mock)."""
     if use_mock:
         device = MockHIDDevice.from_scenario(mock_scenario)
+        if scale_factor is not None:
+            device.set_scale_factor(scale_factor)
         device.open(VENDOR_ID, PRODUCT_ID)
         log.info("Using MockHIDDevice (scenario: %s)", mock_scenario)
         return device
@@ -371,13 +380,31 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
     if action == "calibrate":
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
         try:
-            weight = run_board_weight_calibration(device, dl, app_state)
+            weight = run_board_weight_calibration(device, dl, app_state, app_state.scale_factor)
             if weight > 0:
                 settings.body_weight_kg = weight
                 app_state.weight = weight
                 settings.save()
                 if dpg.does_item_exist("body_weight_input"):
                     dpg.set_value("body_weight_input", weight)
+        finally:
+            _restore_ui_after_calibration(session_state, was_toolbar_visible)
+        _clear_session_action(session_state)
+        return None
+    if action == "calibrate_scale":
+        was_toolbar_visible = _collapse_ui_for_calibration(session_state)
+        try:
+            ref_kg = settings.board_cal_reference_kg
+            new_factor = run_board_scale_calibration(
+                device, dl, app_state, ref_kg, app_state.scale_factor
+            )
+            if new_factor > 0:
+                settings.scale_factor = new_factor
+                app_state.scale_factor = new_factor
+                settings.save()
+                if hasattr(device, "set_scale_factor"):
+                    device.set_scale_factor(new_factor)
+                update_scale_factor_label(settings)
         finally:
             _restore_ui_after_calibration(session_state, was_toolbar_visible)
         _clear_session_action(session_state)
@@ -398,7 +425,11 @@ def _prepare_session(dl, app_state, settings, session_state, args):
         log.exception("Connection failed")
         return None
 
-    device = connect_wii_board(use_mock=args.mock, mock_scenario=args.mock_scenario)
+    device = connect_wii_board(
+        use_mock=args.mock,
+        mock_scenario=args.mock_scenario,
+        scale_factor=settings.scale_factor,
+    )
     if not device:
         return None
 
@@ -406,7 +437,8 @@ def _prepare_session(dl, app_state, settings, session_state, args):
     draw_connection_screen(dl, app_state)
     dpg.render_dearpygui_frame()
 
-    wait_for_tare(device, dl, app_state)
+    app_state.scale_factor = settings.scale_factor
+    wait_for_tare(device, dl, app_state, app_state.scale_factor)
     try:
         tare(device, app_state.data_struct)
     except Exception:
@@ -498,7 +530,7 @@ def _process_frame_data(
     if not data:
         return None, reports_drained
 
-    corners = parse_data(data, app_state.data_struct)
+    corners = parse_data(data, app_state.data_struct, app_state.scale_factor)
     app_state.raw_corners = corners  # store unfiltered values for recording
     smoothed = apply_filter(corners, app_state.filter_buffer, settings.filter_window)
     top_right = smoothed["top_right"]

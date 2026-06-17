@@ -22,7 +22,7 @@ For major architectural proposals see [Docs/decisions/](decisions/).
 
 ## 🟢 Features & Improvements
 
-- [ ] **Manual board recalibration** — add option to adjust `SCALE_FACTOR` based on known weights, to compensate for variation between boards and over time.
+- [x] **Manual board recalibration** — `scale_factor` in settings, calibrated from a known reference mass via **Cal scale**.
 - [ ] Organise assets into subfolders (`assets/fonts/`, `assets/images/`)
 
 ---

@@ -43,11 +43,12 @@ flowchart TD
 
 ## 2. Parsing & Tare Correction
 
-- **Function:** `parse_data(data, data_struct)`
+- **Function:** `parse_data(data, data_struct, scale_factor)`
 - **Steps:**
   - Extracts sensor values for each corner from the raw byte array.
   - Applies tare (baseline) correction using values in `data_struct`.
-  - Formula: `(data[i] + data[i+1] / 255 - tare) * SCALE_FACTOR`
+  - Formula: `(data[i] + data[i+1] / 255 - tare) * scale_factor`
+- **`scale_factor`:** Persisted in `~/.wiibble/settings.json` (default factory value in `SCALE_FACTOR_DEFAULT`). Calibrated via **Settings → Cal scale** using a known reference mass on the board.
 - **Output:** `{top_left, top_right, bottom_left, bottom_right}` — corner weights in kg
 
 ---

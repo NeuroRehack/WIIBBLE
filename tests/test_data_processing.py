@@ -7,10 +7,12 @@ from wiibble.features.data_processing import (
     apply_filter,
     calculate_coordinates,
     calculate_force_deviation_kg,
+    compute_scale_factor,
+    measure_raw_load,
     parse_data,
     read_latest_data,
 )
-from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR
+from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR, SCALE_FACTOR_MAX, SCALE_FACTOR_MIN
 
 # ---------------------------------------------------------------------------
 # read_latest_data
@@ -80,7 +82,7 @@ class TestReadLatestData:
 
 class TestParseData:
     def test_all_zero_bytes_returns_zero_corners(self, data_struct, zero_data):
-        result = parse_data(zero_data, data_struct)
+        result = parse_data(zero_data, data_struct, SCALE_FACTOR)
         assert result == {
             "top_right": 0.0,
             "bottom_right": 0.0,
@@ -92,7 +94,7 @@ class TestParseData:
         # Set top_right bytes (rawIndex=3): integer=100, fractional=128
         zero_data[3] = 100
         zero_data[4] = 128
-        result = parse_data(zero_data, data_struct)
+        result = parse_data(zero_data, data_struct, SCALE_FACTOR)
         expected = round((100 + 128 / 255) * SCALE_FACTOR, 2)
         assert result["top_right"] == expected
 
@@ -102,7 +104,7 @@ class TestParseData:
         zero_data[5], zero_data[6] = 20, 0  # bottom_right
         zero_data[7], zero_data[8] = 30, 0  # top_left
         zero_data[9], zero_data[10] = 40, 0  # bottom_left
-        result = parse_data(zero_data, data_struct)
+        result = parse_data(zero_data, data_struct, SCALE_FACTOR)
         assert result["top_right"] == round(10 * SCALE_FACTOR, 2)
         assert result["bottom_right"] == round(20 * SCALE_FACTOR, 2)
         assert result["top_left"] == round(30 * SCALE_FACTOR, 2)
@@ -112,7 +114,7 @@ class TestParseData:
         # top_right: rawIndex=3, integer byte=100, tare=50
         zero_data[3] = 100
         data_struct["top_right"]["tare"] = 50
-        result = parse_data(zero_data, data_struct)
+        result = parse_data(zero_data, data_struct, SCALE_FACTOR)
         expected = round((100 - 50) * SCALE_FACTOR, 2)
         assert result["top_right"] == expected
 
@@ -120,7 +122,7 @@ class TestParseData:
         # data[3]=255, data[4]=255 → (255 + 255/255) * SCALE_FACTOR = 256 * SCALE_FACTOR
         zero_data[3] = 255
         zero_data[4] = 255
-        result = parse_data(zero_data, data_struct)
+        result = parse_data(zero_data, data_struct, SCALE_FACTOR)
         expected = round((255 + 255 / 255) * SCALE_FACTOR, 2)
         assert result["top_right"] == expected
 
@@ -128,10 +130,41 @@ class TestParseData:
         # Integer part zero, only fractional — should yield a small positive value
         zero_data[3] = 0
         zero_data[4] = 255
-        result = parse_data(zero_data, data_struct)
+        result = parse_data(zero_data, data_struct, SCALE_FACTOR)
         expected = round((0 + 255 / 255) * SCALE_FACTOR, 2)
         assert result["top_right"] == expected
         assert result["top_right"] > 0
+
+
+class TestMeasureRawLoad:
+    def test_sums_tared_raw_across_corners(self, data_struct, zero_data):
+        zero_data[3] = 10
+        zero_data[5] = 20
+        zero_data[7] = 30
+        zero_data[9] = 40
+        device = _QueueDevice([zero_data] * 10)
+        assert measure_raw_load(device, data_struct) == pytest.approx(100.0)
+
+    def test_subtracts_tare(self, data_struct, zero_data):
+        zero_data[3] = 50
+        data_struct["top_right"]["tare"] = 10
+        device = _QueueDevice([zero_data] * 10)
+        assert measure_raw_load(device, data_struct) == pytest.approx(40.0)
+
+
+class TestComputeScaleFactor:
+    def test_basic_ratio(self):
+        assert compute_scale_factor(20.0, 10.0) == pytest.approx(2.0)
+
+    def test_clamps_high(self):
+        assert compute_scale_factor(1000.0, 1.0) == SCALE_FACTOR_MAX
+
+    def test_clamps_low(self):
+        assert compute_scale_factor(0.1, 1.0) == SCALE_FACTOR_MIN
+
+    def test_rejects_non_positive(self):
+        with pytest.raises(ValueError):
+            compute_scale_factor(0.0, 10.0)
 
 
 # ---------------------------------------------------------------------------

@@ -50,6 +50,14 @@ class TestSettingsDefaults:
     def test_body_weight_kg_default(self):
         assert Settings().body_weight_kg == 70.0
 
+    def test_scale_factor_default(self):
+        from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
+
+        assert Settings().scale_factor == SCALE_FACTOR_DEFAULT
+
+    def test_board_cal_reference_kg_default(self):
+        assert Settings().board_cal_reference_kg == 20.0
+
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file
@@ -84,6 +92,8 @@ class TestSettingsRoundTrip:
             record_duration=30,
             cursor_mode="circle",
             body_weight_kg=82.5,
+            scale_factor=2.8,
+            board_cal_reference_kg=25.0,
         )
         original.save()
         loaded = Settings.load()
@@ -94,6 +104,8 @@ class TestSettingsRoundTrip:
         assert loaded.record_duration == 30
         assert loaded.cursor_mode == "circle"
         assert loaded.body_weight_kg == 82.5
+        assert loaded.scale_factor == 2.8
+        assert loaded.board_cal_reference_kg == 25.0
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -129,6 +141,10 @@ class TestSettingsLoadFallback:
         assert loaded.zoom_factor == 1.0
         assert loaded.cursor_mode == "avatar"
         assert loaded.body_weight_kg == 70.0
+        from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
+
+        assert loaded.scale_factor == SCALE_FACTOR_DEFAULT
+        assert loaded.board_cal_reference_kg == 20.0
 
     def test_corrupt_json_returns_defaults(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

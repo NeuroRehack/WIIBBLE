@@ -28,6 +28,8 @@ from wiibble.ui.theme import (
     get_stats_bar_color,
 )
 from wiibble.utils.constants import (
+    BOARD_CAL_REFERENCE_MAX,
+    BOARD_CAL_REFERENCE_MIN,
     BODY_WEIGHT_MAX,
     BODY_WEIGHT_MIN,
     CURSOR_SIZE_MAX,
@@ -499,8 +501,34 @@ def _on_calibrate_board(session_state: dict) -> None:
     session_state.update({"action": "calibrate"})
 
 
+def _clamp_board_cal_reference(value: float) -> float:
+    """Clamp board calibration reference mass to the allowed range."""
+    return max(BOARD_CAL_REFERENCE_MIN, min(BOARD_CAL_REFERENCE_MAX, float(value)))
+
+
+def _on_board_cal_reference_change(value: float, settings) -> None:
+    """Persist the reference mass used for board scale calibration."""
+    if value < BOARD_CAL_REFERENCE_MIN:
+        return
+    settings.board_cal_reference_kg = _clamp_board_cal_reference(value)
+    settings.save()
+    if dpg.does_item_exist("board_cal_reference_input"):
+        dpg.set_value("board_cal_reference_input", settings.board_cal_reference_kg)
+
+
+def _on_calibrate_scale(session_state: dict) -> None:
+    """Request board scale-factor calibration from the main loop."""
+    session_state.update({"action": "calibrate_scale"})
+
+
+def update_scale_factor_label(settings) -> None:
+    """Refresh the read-only scale factor display in the calibration panel."""
+    if dpg.does_item_exist("scale_factor_label"):
+        dpg.set_value("scale_factor_label", f"Scale factor: {settings.scale_factor:.4f}")
+
+
 def _build_calibration_controls(app_state, settings, session_state: dict) -> None:
-    """Add body weight input and on-board calibration button to the panel."""
+    """Add body weight and board scale calibration controls to the panel."""
     dpg.add_text("Body weight (kg)")
     input_w = 180
     btn_w = PANEL_BTN_W - input_w - 4
@@ -523,7 +551,7 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
         )
     with dpg.tooltip(parent="body_weight_input"):
         dpg.add_text(
-            "Reference body weight for cursor normalization and recordings.\n"
+            "Patient body weight for cursor normalization and recordings.\n"
             "Default is 70 kg if not set."
         )
     with dpg.tooltip(parent="calibrate_board_btn"):
@@ -531,6 +559,41 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
             "Run step-off / step-on calibration to measure weight on the board.\n"
             "Updates this field when complete."
         )
+    dpg.add_spacer(height=8)
+    dpg.add_text("Board reference (kg)")
+    with dpg.group(horizontal=True):
+        dpg.add_input_float(
+            tag="board_cal_reference_input",
+            default_value=settings.board_cal_reference_kg,
+            min_value=BOARD_CAL_REFERENCE_MIN,
+            max_value=BOARD_CAL_REFERENCE_MAX,
+            format="%.1f",
+            width=input_w,
+            callback=lambda s, v: _on_board_cal_reference_change(v, settings),
+        )
+        dpg.add_button(
+            tag="calibrate_scale_btn",
+            label="Cal scale",
+            width=btn_w,
+            height=PANEL_BTN_H,
+            callback=lambda: _on_calibrate_scale(session_state),
+        )
+    with dpg.tooltip(parent="board_cal_reference_input"):
+        dpg.add_text(
+            "Known mass placed on the board for hardware scale calibration.\n"
+            "Use a certified weight between 10 and 150 kg."
+        )
+    with dpg.tooltip(parent="calibrate_scale_btn"):
+        dpg.add_text(
+            "Tare the board, place the reference mass, and compute\n"
+            "the HID raw-to-kg scale factor for this board."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_text(
+        f"Scale factor: {settings.scale_factor:.4f}",
+        tag="scale_factor_label",
+        wrap=PANEL_BTN_W,
+    )
 
 
 def _open_recording_dir_picker(settings) -> None:
@@ -988,6 +1051,55 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
         )
 
     _draw_arc(dl, sw, sh, counter, max_count, step)
+
+
+def draw_reference_weight_instruction(
+    dl, reference_kg: float, counter: int, max_count: int, app_state
+) -> None:
+    """Draw the place-reference-weight calibration screen."""
+    sw = dpg.get_viewport_width()
+    sh = dpg.get_viewport_height()
+
+    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
+
+    tag = _wii_texture_tags[2]
+    cfg = dpg.get_item_configuration(tag)
+    iw_orig, ih_orig = cfg["width"], cfg["height"]
+    scaled_h = int(CALIB_IMG_HEIGHT * sh)
+    scaled_w = int(scaled_h * iw_orig / ih_orig)
+    img_x = int(sw * CALIB_IMG_CENTRE_X - scaled_w // 2)
+    img_y = int(sh * CALIB_IMG_VERT - scaled_h // 2)
+    dpg.draw_image(tag, (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl)
+
+    font_size = int(sh * CALIB_TEXT_FONT)
+    text_x = int(sw * CALIB_TEXT_X)
+    text_y = int(sh * CALIB_TEXT_TOP)
+    line_h = int(font_size * CALIB_TEXT_LINE_H)
+
+    _crisp_text((text_x, text_y), "Place", color=(250, 250, 250, 255), size=font_size, parent=dl)
+    _crisp_text(
+        (text_x, text_y + line_h),
+        f"{reference_kg:.0f} kg",
+        color=(0, 250, 0, 255),
+        size=font_size,
+        parent=dl,
+    )
+    _crisp_text(
+        (text_x, text_y + line_h * 2),
+        "on the board",
+        color=(250, 250, 250, 255),
+        size=font_size,
+        parent=dl,
+    )
+    _crisp_text(
+        (text_x, text_y + line_h * 4),
+        "and keep still",
+        color=(250, 250, 250, 255),
+        size=font_size,
+        parent=dl,
+    )
+
+    _draw_arc(dl, sw, sh, counter, max_count, "on")
 
 
 def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:

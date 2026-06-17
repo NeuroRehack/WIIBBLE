@@ -6,6 +6,8 @@ import os
 import platform
 from dataclasses import asdict, dataclass, field
 
+from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
+
 log = logging.getLogger(__name__)
 
 
@@ -37,6 +39,8 @@ class Settings:
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
     body_weight_kg: float = 70.0  # reference body weight for cursor normalization and recordings
+    scale_factor: float = SCALE_FACTOR_DEFAULT  # HID raw → kg conversion for this board
+    board_cal_reference_kg: float = 20.0  # known mass used for board scale calibration
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""
@@ -93,6 +97,7 @@ class AppState:
     screen_width: float = 1280
     screen_height: float = 720
     weight: float = 0.1  # calibrated body weight from sensitivity_calibration()
+    scale_factor: float = SCALE_FACTOR_DEFAULT  # runtime HID → kg factor (synced from settings)
 
     # Current cursor position in screen pixels — updated every frame.
     # Stored here so click handlers can access it without frame-ordering issues.

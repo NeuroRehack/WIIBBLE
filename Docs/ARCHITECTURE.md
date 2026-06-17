@@ -112,10 +112,27 @@ sequenceDiagram
     participant app as wiibble/app.py
     participant calib as calibration
 
-    cli->>app: Calibrate on board
+    cli->>app: Auto (body weight)
     app->>calib: run_board_weight_calibration()
     calib-->>app: measured weight kg
     app->>app: update settings.body_weight_kg + app_state.weight
+```
+
+On-demand board scale calibration (settings panel):
+
+```mermaid
+sequenceDiagram
+    participant cli as Clinician
+    participant app as wiibble/app.py
+    participant calib as calibration
+    participant dp as data_processing
+
+    cli->>app: Cal scale (reference_kg from settings)
+    app->>calib: run_board_scale_calibration()
+    calib->>dp: measure_raw_load() after stable reference mass
+    calib->>dp: compute_scale_factor(reference_kg, raw_load)
+    calib-->>app: new scale_factor
+    app->>app: update settings.scale_factor + app_state.scale_factor
 ```
 
 ### 3. Recording a session to CSV
@@ -170,7 +187,7 @@ sequenceDiagram
 | `wiibble/features/data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
 | `wiibble/analysis/calibration.py` | Tare detection and body-weight calibration blocking loops | Renders its own screens inline; calls `dpg.render_dearpygui_frame()` directly |
 | `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
-| `wiibble/utils/constants.py` | All magic numbers: hardware IDs, byte offsets, `SCALE_FACTOR`, thresholds, UI sizes | Single source of truth — never put literals in `app.py` or `ui.py` |
+| `wiibble/utils/constants.py` | Hardware IDs, byte offsets, `SCALE_FACTOR_DEFAULT`, thresholds, UI sizes | Factory default scale factor; runtime value lives in settings |
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
 | `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata | Extracted from `app.py` specifically for testability |
 | `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; safe to use standalone. Auto-triggered by `app.py` for recordings ≥ 20 s. |
@@ -195,8 +212,10 @@ stateDiagram-v2
     Tare --> Running : tare complete, weight from settings
 
     Running --> Running : each frame (sensor read → render)
-    Running --> Calibrating : Calibrate on board (optional)
-    Calibrating --> Running : measured weight saved
+    Running --> CalibratingBody : Auto body weight (optional)
+    CalibratingBody --> Running : measured weight saved
+    Running --> CalibratingScale : Cal scale (optional)
+    CalibratingScale --> Running : scale_factor saved
     Running --> Recording : Start Recording clicked (after countdown)
     Recording --> Running : duration elapsed or Stop clicked
 

@@ -28,9 +28,20 @@ SENSOR_INDICES = {
 # ---------------------------------------------------------------------------
 # Empirically derived calibration factor converting raw HID bytes to kg.
 # Derivation: measured known weights against raw output, least-squares fit.
-# raw_kg = (data[i] + data[i+1] / 255) * SCALE_FACTOR
+# raw_kg = (data[i] + data[i+1] / 255) * scale_factor
 # ---------------------------------------------------------------------------
-SCALE_FACTOR = 2.6441910428028423
+SCALE_FACTOR_DEFAULT = 2.6441910428028423
+SCALE_FACTOR = SCALE_FACTOR_DEFAULT  # backward-compatible alias
+
+# ---------------------------------------------------------------------------
+# Board scale calibration (reference mass on board → scale_factor)
+# ---------------------------------------------------------------------------
+BOARD_CAL_REFERENCE_MIN = 10.0
+BOARD_CAL_REFERENCE_MAX = 150.0
+BOARD_CAL_REFERENCE_DEFAULT = 20.0
+SCALE_FACTOR_MIN = 0.5
+SCALE_FACTOR_MAX = 10.0
+RAW_STABILITY_DELTA = 0.5  # max change in tared raw sum between consecutive samples
 
 # ---------------------------------------------------------------------------
 # wait_for_tare() threshold: anything below this is considered "board empty".

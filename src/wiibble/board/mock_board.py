@@ -10,7 +10,7 @@ import math
 import random
 import time
 
-from wiibble.utils.constants import SCALE_FACTOR
+from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +50,8 @@ class MockHIDDevice:
         self._scenario_params = {}
         self._nonblocking = False
         self._last_data_time = None
+        self._scale_factor = SCALE_FACTOR_DEFAULT
+        self._step_on_kg = None
         self._set_scenario(scenario)
 
     @classmethod
@@ -99,6 +101,10 @@ class MockHIDDevice:
         """Close the mock device and release any simulated resources."""
         log.debug("Mock HID device closed.")
 
+    def set_scale_factor(self, scale_factor: float) -> None:
+        """Set the HID kg/raw factor used when encoding simulated reports."""
+        self._scale_factor = scale_factor
+
     def enter_running_mode(self):
         """Leave tare phase and simulate the configured scenario (post startup tare)."""
         self._phase = "normal"
@@ -108,6 +114,7 @@ class MockHIDDevice:
         """Return to empty-board phase before on-demand calibration."""
         self._phase = "tare"
         self._stable_until = None
+        self._step_on_kg = None
 
     def trigger_step_on(self):
         """
@@ -116,6 +123,16 @@ class MockHIDDevice:
         Enters step_on_stable until enter_running_mode() is called after calibration.
         """
         if self._phase == "tare":
+            self._step_on_kg = list(self._scenario_params["base"])
+            self._phase = "step_on_stable"
+            self._stable_until = None
+            self.start_time = time.time()
+
+    def trigger_reference_load(self, reference_kg: float) -> None:
+        """Simulate placing a known reference mass evenly on all four sensors."""
+        if self._phase == "tare":
+            per_sensor = reference_kg / 4.0
+            self._step_on_kg = [per_sensor, per_sensor, per_sensor, per_sensor]
             self._phase = "step_on_stable"
             self._stable_until = None
             self.start_time = time.time()
@@ -135,7 +152,7 @@ class MockHIDDevice:
         data = [0] * size
         indices = [3, 5, 7, 9]  # top_right, bottom_right, top_left, bottom_left
         for idx, kg in zip(indices, kg_vals):
-            raw = max(0.0, kg) / SCALE_FACTOR
+            raw = max(0.0, kg) / self._scale_factor
             int_part = int(raw)
             frac_part = int((raw - int_part) * 255)
             data[idx] = int_part
@@ -156,7 +173,7 @@ class MockHIDDevice:
             return [0.0, 0.0, 0.0, 0.0]
 
         if self._phase == "step_on_stable":
-            base = self._scenario_params["base"]
+            base = self._step_on_kg or self._scenario_params["base"]
             return [v + random.gauss(0, 0.02) for v in base]
 
         return self._simulate_normal()

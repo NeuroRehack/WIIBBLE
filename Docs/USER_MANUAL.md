@@ -27,9 +27,13 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 ### Calibration
 
-**Body weight (kg)** — Reference weight for cursor normalization and CSV recordings. Defaults to 70 kg when not set. Valid range: 1–150 kg.
+**Body weight (kg)** — Patient reference weight for cursor normalization and CSV recordings. Defaults to 70 kg when not set. Valid range: 1–150 kg.
 
-**Calibrate on board** — Runs step-off / step-on calibration to measure body weight on the board. Updates the weight field when complete.
+**Auto** — Runs step-off / step-on calibration to measure body weight on the board. Updates the body weight field when complete.
+
+**Board reference (kg)** — Known mass (10–150 kg) placed on the board for hardware scale calibration. Use a certified weight (e.g. kettlebell, weight plates).
+
+**Cal scale** — Tares the board, prompts you to place the reference mass, then computes and saves the HID raw-to-kg scale factor for this board. The current scale factor is shown below these controls.
 
 ### Session
 
@@ -163,7 +167,9 @@ You may need to remove and re-pair if you switch adapters or restart Windows.
 
 On launch the app immediately attempts to connect to the board. If the board is unavailable, an error screen appears with instructions; press **Enter** to retry.
 
-Once connected, the app tares the board (step off until the empty-board screen completes), then opens the main canvas. Body weight comes from **Settings → Calibration** (default 70 kg). You can type a weight manually or use **Calibrate on board** to measure it from the board at any time.
+Once connected, the app tares the board (step off until the empty-board screen completes), then opens the main canvas. Body weight comes from **Settings → Calibration** (default 70 kg). You can type a weight manually or use **Auto** to measure it from the board.
+
+**Board scale calibration** (optional, per board): enter a known reference mass under **Board reference (kg)** and click **Cal scale**. This replaces the factory default HID conversion factor and is independent of patient body weight.
 
 The settings panel (gear button) is available as soon as the main canvas appears.
 

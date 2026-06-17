@@ -3,7 +3,11 @@ import logging
 
 import numpy as np
 
-from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR
+from wiibble.utils.constants import (
+    COORD_SCALE,
+    SCALE_FACTOR_MAX,
+    SCALE_FACTOR_MIN,
+)
 
 log = logging.getLogger(__name__)
 
@@ -61,18 +65,27 @@ def read_latest_data(device) -> tuple:
     return latest, reports_drained
 
 
-def parse_data(data: list, data_struct: dict) -> dict:
+def _tared_raw_sum(data: list, data_struct: dict) -> float:
+    """Sum of per-corner tared raw HID values (no scale factor)."""
+    total = 0.0
+    for val in data_struct.values():
+        raw_index = val["rawIndex"]
+        total += data[raw_index] + data[raw_index + 1] / 255 - val["tare"]
+    return total
+
+
+def parse_data(data: list, data_struct: dict, scale_factor: float) -> dict:
     """
     Parse raw HID bytes into kg values per corner, applying tare offsets.
 
-    Formula: corner_kg = (data[i] + data[i+1] / 255 - tare) * SCALE_FACTOR
+    Formula: corner_kg = (data[i] + data[i+1] / 255 - tare) * scale_factor
     Indices i are defined in data_struct per corner (3, 5, 7, 9).
     """
     corners = {}
     for key, val in data_struct.items():
         raw_index = val["rawIndex"]
         tare = val["tare"]
-        corners[key] = round((data[raw_index] + data[raw_index + 1] / 255 - tare) * SCALE_FACTOR, 2)
+        corners[key] = round((data[raw_index] + data[raw_index + 1] / 255 - tare) * scale_factor, 2)
     return corners
 
 
@@ -100,7 +113,32 @@ def tare(device, data_struct: dict) -> None:
     log.debug("Tare complete: %s", data_struct)
 
 
-def measure_weight(device, data_struct: dict) -> float:
+def measure_raw_load(device, data_struct: dict) -> float:
+    """
+    Average 10 readings of total tared raw load (sum of corners in HID units).
+    Used for board scale calibration without depending on the current scale factor.
+    """
+    samples = []
+    for _ in range(10):
+        data = read_data(device)
+        if data:
+            samples.append(_tared_raw_sum(data, data_struct))
+    if not samples:
+        return 0.0
+    return sum(samples) / len(samples)
+
+
+def compute_scale_factor(reference_kg: float, raw_load: float) -> float:
+    """Derive kg/raw scale factor from a known reference mass and tared raw sum."""
+    if raw_load <= 0 or reference_kg <= 0:
+        raise ValueError(
+            f"reference_kg and raw_load must be positive, got {reference_kg}, {raw_load}"
+        )
+    factor = reference_kg / raw_load
+    return max(SCALE_FACTOR_MIN, min(SCALE_FACTOR_MAX, factor))
+
+
+def measure_weight(device, data_struct: dict, scale_factor: float) -> float:
     """
     Average 10 readings to get a stable total weight in kg.
     Tare offsets in data_struct are applied via parse_data().
@@ -110,7 +148,7 @@ def measure_weight(device, data_struct: dict) -> float:
     for _ in range(10):
         data = read_data(device)
         if data:
-            corners = parse_data(data, data_struct)
+            corners = parse_data(data, data_struct, scale_factor)
             for i, key in enumerate(corners.keys()):
                 weight_vals[i] += corners[key]
             n += 1

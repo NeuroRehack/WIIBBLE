@@ -1,7 +1,6 @@
 # __main__.py — WIIBBLE entry point for `python -m wiibble`
 
 import argparse
-import ctypes
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
@@ -41,6 +40,7 @@ import dearpygui.dearpygui as dpg  # noqa: E402
 
 from wiibble.app import run  # noqa: E402
 from wiibble.ui.theme import apply_global_theme, load_fonts  # noqa: E402
+from wiibble.utils.display import get_screen_size  # noqa: E402
 from wiibble.utils.state import AppState, Settings  # noqa: E402
 
 
@@ -60,18 +60,6 @@ def parse_args():
         help="Simulation scenario (default: sway)",
     )
     return parser.parse_args()
-
-
-def get_screen_size() -> tuple:
-    """
-    Get the primary monitor resolution using ctypes (no window creation,
-    no Win32 message-loop side-effects that could interfere with DearPyGui).
-    """
-    user32 = ctypes.windll.user32
-    w = user32.GetSystemMetrics(0)
-    h = user32.GetSystemMetrics(1)
-    log.debug("get_screen_size via ctypes: %dx%d", w, h)
-    return w, h
 
 
 def main():

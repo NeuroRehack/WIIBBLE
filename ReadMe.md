@@ -83,6 +83,8 @@ WIIBBLE includes a mock mode that simulates a live board — no hardware require
 python -m wiibble --mock --mock-scenario sway
 ```
 
+On Linux, mock mode supports full UI development (calibration, canvas, settings); real hardware and packaging remain Windows-only. See [Developer Guide — Linux development](Docs/DEV.md#linux-development-mock-mode).
+
 Scenarios: `sway` (default), `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.  
 See [User Manual — Command-Line Options](Docs/USER_MANUAL.md#command-line-options) for details.
 

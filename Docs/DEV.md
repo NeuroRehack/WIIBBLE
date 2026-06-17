@@ -9,6 +9,7 @@ This guide covers environment setup, development workflow, packaging, and CI for
 1. [Prerequisites](#1-prerequisites)
 2. [Environment Setup](#2-environment-setup)
 3. [Running the App](#3-running-the-app)
+   - [Linux development (mock mode)](#linux-development-mock-mode)
 4. [Development Workflow](#4-development-workflow)
 5. [Posturographic Analysis and Reporting](#5-posturographic-analysis-and-reporting)
 6. [Packaging and Building](#6-packaging-and-building)
@@ -120,6 +121,39 @@ uv run python -m wiibble
 Available mock scenarios: `sway`, `still`, `lean_left`, `lean_right`, `hands`, `step_on_off`.
 
 For interface usage, controls, and recording instructions see [USER_MANUAL.md](USER_MANUAL.md).
+
+### Linux development (mock mode)
+
+You can develop and test UI features on Linux using mock mode. Real hardware, the C# DLL (`dotnet build`), and the Nuitka installer remain **Windows-only**.
+
+**Prerequisites**
+
+- Python 3.11 or 3.12, `uv`, and dev dependencies (`uv sync --extra dev && uv pip install -e .`)
+- A display server (local desktop), or headless via `xvfb-run` for automated smoke tests
+
+**Run mock UI**
+
+```bash
+uv run python -m wiibble --mock --mock-scenario sway
+```
+
+The app should show calibration screens, then the main canvas with a simulated swaying cursor.
+
+**What works on Linux**
+
+| Task | Command |
+|---|---|
+| Mock UI (calibration, canvas, settings panel) | `uv run python -m wiibble --mock` |
+| Unit tests | `uv run pytest` |
+| Offline analysis | `uv run wiibble-process-recordings …` |
+| HTML reports | `uv run wiibble-report …` |
+
+**What does not work on Linux**
+
+- Real Wii Balance Board (Bluetooth pairing + C# handshake)
+- Building or running `WIIBBLE.exe` / the Inno Setup installer
+
+Logs are written to `~/.wiibble/wiibble.log` and stdout.
 
 ---
 

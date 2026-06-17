@@ -17,7 +17,8 @@ log = logging.getLogger(__name__)
 ICON_COG = ""  # fa-cog (gear / settings)
 ICON_INFINITY = "\uf534"  # fa-infinity
 # Module-level handles — set by load_fonts(), used by callers
-FA_ICON_FONT = NoneFA_ICON_FONT_SMALL = None  # 13px variant for inline buttons
+FA_ICON_FONT = None
+FA_ICON_FONT_SMALL = None  # 13px variant for inline buttons
 # ---------------------------------------------------------------------------
 # Crisp text font
 # ---------------------------------------------------------------------------

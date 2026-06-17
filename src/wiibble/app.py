@@ -15,7 +15,6 @@ import hid
 
 import wiibble.ui.theme as _theme_module
 from wiibble.analysis.calibration import sensitivity_calibration, wait_for_tare
-from wiibble.board.board_connection import try_connection
 from wiibble.board.mock_board import MockHIDDevice
 from wiibble.board.recording import _save_recording_csv
 from wiibble.features.data_processing import (
@@ -91,6 +90,8 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
         dpg.delete_item(dl, children_only=True)
         draw_connection_screen(dl, app_state)
         dpg.render_dearpygui_frame()
+
+        from wiibble.board.board_connection import try_connection
 
         result = try_connection(resource_path(DLL_RELATIVE_PATH))
         if result == 0:

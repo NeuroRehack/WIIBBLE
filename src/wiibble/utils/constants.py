@@ -105,6 +105,7 @@ PANEL_SECTION_SPACING = 6  # vertical padding between sections
 # Canvas quick-access floating toolbar (clear screen, recording toggle)
 QUICK_ACCESS_MARGIN = 4  # px from viewport edge
 QUICK_ACCESS_GAP = 4  # px between adjacent quick-access buttons
+QUICK_ACCESS_WINDOW_PAD = 20  # extra px so window frame does not clip buttons
 
 # Top-right recording indicator cluster (timer + quick-access record button + limit)
 RECORDING_INDICATOR_RIGHT_MARGIN = 21
@@ -123,6 +124,11 @@ CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
 CURSOR_SIZE_MIN = 1  # minimum circle cursor radius in pixels
 CURSOR_SIZE_MAX = 50  # maximum circle cursor radius in pixels
 CURSOR_DRAG_THRESHOLD = 5  # px size-delta below which a cursor press is treated as a click
+
+# Target dwell counter — hold time required to increment hit count (whole seconds)
+TARGET_DWELL_MIN = 0
+TARGET_DWELL_MAX = 10
+TARGET_DWELL_DEFAULT = 1
 
 # ---------------------------------------------------------------------------
 # Wii Balance Board platform geometry

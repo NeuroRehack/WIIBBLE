@@ -7,7 +7,7 @@ import platform
 from dataclasses import asdict, dataclass, field
 
 from wiibble.board.recording import normalize_recording_prefix
-from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
+from wiibble.utils.constants import SCALE_FACTOR_DEFAULT, TARGET_DWELL_DEFAULT, TARGET_DWELL_MAX, TARGET_DWELL_MIN
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +40,8 @@ class Settings:
     show_global_axes: bool = True  # solid crosshairs at screen centre
     show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
+    target_dwell_seconds: int = TARGET_DWELL_DEFAULT  # hold time to increment hit counter
+    show_target_counter: bool = True  # whether to show the on-screen hit counter
     flip_horizontal: bool = False  # invert left-right display and recording mapping
     flip_vertical: bool = False  # invert forward-back display and recording mapping
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
@@ -85,6 +87,11 @@ class Settings:
             merged = defaults.__dict__.copy()
             merged.update({k: v for k, v in data.items() if k in valid_fields})
             loaded = cls(**merged)
+            if isinstance(loaded.target_dwell_seconds, float):
+                loaded.target_dwell_seconds = int(round(loaded.target_dwell_seconds))
+            loaded.target_dwell_seconds = max(
+                TARGET_DWELL_MIN, min(TARGET_DWELL_MAX, int(loaded.target_dwell_seconds))
+            )
             raw_prefix = loaded.recording_prefix
             loaded.recording_prefix = normalize_recording_prefix(raw_prefix)
             if loaded.recording_prefix != raw_prefix:
@@ -191,6 +198,12 @@ class AppState:
     # Previous per-target hit states for edge detection — keyed by target index
     _prev_hit_states: dict = field(default_factory=dict)
 
+    # Target dwell hit counter — session runtime only
+    target_hit_count: int = 0
+    _target_dwell_elapsed: dict = field(default_factory=dict)  # per-target seconds while armed
+    _target_dwell_disarmed: set = field(default_factory=set)  # targets awaiting exit before re-count
+    _target_dwell_last_tick: float = 0.0
+
     def reset_sway_extents(self, trail_length: int) -> None:
         """Clear sway trail and bounding-box extents (e.g. after axis flip)."""
         self.historical_coords = [(0, 0)] * trail_length
@@ -198,6 +211,13 @@ class AppState:
         self.raw_min_x = self.raw_min_y = 0.0
         self.zoomed_max_x = self.zoomed_max_y = 0.0
         self.zoomed_min_x = self.zoomed_min_y = 0.0
+
+    def reset_target_counter(self) -> None:
+        """Reset the target dwell hit counter and dwell timer state."""
+        self.target_hit_count = 0
+        self._target_dwell_elapsed = {}
+        self._target_dwell_disarmed = set()
+        self._target_dwell_last_tick = 0.0
 
     def reset(self):
         """Called on RESTART — resets session data but preserves calibration."""
@@ -211,6 +231,7 @@ class AppState:
             "top_left": {"rawIndex": 7, "tare": 0},
             "bottom_left": {"rawIndex": 9, "tare": 0},
         }
+        self.reset_target_counter()
         self.is_recording = False
         self.record_buffer = []
         self.filter_buffer = []

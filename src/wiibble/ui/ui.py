@@ -50,6 +50,7 @@ from wiibble.utils.constants import (
     PANEL_W,
     QUICK_ACCESS_GAP,
     QUICK_ACCESS_MARGIN,
+    QUICK_ACCESS_WINDOW_PAD,
     RECORDING_INDICATOR_DOT_RADIUS,
     RECORDING_INDICATOR_LIMIT_FONT_SIZE,
     RECORDING_INDICATOR_RIGHT_MARGIN,
@@ -57,6 +58,8 @@ from wiibble.utils.constants import (
     RECORDING_INDICATOR_TIMER_FONT_SIZE,
     RECORDING_INDICATOR_TIMER_GAP,
     RECORDING_INDICATOR_Y,
+    TARGET_DWELL_MAX,
+    TARGET_DWELL_MIN,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
@@ -335,18 +338,30 @@ def build_panel_window(
         dpg.bind_item_font("panel_close_btn", _theme_module.FA_ICON_FONT)
 
 
+def _left_quick_access_window_size(num_buttons: int) -> tuple[int, int]:
+    """Return (width, height) for the quick-access window holding num_buttons."""
+    btn = PANEL_TOGGLE_BTN_SIZE
+    gap = QUICK_ACCESS_GAP
+    content_w = num_buttons * btn + max(0, num_buttons - 1) * gap
+    return content_w + QUICK_ACCESS_WINDOW_PAD, btn + QUICK_ACCESS_WINDOW_PAD // 2 + 4
+
+
 def build_left_quick_access(gear_label: str, toggle_callback, session_state: dict) -> None:
-    """Create the top-left quick-access bar (gear + clear screen)."""
+    """Create the top-left quick-access bar (gear + clear screen + reset counter)."""
     if dpg.does_item_exist("left_quick_access_window"):
         dpg.delete_item("left_quick_access_window")
 
     clear_label = (
         _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
     )
+    reset_label = (
+        _theme_module.ICON_COUNTER_RESET
+        if _theme_module.FA_ICON_FONT is not None
+        else "Rst"
+    )
     btn = PANEL_TOGGLE_BTN_SIZE
-    gap = QUICK_ACCESS_GAP
     margin = QUICK_ACCESS_MARGIN
-    window_w = 2 * btn + gap + 4
+    window_w, window_h = _left_quick_access_window_size(3)
 
     with dpg.window(
         tag="left_quick_access_window",
@@ -358,7 +373,7 @@ def build_left_quick_access(gear_label: str, toggle_callback, session_state: dic
         no_background=True,
         pos=(margin, margin),
         width=window_w,
-        height=btn + 4,
+        height=window_h,
         show=False,
     ):
         with dpg.group(horizontal=True):
@@ -376,6 +391,18 @@ def build_left_quick_access(gear_label: str, toggle_callback, session_state: dic
                 width=btn,
                 height=btn,
             )
+            reset_btn = dpg.add_button(
+                tag="reset_counter_quick_btn",
+                label=reset_label,
+                callback=lambda: session_state.update({"action": "reset_target_counter"}),
+                width=btn,
+                height=btn,
+            )
+            if _theme_module.FA_ICON_FONT is not None:
+                dpg.bind_item_font(reset_btn, _theme_module.FA_ICON_FONT)
+
+    with dpg.tooltip(parent="reset_counter_quick_btn"):
+        dpg.add_text("Reset the target hit counter to zero.")
 
     if _theme_module.FA_ICON_FONT is not None:
         dpg.bind_item_font("panel_float_btn", _theme_module.FA_ICON_FONT)
@@ -428,22 +455,24 @@ def update_left_quick_access_layout(toolbar_visible: bool, toolbar_enabled: bool
     if not dpg.does_item_exist("left_quick_access_window"):
         return
 
-    btn = PANEL_TOGGLE_BTN_SIZE
-    gap = QUICK_ACCESS_GAP
     margin = QUICK_ACCESS_MARGIN
 
     if toolbar_visible:
         dpg.configure_item("panel_float_btn", show=False)
         dpg.configure_item("clear_screen_quick_btn", show=True)
+        dpg.configure_item("reset_counter_quick_btn", show=True)
         dpg.set_item_pos("left_quick_access_window", (PANEL_W + 8, margin))
-        window_w = btn + 4
+        window_w, window_h = _left_quick_access_window_size(2)
     else:
         dpg.configure_item("panel_float_btn", show=True)
         dpg.configure_item("clear_screen_quick_btn", show=True)
+        dpg.configure_item("reset_counter_quick_btn", show=True)
         dpg.set_item_pos("left_quick_access_window", (margin, margin))
-        window_w = 2 * btn + gap + 4
+        window_w, window_h = _left_quick_access_window_size(3)
 
-    dpg.configure_item("left_quick_access_window", width=window_w, show=toolbar_enabled)
+    dpg.configure_item(
+        "left_quick_access_window", width=window_w, height=window_h, show=toolbar_enabled
+    )
 
 
 def update_recording_quick_access_position(
@@ -479,7 +508,12 @@ def set_quick_access_visible(visible: bool, session_state: dict) -> None:
 
 def is_mouse_over_quick_access() -> bool:
     """Return True if the mouse is over a quick-access button."""
-    for tag in ("panel_float_btn", "clear_screen_quick_btn", "recording_quick_btn"):
+    for tag in (
+        "panel_float_btn",
+        "clear_screen_quick_btn",
+        "reset_counter_quick_btn",
+        "recording_quick_btn",
+    ):
         if dpg.does_item_exist(tag) and dpg.is_item_shown(tag) and dpg.is_item_hovered(tag):
             return True
     return False
@@ -1270,6 +1304,40 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     with dpg.tooltip(parent="target_jelly_checkbox"):
         dpg.add_text("Animate targets with a jelly wobble when hit.")
     dpg.add_spacer(height=8)
+    dpg.add_text("Targets")
+    dpg.add_slider_int(
+        tag="target_dwell_slider",
+        default_value=int(settings.target_dwell_seconds),
+        min_value=TARGET_DWELL_MIN,
+        max_value=TARGET_DWELL_MAX,
+        width=PANEL_SLIDER_W,
+        format="%d s",
+        callback=lambda s, v: _on_target_dwell_change(v, settings),
+    )
+    with dpg.tooltip(parent="target_dwell_slider"):
+        dpg.add_text(
+            "Time the cursor must stay inside a target\nbefore the hit counter increases by one."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_checkbox(
+        tag="show_target_counter_checkbox",
+        label="Show hit counter",
+        default_value=settings.show_target_counter,
+        callback=lambda s, v: _on_show_target_counter_change(v, settings),
+    )
+    with dpg.tooltip(parent="show_target_counter_checkbox"):
+        dpg.add_text("Show or hide the on-screen target hit counter.")
+    dpg.add_spacer(height=4)
+    dpg.add_button(
+        label="Reset hit counter",
+        tag="reset_target_counter_btn",
+        callback=lambda: session_state.update({"action": "reset_target_counter"}),
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
+    )
+    with dpg.tooltip(parent="reset_target_counter_btn"):
+        dpg.add_text("Reset the target hit counter to zero.")
+    dpg.add_spacer(height=8)
     dpg.add_text("Flip axis")
     _flip_icon_w = PANEL_BTN_H
     _flip_v_label = ICON_FLIP_VERTICAL if _theme_module.FA_ICON_FONT_SMALL else "V"
@@ -1356,6 +1424,18 @@ def _on_show_local_axes_change(value: bool, settings) -> None:
 def _on_target_jelly_change(value: bool, settings) -> None:
     """Toggle target jelly animation on hit."""
     settings.target_jelly = value
+    settings.save()
+
+
+def _on_target_dwell_change(value: int, settings) -> None:
+    """Update the dwell time required to increment the hit counter."""
+    settings.target_dwell_seconds = max(TARGET_DWELL_MIN, min(TARGET_DWELL_MAX, int(value)))
+    settings.save()
+
+
+def _on_show_target_counter_change(value: bool, settings) -> None:
+    """Toggle on-screen target hit counter visibility."""
+    settings.show_target_counter = value
     settings.save()
 
 
@@ -1614,6 +1694,76 @@ def _logical_rect_viewport_bounds(
     return min(vx0, vx1), min(vy0, vy1), max(vx0, vx1), max(vy0, vy1)
 
 
+def _target_hit_at_point(
+    target,
+    ball_x: float,
+    ball_y: float,
+    cx: float,
+    cy: float,
+    zoom: float,
+    flip_horizontal: bool,
+    flip_vertical: bool,
+) -> bool:
+    """Return True when viewport point (ball_x, ball_y) is inside the target."""
+    if isinstance(target, dict) and target.get("shape") == "rect":
+        min_vx, min_vy, max_vx, max_vy = _logical_rect_viewport_bounds(
+            target["min"], target["max"], cx, cy, zoom, flip_horizontal, flip_vertical
+        )
+        return min_vx <= ball_x <= max_vx and min_vy <= ball_y <= max_vy
+    if isinstance(target, dict):
+        lx, ly = target["center"]
+        logical_radius = target.get("radius", 5.0)
+    else:
+        lx, ly = target
+        logical_radius = 5.0
+    vx, vy = logical_to_viewport(lx, ly, cx, cy, zoom, flip_horizontal, flip_vertical)
+    scaled_radius = logical_radius * zoom
+    dist = math.sqrt((vx - ball_x) ** 2 + (vy - ball_y) ** 2)
+    return dist < scaled_radius
+
+
+def update_target_dwell(
+    app_state, settings, hit_by_index: dict[int, bool], *, dt: float | None = None
+) -> None:
+    """Accumulate per-target dwell time and increment counter when thresholds are reached."""
+    if dt is None:
+        now = time.perf_counter()
+        if app_state._target_dwell_last_tick <= 0:
+            dt = 0.0
+        else:
+            dt = now - app_state._target_dwell_last_tick
+        app_state._target_dwell_last_tick = now
+
+    valid_indices = set(hit_by_index.keys())
+    elapsed = app_state._target_dwell_elapsed
+    disarmed = app_state._target_dwell_disarmed
+
+    for idx in list(elapsed.keys()):
+        if idx not in valid_indices:
+            del elapsed[idx]
+    disarmed.intersection_update(valid_indices)
+
+    dwell_seconds = settings.target_dwell_seconds
+
+    for idx, hit in hit_by_index.items():
+        if hit:
+            if idx in disarmed:
+                continue
+            if dwell_seconds <= 0:
+                app_state.target_hit_count += 1
+                disarmed.add(idx)
+                elapsed.pop(idx, None)
+                continue
+            elapsed[idx] = elapsed.get(idx, 0.0) + dt
+            if elapsed[idx] >= dwell_seconds:
+                app_state.target_hit_count += 1
+                elapsed.pop(idx, None)
+                disarmed.add(idx)
+        else:
+            elapsed.pop(idx, None)
+            disarmed.discard(idx)
+
+
 def draw_main_screen(
     dl,
     corners: dict,
@@ -1696,12 +1846,14 @@ def draw_main_screen(
     zoom = settings.zoom_factor
     flip_h = settings.flip_horizontal
     flip_v = settings.flip_vertical
+    target_hits: dict[int, bool] = {}
     for idx, target in enumerate(app_state.clicked_locations):
         if isinstance(target, dict) and target.get("shape") == "rect":
             min_vx, min_vy, max_vx, max_vy = _logical_rect_viewport_bounds(
                 target["min"], target["max"], cx, cy, zoom, flip_h, flip_v
             )
-            hit = min_vx <= ball_x <= max_vx and min_vy <= ball_y <= max_vy
+            hit = _target_hit_at_point(target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v)
+            target_hits[idx] = hit
             app_state._prev_hit_states[idx] = hit
             fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
             dpg.draw_rectangle(
@@ -1716,8 +1868,8 @@ def draw_main_screen(
             logical_radius = 5.0
         vx, vy = logical_to_viewport(lx, ly, cx, cy, zoom, flip_h, flip_v)
         scaled_radius = logical_radius * zoom
-        dist = math.sqrt((vx - ball_x) ** 2 + (vy - ball_y) ** 2)
-        hit = dist < scaled_radius
+        hit = _target_hit_at_point(target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v)
+        target_hits[idx] = hit
         # Spawn jelly oscillation on False→True transition
         prev = app_state._prev_hit_states.get(idx, False)
         if hit and not prev and settings.target_jelly:
@@ -1736,6 +1888,8 @@ def draw_main_screen(
             jelly_r = scaled_radius
         fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
         dpg.draw_circle((vx, vy), max(1.0, jelly_r), color=fill, fill=fill, parent=dl)
+
+    update_target_dwell(app_state, settings, target_hits)
 
     # (ripple ring loop removed — replaced by per-target jelly oscillation above)
 
@@ -1804,6 +1958,19 @@ def draw_main_screen(
             f"{getattr(app_state, 'countdown_value', '')}",
             color=(255, 0, 0, 255),
             size=100,
+            parent=dl,
+        )
+
+    # Target hit counter — large centred number at top of canvas
+    if settings.show_target_counter and toolbar_enabled:
+        counter_str = str(app_state.target_hit_count)
+        counter_font_size = 90
+        counter_w = _measure_crisp_text_width(counter_str, counter_font_size)
+        _crisp_text(
+            (sw / 2 - counter_w / 2, sh * 0.08),
+            counter_str,
+            color=(20, 20, 20, 255),
+            size=counter_font_size,
             parent=dl,
         )
 

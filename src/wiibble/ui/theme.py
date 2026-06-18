@@ -20,6 +20,7 @@ ICON_RECORD = "\uf111"  # fa-circle (recording)
 ICON_INFINITY = "\uf534"  # fa-infinity
 ICON_FLIP_VERTICAL = "\uf338"  # fa-arrows-alt-v
 ICON_FLIP_HORIZONTAL = "\uf337"  # fa-arrows-alt-h
+ICON_COUNTER_RESET = "\uf0e2"  # fa-undo (reset hit counter)
 # Module-level handles — set by load_fonts(), used by callers
 FA_ICON_FONT = None
 FA_ICON_FONT_SMALL = None  # 13px variant for inline buttons

@@ -67,6 +67,14 @@ class TestSettingsDefaults:
     def test_recording_prefix_default(self):
         assert Settings().recording_prefix == ""
 
+    def test_target_dwell_seconds_default(self):
+        from wiibble.utils.constants import TARGET_DWELL_DEFAULT
+
+        assert Settings().target_dwell_seconds == TARGET_DWELL_DEFAULT
+
+    def test_show_target_counter_default(self):
+        assert Settings().show_target_counter is True
+
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file
@@ -108,6 +116,8 @@ class TestSettingsRoundTrip:
             recording_prefix="SPI001_SitStand",
             show_global_axes=False,
             show_local_axes=True,
+            target_dwell_seconds=2,
+            show_target_counter=False,
         )
         original.save()
         loaded = Settings.load()
@@ -125,6 +135,8 @@ class TestSettingsRoundTrip:
         assert loaded.recording_prefix == "SPI001_SitStand"
         assert loaded.show_global_axes is False
         assert loaded.show_local_axes is True
+        assert loaded.target_dwell_seconds == 2
+        assert loaded.show_target_counter is False
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -289,6 +301,14 @@ class TestAppStateReset:
         s.reset()
         assert s.pan_offset_x == 0.0
         assert s.pan_offset_y == 0.0
+
+    def test_reset_clears_target_hit_counter(self):
+        s = AppState()
+        s.target_hit_count = 5
+        s._target_dwell_disarmed = {0}
+        s.reset()
+        assert s.target_hit_count == 0
+        assert s._target_dwell_disarmed == set()
 
 
 class TestAppStateResetSwayExtents:

@@ -349,6 +349,7 @@ def _reset_session_state(app_state, settings) -> None:
     app_state.raw_min_x = app_state.raw_min_y = 0.0
     app_state.pan_offset_x = 0.0
     app_state.pan_offset_y = 0.0
+    app_state.reset_target_counter()
 
 
 def _clear_screen_state(app_state, settings) -> None:
@@ -398,6 +399,10 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         return None
     if action == "clear":
         _clear_screen_state(app_state, settings)
+        _clear_session_action(session_state)
+        return None
+    if action == "reset_target_counter":
+        app_state.reset_target_counter()
         _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox":

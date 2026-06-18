@@ -52,6 +52,7 @@ app = typer.Typer(
     help="Generate a posturographic HTML report from a WIIBBLE recording.",
     no_args_is_help=False,
     add_completion=False,
+    rich_markup_mode=None,
 )
 
 

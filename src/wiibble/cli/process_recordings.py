@@ -20,6 +20,7 @@ app = typer.Typer(
     help="Offline posturographic analysis for WIIBBLE recordings.",
     no_args_is_help=False,
     add_completion=False,
+    rich_markup_mode=None,
 )
 
 _MIN_ANALYSIS_DURATION_S = 20.0

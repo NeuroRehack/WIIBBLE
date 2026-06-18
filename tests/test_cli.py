@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from unittest.mock import patch
 
 from typer.testing import CliRunner
@@ -11,6 +12,12 @@ from wiibble.cli.process_recordings import app as process_app
 from wiibble.cli.report import app as report_app
 
 runner = CliRunner()
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain_output(result) -> str:
+    """Strip Rich/Click ANSI codes for stable cross-platform assertions."""
+    return _ANSI_RE.sub("", result.output)
 
 
 def _use_recording_dir(tmp_path, monkeypatch, dirname: str = "recordings"):
@@ -70,8 +77,9 @@ def test_report_help_flag():
     """Report CLI --help documents batch and single-file modes."""
     result = runner.invoke(report_app, ["--help"])
     assert result.exit_code == 0
-    assert "--new" in result.output
-    assert "--all" in result.output
+    output = _plain_output(result)
+    assert "--new" in output
+    assert "--all" in output
 
 
 def test_report_missing_csv():

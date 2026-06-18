@@ -159,20 +159,12 @@ sequenceDiagram
     end
 
     app->>app: elapsed >= record_duration → is_recording=False
-    app->>rec: _save_recording_csv(buffer, weight, ui_filter_window)
-    rec->>rec: write recordings/recording_YYYYMMDD_HHMMSS.csv
-    Note over rec: # total_weight_kg, # ui_filter_window written as metadata comments
-
-    alt duration ≥ 20 s
-        app->>app: spawn background thread
-        app->>ana: analyse_recording(csv_path)
-        ana->>ana: load_recording() → parse CSV + metadata
-        ana->>ana: to_cop_array() → CoP in cm (Leach 2014 Eq.1)
-        ana->>cdpc: Stabilogram.from_array() → SWARII → 25 Hz + Butterworth
-        cdpc->>ana: compute_all_features() → ~80-90 features
-        ana->>ana: save recordings/features_YYYYMMDD_HHMMSS.json
-    end
+    app->>rec: _save_recording_csv(buffer, weight, ui_filter_window, out_dir=settings.recording_dir)
+    rec->>rec: write recording_YYMMDDHHMMSS.csv to configured folder
+    Note over rec: Default folder: ~/Documents/WIIBBLE/recordings<br/># total_weight_kg, # ui_filter_window metadata comments
 ```
+
+Offline posturographic analysis and HTML reports are **not** triggered by the app. Run `wiibble-process-recordings` and `wiibble-report` separately after a session (see [DATA_PIPELINE.md](DATA_PIPELINE.md)).
 
 ---
 
@@ -189,8 +181,11 @@ sequenceDiagram
 | `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
 | `wiibble/utils/constants.py` | Hardware IDs, byte offsets, `SCALE_FACTOR_DEFAULT`, thresholds, UI sizes | Factory default scale factor; runtime value lives in settings |
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
-| `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata | Extracted from `app.py` specifically for testability |
-| `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; safe to use standalone. Auto-triggered by `app.py` for recordings ≥ 20 s. |
+| `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata; `resolve_recording_dir()` for default save location | Extracted from `app.py` specifically for testability |
+| `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; invoked offline via `wiibble-process-recordings` |
+| `wiibble/cli/process_recordings.py` | `wiibble-process-recordings` — batch feature extraction (`--new`, `--all`) | Scans `settings.recording_dir`; optional HTML report per file |
+| `wiibble/cli/report.py` | `wiibble-report` — batch or single-file HTML reports (`--new`, `--all`) | Auto-detects features JSON; writes `report_<timestamp>.html` next to CSV |
+| `wiibble/cli/recordings_dir.py` | Shared helper to resolve the configured recordings folder for offline CLIs | Reads `settings.recording_dir` via `Settings.load()` |
 | `wiibble/board/mock_board.py` | `MockHIDDevice` — drop-in for `hid.device()`, named scenarios | Phase model (tare → step_on_stable → normal); `enter_running_mode()` after startup tare |
 | `wiibble/board/board_connection.py` | C# DLL loader via `pythonnet`; `try_connection()` triggers the Bluetooth handshake | Called once at startup then never again — all data flows through `hidapi` |
 | `wiibble/utils/resources.py` | `resource_path()` — resolves asset paths in dev and Nuitka standalone builds | Pre-resolves common paths at import time; use this for all asset access |

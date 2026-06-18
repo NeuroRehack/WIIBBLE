@@ -15,6 +15,18 @@ log = logging.getLogger(__name__)
 DEFAULT_RECORDING_PREFIX = "recording"
 DEFAULT_RECORDING_DIR = Path.home() / "Documents" / "WIIBBLE" / "recordings"
 RECORDING_PREFIX_MAX_LEN = 40
+
+
+def resolve_recording_dir(out_dir: str = "") -> Path:
+    """Return the directory used for CSV recordings.
+
+    When *out_dir* is empty, returns :data:`DEFAULT_RECORDING_DIR`.
+    """
+    if not out_dir:
+        return DEFAULT_RECORDING_DIR
+    return Path(out_dir)
+
+
 _INVALID_PREFIX_CHARS = re.compile(r"[^A-Za-z0-9_-]")
 _WINDOWS_RESERVED_NAMES = frozenset(
     {
@@ -99,10 +111,7 @@ def _save_recording_csv(
 
     Returns the absolute path of the written file.
     """
-    if not out_dir:
-        out_path = DEFAULT_RECORDING_DIR
-    else:
-        out_path = Path(out_dir)
+    out_path = resolve_recording_dir(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     if start_time is None:
         start_time = datetime.datetime.now()

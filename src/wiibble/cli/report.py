@@ -6,16 +6,17 @@ WIIBBLE recording session.  All Plotly charts are embedded directly in the HTML
 
 Usage
 -----
-    python report.py <csv_path> [--features <json_path>] [--out <html_path>]
-
-    python report.py recordings/recording_20260420_130030.csv
-    python report.py recordings/recording_20260420_130030.csv \\
-        --features recordings/features_20260420_130030.json \\
-        --out recordings/my_report.html
+    wiibble-report --new              # CSVs in configured folder without a report yet
+    wiibble-report --all              # regenerate all reports in configured folder
+    wiibble-report <csv_path>         # single file (features JSON auto-detected)
+    wiibble-report <csv_path> --features <json_path> --out <html_path>
 
 If ``--features`` is omitted the script looks for a ``features_*.json`` file
 whose timestamp matches the CSV filename.  If none is found the feature-based
 sections (radar chart and feature table) are omitted from the report.
+
+Batch mode (``--new`` / ``--all``) scans the recordings folder from
+``~/.wiibble/settings.json`` (same as **Save Location** in the app).
 
 Output
 ------
@@ -41,6 +42,7 @@ from plotly.subplots import make_subplots
 
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
 from wiibble.analysis.analysis import load_recording, to_cop_array
+from wiibble.cli.recordings_dir import collect_recording_csvs, get_recordings_dir
 from wiibble.utils.logging_config import configure_logging
 
 log = logging.getLogger(__name__)
@@ -48,7 +50,7 @@ log = logging.getLogger(__name__)
 app = typer.Typer(
     name="wiibble-report",
     help="Generate a posturographic HTML report from a WIIBBLE recording.",
-    no_args_is_help=True,
+    no_args_is_help=False,
     add_completion=False,
 )
 
@@ -957,6 +959,18 @@ _HTML_TEMPLATE = """\
 # ---------------------------------------------------------------------------
 
 
+def _default_report_path(csv_file: Path) -> Path:
+    """Return the default HTML report path for a recording CSV."""
+    stem = csv_file.stem
+    m = re.search(r"(\d{12})$", stem)
+    if not m:
+        m = re.search(r"(\d{8}_\d{6})", csv_file.name)
+    if m:
+        return csv_file.parent / f"report_{m.group(1)}.html"
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return csv_file.parent / f"report_{ts}.html"
+
+
 def _find_features_json(csv_path: str) -> str | None:
     """Locate the features JSON that matches the CSV timestamp, if it exists."""
     csv = Path(csv_path)
@@ -991,7 +1005,7 @@ def generate_report(
     features_path : str, optional
         Path to the corresponding features JSON.  Auto-detected if omitted.
     out_path : str, optional
-        Destination HTML file path.  Defaults to ``recordings/report_<timestamp>.html``.
+        Destination HTML file path.  Defaults to ``report_<timestamp>.html`` next to the CSV.
 
     Returns
     -------
@@ -1080,16 +1094,7 @@ def generate_report(
     # ── Write output ─────────────────────────────────────────────────────────
     log.info("Writing HTML report to disk…")
     if out_path is None:
-        stem = csv_file.stem
-        m = re.search(r"(\d{12})$", stem)
-        if not m:
-            m = re.search(r"(\d{8}_\d{6})", csv_file.name)
-        if m:
-            ts = m.group(1)
-            out_file = csv_file.parent / f"report_{ts}.html"
-        else:
-            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            out_file = csv_file.parent / f"report_{ts}.html"
+        out_file = _default_report_path(csv_file)
     else:
         out_file = Path(out_path)
     out_file = out_file.resolve()
@@ -1100,6 +1105,38 @@ def generate_report(
     return str(out_file)
 
 
+def _process_file(
+    csv_path: Path,
+    *,
+    features_path: str | None = None,
+    out_path: str | None = None,
+    overwrite: bool = True,
+) -> bool:
+    """Generate a report for *csv_path*.
+
+    Returns:
+        True on success, False if skipped or failed.
+    """
+    if not overwrite and out_path is None:
+        report_path = _default_report_path(csv_path.resolve())
+        if report_path.exists():
+            typer.echo(f"  [skip] {csv_path.name} - report already exists", err=True)
+            return False
+
+    log.info("  [run]  %s - generating report", csv_path.name)
+    try:
+        output = generate_report(
+            str(csv_path),
+            features_path=features_path,
+            out_path=out_path,
+        )
+        log.info("    HTML report written: %s", Path(output).name)
+        return True
+    except Exception:
+        log.exception("Report generation failed for %s", csv_path)
+        return False
+
+
 # ---------------------------------------------------------------------------
 # CLI entry-point
 # ---------------------------------------------------------------------------
@@ -1107,11 +1144,28 @@ def generate_report(
 
 @app.callback(invoke_without_command=True)
 def main(
-    csv: Path = typer.Argument(..., help="Path to the WIIBBLE recording CSV file", exists=True),
+    ctx: typer.Context,
+    paths: list[Path] | None = typer.Argument(
+        None,
+        help="CSV recording file(s) to report on",
+        exists=True,
+        dir_okay=False,
+        readable=True,
+    ),
+    process_new: bool = typer.Option(
+        False,
+        "--new",
+        help="Generate reports for CSVs in the configured recordings directory that have no HTML report yet",
+    ),
+    reprocess_all: bool = typer.Option(
+        False,
+        "--all",
+        help="Regenerate HTML reports for all CSVs in the configured recordings directory",
+    ),
     features: Path | None = typer.Option(
         None,
         "--features",
-        help="Path to the features JSON file (auto-detected if omitted)",
+        help="Path to the features JSON file (auto-detected if omitted; single-file mode only)",
         exists=True,
         dir_okay=False,
         readable=True,
@@ -1119,26 +1173,57 @@ def main(
     out: Path | None = typer.Option(
         None,
         "--out",
-        help="Output HTML file path (default: recordings/report_<timestamp>.html)",
+        help="Output HTML file path (defaults next to the CSV; single-file mode only)",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable DEBUG logging"),
 ) -> None:
-    """Generate a posturographic HTML report from a WIIBBLE recording."""
+    """Generate posturographic HTML reports for WIIBBLE recording CSV files."""
     configure_logging(
         level=logging.DEBUG if verbose else logging.INFO,
         log_to_file=False,
         stream=True,
     )
-    try:
-        output = generate_report(
-            str(csv),
-            features_path=str(features) if features else None,
-            out_path=str(out) if out else None,
+
+    if not paths and not process_new and not reprocess_all:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(code=0)
+
+    if (process_new or reprocess_all) and (features is not None or out is not None):
+        typer.echo("--features and --out cannot be used with --new or --all.", err=True)
+        raise typer.Exit(code=1)
+
+    start_all = time.time()
+    features_path = str(features) if features else None
+    out_path = str(out) if out else None
+
+    if paths:
+        csv_files = paths
+        overwrite = True
+    else:
+        recordings_dir = get_recordings_dir()
+        csv_files = collect_recording_csvs()
+        if not csv_files:
+            typer.echo(f"No recording CSVs found in '{recordings_dir}/'.")
+            raise typer.Exit(code=0)
+        overwrite = reprocess_all
+
+    log.info("Processing %d file(s)...", len(csv_files))
+    succeeded = sum(
+        _process_file(
+            csv_path,
+            features_path=features_path,
+            out_path=out_path,
+            overwrite=overwrite,
         )
-        typer.echo(f"Report saved to: {output}")
-    except Exception as exc:
-        log.error("Report generation failed: %s", exc)
-        raise typer.Exit(code=1) from exc
+        for csv_path in csv_files
+    )
+    elapsed = time.time() - start_all
+    typer.echo(
+        f"Done - {succeeded}/{len(csv_files)} report(s) generated in {elapsed:.1f} seconds.",
+        err=True,
+    )
+    if succeeded < len(csv_files):
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

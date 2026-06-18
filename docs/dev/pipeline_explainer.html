@@ -691,7 +691,7 @@
         <td>Open vs. closed loop control boundary (Winter 1996)</td>
       </tr>
     </table>
-    <p>Results are written to <code>recordings/features_YYYYMMDD_HHMMSS.json</code> alongside the corresponding CSV. Analysis runs in a background daemon thread and only triggers for recordings ≥ 20 seconds.</p>
+    <p>Results are written to <code>features_YYYYMMDD_HHMMSS.json</code> alongside the corresponding CSV in the configured recordings folder (<strong>Save Location</strong> in settings; default <code>~/Documents/WIIBBLE/recordings</code>). Run <code>wiibble-process-recordings --new</code> offline after a session; recordings shorter than 20 seconds are skipped.</p>
   </div>
 
   <!-- ── Code ───────────────────────────────────────────────────────────── -->

@@ -267,25 +267,27 @@ uv sync --extra analysis
 
 ### Analyse recordings
 
-Process all new (unanalysed) recordings in `recordings/`:
+Both offline CLIs scan the **configured recordings folder** — the same path as **Save Location** in the app (`recording_dir` in `~/.wiibble/settings.json`). When unset, the default is `~/Documents/WIIBBLE/recordings`.
+
+Process all new (unanalysed) recordings in that folder:
 
 ```powershell
 uv run wiibble-process-recordings --new
 ```
 
-Process a specific recording:
+Process a specific recording (path can be anywhere):
 
 ```powershell
-uv run wiibble-process-recordings recordings/recording_YYYYMMDD_HHMMSS.csv
+uv run wiibble-process-recordings "C:\Users\...\recording_YYYYMMDD_HHMMSS.csv"
 ```
 
-Re-analyse and overwrite all recordings:
+Re-analyse and overwrite all recordings in the configured folder:
 
 ```powershell
 uv run wiibble-process-recordings --all
 ```
 
-**Output:** `recordings/features_YYYYMMDD_HHMMSS.json` — ~80–90 posturographic features plus provenance metadata.
+**Output:** `features_YYYYMMDD_HHMMSS.json` written alongside each CSV — ~80–90 posturographic features plus provenance metadata.
 
 **Minimum duration:** Recordings shorter than 20 s are skipped.
 
@@ -293,13 +295,31 @@ For a full technical breakdown of each analysis step see [DATA_PIPELINE.md](DATA
 
 ### Generate HTML reports
 
+Batch mode (uses the configured recordings folder; auto-detects features JSON and writes HTML next to each CSV):
+
 ```powershell
-uv run wiibble-report recordings/recording_YYYYMMDD_HHMMSS.csv \
-    --features recordings/features_YYYYMMDD_HHMMSS.json \
-    --out recordings/report_YYYYMMDD_HHMMSS.html
+uv run wiibble-report --new
+uv run wiibble-report --all
 ```
 
-Omit `--out` for default output filename. If the `--features` JSON is missing, a partial report is generated.
+- `--new` — generate reports only for CSVs that do not yet have a matching `report_<timestamp>.html`
+- `--all` — regenerate reports for every CSV in the folder
+
+Single recording:
+
+```powershell
+uv run wiibble-report "C:\Users\...\recording_YYYYMMDD_HHMMSS.csv"
+```
+
+Explicit paths (single-file mode only; cannot be combined with `--new` or `--all`):
+
+```powershell
+uv run wiibble-report path\to\recording.csv `
+    --features path\to\features.json `
+    --out path\to\report.html
+```
+
+Omit `--out` to write `report_<timestamp>.html` next to the CSV. Omit `--features` for automatic search of the matching JSON. If no features JSON is found, a partial report is generated.
 
 The report contains: sway path + 95% confidence ellipse, ML/AP time series, velocity, power spectral density, diffusion plot, spatial density, and feature summary table. All captions are strictly descriptive, no clinical interpretation.
 
@@ -346,7 +366,7 @@ Supports `/SILENT` and `/VERYSILENT` flags for managed deployment.
 - **Windows only.** DearPyGui's `viewport_drawlist`, `ctypes.windll`, and the C# DLL are all Windows-specific.
 - **.NET Framework 4.8** must be present to build and run the C# DLL. Pre-installed on Windows 10/11; may be absent on server SKUs.
 - **Bluetooth pairing is separate from the app.** The board must be paired in Windows Bluetooth settings before launching.
-- **Settings are per-user**, stored at `~/.wiibble/settings.json`. The `recordings/` folder is relative to the working directory.
+- **Settings are per-user**, stored at `~/.wiibble/settings.json`. The recording save location (`recording_dir`) is shared by the app and offline CLI batch commands; default is `~/Documents/WIIBBLE/recordings`.
 
 ---
 
@@ -377,11 +397,11 @@ WIIBBLE/
 │       ├── ui/                    # Rendering, theme, input handlers
 │       ├── cli/
 │       │   ├── process_recordings.py  # `wiibble-process-recordings` entrypoint
+│       │   ├── recordings_dir.py      # shared recordings-folder helper for CLIs
 │       │   └── report.py              # `wiibble-report` entrypoint
 │       └── utils/                 # Constants, state, resources
 ├── WiiBalanceBoardLibrary/      # C# project (build to produce DLL)
 ├── tests/                       # pytest test suite
-├── recordings/                  # Default output directory (created at runtime)
 ├── docs/
 │   ├── dev/
 │   │   ├── setup.md             # this file
@@ -419,7 +439,7 @@ just check
 
 # Analysis and reporting
 uv run wiibble-process-recordings --new
-uv run wiibble-report recordings/recording_*.csv --features recordings/features_*.json
+uv run wiibble-report --new
 
 # Build executable
 .\compiler.bat

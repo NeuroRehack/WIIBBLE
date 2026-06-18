@@ -10,6 +10,7 @@ from pathlib import Path
 import typer
 
 from wiibble.analysis.analysis import analyse_recording
+from wiibble.cli.recordings_dir import collect_recording_csvs, get_recordings_dir
 from wiibble.utils.logging_config import configure_logging
 
 log = logging.getLogger(__name__)
@@ -22,7 +23,11 @@ app = typer.Typer(
 )
 
 _MIN_ANALYSIS_DURATION_S = 20.0
-_RECORDINGS_DIR = Path("recordings")
+
+
+def _recordings_dir() -> Path:
+    """Return the configured recordings directory from WIIBBLE settings."""
+    return get_recordings_dir()
 
 
 def _json_path_for(csv_path: Path) -> Path:
@@ -103,10 +108,8 @@ def _process_file(
 
 
 def _collect_all_csvs() -> list[Path]:
-    """Return sorted recording CSV paths in the recordings directory."""
-    if not _RECORDINGS_DIR.is_dir():
-        return []
-    return sorted(_RECORDINGS_DIR.glob("*.csv"))
+    """Return sorted recording CSV paths in the configured recordings directory."""
+    return collect_recording_csvs()
 
 
 @app.callback(invoke_without_command=True)
@@ -122,12 +125,12 @@ def main(
     process_new: bool = typer.Option(
         False,
         "--new",
-        help=f"Process unanalysed CSVs in '{_RECORDINGS_DIR}/' (skip existing JSON sidecars)",
+        help="Process unanalysed CSVs in the configured recordings directory (skip existing JSON sidecars)",
     ),
     reprocess_all: bool = typer.Option(
         False,
         "--all",
-        help=f"Reprocess all CSVs in '{_RECORDINGS_DIR}/', overwriting JSON sidecars",
+        help="Reprocess all CSVs in the configured recordings directory, overwriting JSON sidecars",
     ),
     weight: float | None = typer.Option(
         None,
@@ -159,9 +162,10 @@ def main(
         csv_files = paths
         overwrite = True
     else:
+        recordings_dir = _recordings_dir()
         csv_files = _collect_all_csvs()
         if not csv_files:
-            typer.echo(f"No recording CSVs found in '{_RECORDINGS_DIR}/'.")
+            typer.echo(f"No recording CSVs found in '{recordings_dir}/'.")
             raise typer.Exit(code=0)
         overwrite = reprocess_all
 

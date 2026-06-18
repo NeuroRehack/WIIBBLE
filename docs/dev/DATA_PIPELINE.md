@@ -16,14 +16,15 @@ flowchart TD
     C -- "Recording path<br>(raw, unfiltered)" --> D(Force Deviation Calculation)
     D --> E(Buffer: timestamp, x_kg, y_kg)
     E --> F(CSV Output + metadata comments)
-    F --> G[process_recordings.py\noffline CLI]
+    F --> G[wiibble-process-recordings\noffline CLI]
     G --> H{duration ≥ 20 s?}
     H -- Yes --> I(CoP Conversion: Leach 2014)
     I --> J(SWARII Resampling → 25 Hz)
     J --> K(Butterworth Filter 0–10 Hz)
     K --> L(compute_all_features ~80–90 features)
     L --> M(features_*.json)
-    L --> R(report.py)
+    F --> R[wiibble-report\noffline CLI]
+    M --> R
     R --> S(HTML Report)
     H -- No --> N(Skip analysis)
     C -- "Display path<br>(smoothed)" --> O(Moving Average Filter)
@@ -100,8 +101,10 @@ After parsing, the pipeline splits into two independent paths.
 
 ## 6. CSV Output
 
-- **Function:** `_save_recording_csv(record_buffer, total_weight_kg, ui_filter_window)`
-- Writes the buffer to `recordings/recording_YYYYMMDD_HHMMSS.csv` after recording ends.
+- **Function:** `_save_recording_csv(record_buffer, total_weight_kg, ui_filter_window, out_dir=...)`
+- Writes the buffer to a timestamped CSV in the configured recordings folder after recording ends.
+- **Save location:** `settings.recording_dir` from `~/.wiibble/settings.json` (set via **Save Location** in the app). When empty, defaults to `~/Documents/WIIBBLE/recordings`.
+- **Filename:** `recording_YYMMDDHHMMSS.csv` (or `{prefix}_YYMMDDHHMMSS.csv` when a prefix is set).
 - File structure:
   ```
   # total_weight_kg=71.2000
@@ -117,11 +120,20 @@ After parsing, the pipeline splits into two independent paths.
 
 ## 7. Posturographic Analysis (Offline)
 
-Analysis runs offline via `process_recordings.py`, **not** inside the compiled app. This keeps the Nuitka build fast and free of pandas, sklearn, and statsmodels, which cannot be compiled efficiently.
+Analysis runs offline via `wiibble-process-recordings`, **not** inside the compiled app. This keeps the Nuitka build fast and free of pandas, sklearn, and statsmodels, which cannot be compiled efficiently.
 
-- **Script:** `wiibble-process-recordings` — CLI entry point
+- **Script:** `wiibble-process-recordings` — CLI entry point (`src/wiibble/cli/process_recordings.py`)
+- **Recordings folder:** read from `settings.recording_dir` (same as **Save Location** in the app; default `~/Documents/WIIBBLE/recordings`)
 - **Core function:** `analyse_recording(path, total_weight_kg)` in `wiibble/analysis/analysis.py`
 - **Minimum duration:** 20 s (shorter recordings are skipped)
+
+**CLI:**
+
+```powershell
+uv run wiibble-process-recordings --new    # unanalysed CSVs in configured folder
+uv run wiibble-process-recordings --all    # reprocess all CSVs in configured folder
+uv run wiibble-process-recordings path\to\recording.csv   # explicit file(s)
+```
 
 **Steps:**
 
@@ -131,9 +143,11 @@ Analysis runs offline via `process_recordings.py`, **not** inside the compiled a
    - `CoP_AP = 11.9  × y_kg / total_weight_kg`
 3. `Stabilogram.from_array(cop_array)` — SWARII resampling to 25 Hz, Butterworth filter 0–10 Hz order 4
 4. `compute_all_features(stabilogram, params)` — ~80–90 posturographic descriptors
-5. Writes `recordings/features_YYYYMMDD_HHMMSS.json` alongside the CSV
+5. Writes `features_YYYYMMDD_HHMMSS.json` alongside the CSV
 
 **Output JSON keys include:** all computed features, plus provenance (`source_file`, `total_weight_kg`, `ui_filter_window`, `n_samples_raw`, `duration_s`).
+
+By default, `wiibble-process-recordings` also generates an HTML report after each successful analysis (disable with `--no-report`).
 
 ---
 
@@ -149,9 +163,11 @@ Analysis runs offline via `process_recordings.py`, **not** inside the compiled a
 
 `wiibble-report` converts a session CSV and its features JSON into a self-contained interactive HTML document.
 
-**Inputs:**
-- `recordings/recording_YYYYMMDD_HHMMSS.csv`
-- `recordings/features_YYYYMMDD_HHMMSS.json`
+**Inputs (per session):**
+- `recording_YYYYMMDD_HHMMSS.csv` (or `{prefix}_YYYYMMDD_HHMMSS.csv`)
+- `features_YYYYMMDD_HHMMSS.json` — auto-detected when omitted
+
+Both files live in the configured recordings folder (see §6) unless you pass explicit paths.
 
 **What is generated:**
 
@@ -169,13 +185,18 @@ Analysis runs offline via `process_recordings.py`, **not** inside the compiled a
 Each section has a **neutral, descriptive caption** — no clinical interpretation is included.
 
 **CLI:**
+
 ```powershell
-uv run wiibble-report recordings/recording_YYYYMMDD_HHMMSS.csv \
-    --features recordings/features_YYYYMMDD_HHMMSS.json \
-    --out recordings/report_YYYYMMDD_HHMMSS.html
+# Batch — scan configured recordings folder
+uv run wiibble-report --new    # CSVs without a matching report_<timestamp>.html
+uv run wiibble-report --all    # regenerate all reports
+
+# Single file
+uv run wiibble-report path\to\recording.csv
+uv run wiibble-report path\to\recording.csv --features path\to\features.json --out path\to\report.html
 ```
 
-Omit `--out` for the default output filename. Omit `--features` for automatic search of the corresponding JSON file. If `--features` is missing and no JSON file is found, a partial report is produced.
+Omit `--out` to write `report_<timestamp>.html` next to the CSV. Omit `--features` for automatic search of the corresponding JSON file. `--features` and `--out` cannot be used with `--new` or `--all`. If no features JSON is found, a partial report is produced.
 
 **Customising:** Edit `report.py` (chart logic) or `_HTML_TEMPLATE` (Jinja2 layout). See [VISUALISATION_REFERENCES.md](VISUALISATION_REFERENCES.md) for the full literature justification of each figure.
 

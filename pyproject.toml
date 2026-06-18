@@ -20,6 +20,7 @@ dependencies = [
     "statsmodels>=0.14",
     "plotly>=5.0",
     "jinja2>=3.1",
+    "typer>=0.26.7",
 ]
 
 [project.optional-dependencies]
@@ -38,9 +39,9 @@ dev = [
 ]
 
 [project.scripts]
-wiibble = "wiibble.__main__:main"
-wiibble-report = "wiibble.cli.report:main"
-wiibble-process-recordings = "wiibble.cli.process_recordings:main"
+wiibble = "wiibble.__main__:app"
+wiibble-report = "wiibble.cli.report:app"
+wiibble-process-recordings = "wiibble.cli.process_recordings:app"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -79,9 +80,10 @@ omit = [
     "tests/*",
     "src/wiibble/__main__.py",
     "src/wiibble/app.py",
+    "src/wiibble/session.py",
     "src/wiibble/ui/ui.py",
     "src/wiibble/ui/theme.py",
-    "src/wiibble/analysis/calibration.py",
+    "src/wiibble/ui/calibration_flow.py",
     "src/wiibble/board/board_connection.py",
     "src/wiibble/board/mock_board.py",
     "src/wiibble/utils/resources.py",

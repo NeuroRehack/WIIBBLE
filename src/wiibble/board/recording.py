@@ -9,8 +9,8 @@ CSV files under the recordings directory.
 import csv
 import datetime
 import logging
-import os
 import re
+from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -63,16 +63,17 @@ def build_recording_filename(prefix: str, start_time: datetime.datetime) -> str:
     return f"{effective}_{timestamp}.csv"
 
 
-def _resolve_recording_path(out_dir: str, filename: str) -> str:
+def _resolve_recording_path(out_dir: Path, filename: str) -> Path:
     """Return a writable path, appending ``_2``, ``_3``, … when *filename* exists."""
-    path = os.path.join(out_dir, filename)
-    if not os.path.exists(path):
+    path = out_dir / filename
+    if not path.exists():
         return path
-    stem, ext = os.path.splitext(filename)
+    stem = Path(filename).stem
+    ext = Path(filename).suffix
     suffix = 2
     while True:
-        candidate = os.path.join(out_dir, f"{stem}_{suffix}{ext}")
-        if not os.path.exists(candidate):
+        candidate = out_dir / f"{stem}_{suffix}{ext}"
+        if not candidate.exists():
             return candidate
         suffix += 1
 
@@ -100,15 +101,15 @@ def _save_recording_csv(
     Returns the absolute path of the written file.
     """
     if not out_dir:
-        # Use Documents/WIIBBLE/recordings as default
-        documents = os.path.join(os.path.expanduser("~"), "Documents")
-        out_dir = os.path.join(documents, "WIIBBLE", "recordings")
-    os.makedirs(out_dir, exist_ok=True)
+        out_path = Path.home() / "Documents" / "WIIBBLE" / "recordings"
+    else:
+        out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
     if start_time is None:
         start_time = datetime.datetime.now()
     filename = build_recording_filename(prefix, start_time)
-    path = _resolve_recording_path(out_dir, filename)
-    with open(path, "w", newline="") as f:
+    path = _resolve_recording_path(out_path, filename)
+    with path.open("w", newline="") as f:
         # Metadata comments — parsed by analysis.load_recording()
         if total_weight_kg is not None:
             f.write(f"# total_weight_kg={total_weight_kg:.4f}\n")
@@ -120,4 +121,4 @@ def _save_recording_csv(
         for row in record_buffer:
             writer.writerow([f"{row[0]:.3f}", f"{row[1]:.3f}", f"{row[2]:.3f}"])
     log.info("Recording saved to %s", path)
-    return path
+    return str(path)

@@ -30,3 +30,6 @@ check:
 
 secrets:
     detect-secrets scan --exclude-files '\.venv/.*|src/code_descriptors_postural_control/.*' > .secrets.baseline
+
+mock:
+    uv run python -m wiibble --mock

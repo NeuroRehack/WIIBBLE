@@ -2,9 +2,9 @@
 
 import json
 import logging
-import os
 import platform
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 from wiibble.board.recording import normalize_recording_prefix
 from wiibble.utils.constants import (
@@ -17,15 +17,17 @@ from wiibble.utils.constants import (
 log = logging.getLogger(__name__)
 
 
-def get_settings_path():
+def get_settings_path() -> Path:
+    """Return the platform-specific settings file path."""
+    import os
+
     override = os.environ.get("WIIBBLE_SETTINGS_PATH")
     if override:
-        return override
+        return Path(override)
     if platform.system() == "Windows":
-        return os.path.join(
-            os.environ.get("APPDATA", os.path.expanduser("~")), "WIIBBLE", "settings.json"
-        )
-    return os.path.join(os.path.expanduser("~/.wiibble"), "settings.json")
+        appdata = Path(os.environ.get("APPDATA", Path.home()))
+        return appdata / "WIIBBLE" / "settings.json"
+    return Path.home() / ".wiibble" / "settings.json"
 
 
 @dataclass
@@ -64,9 +66,8 @@ class Settings:
         """Persist current settings to disk."""
         path = get_settings_path()
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, "w") as f:
-                json.dump(asdict(self), f, indent=2)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(asdict(self), indent=2), encoding="utf-8")
             log.info("Settings saved to %s", path)
         except Exception:
             log.exception("Failed to save settings")
@@ -79,12 +80,11 @@ class Settings:
         """
         path = get_settings_path()
         defaults = cls()
-        if not os.path.exists(path):
+        if not path.is_file():
             log.info("No saved settings found, using defaults.")
             return defaults
         try:
-            with open(path) as f:
-                data = json.load(f)
+            data = json.loads(path.read_text(encoding="utf-8"))
 
             # Only apply keys that are valid Settings fields.
             # Unknown keys (e.g. from an older version) are silently ignored.

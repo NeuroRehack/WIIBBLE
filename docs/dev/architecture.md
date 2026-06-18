@@ -24,7 +24,7 @@ graph TD
     input["wiibble/ui/input.py<br/>(mouse handlers)"]
     dp["wiibble/features/data_processing.py<br/>(sensor pipeline)"]
     state["wiibble/utils/state.py<br/>(AppState + Settings)"]
-    calib["wiibble/analysis/calibration.py<br/>(tare & calibration)"]
+    calib["wiibble/ui/calibration_flow.py<br/>(tare & calibration)"]
     board["wiibble/board/board_connection.py<br/>(C# DLL bridge)"]
     mock["wiibble/board/mock_board.py<br/>(hardware simulator)"]
     rec["wiibble/board/recording.py<br/>(CSV output)"]
@@ -185,7 +185,7 @@ sequenceDiagram
 | `wiibble/ui/ui.py` | Every DPG draw call — canvas, cursor, trail, targets, calibration screens, stats bar, toolbar | Never reads `AppState` directly during draws; receives values as arguments |
 | `wiibble/ui/input.py` | Mouse click/drag/release/wheel handlers; target creation; Ctrl+pan; Ctrl+zoom | Communicates back to `app.py` only via `session_state["action"]` |
 | `wiibble/features/data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
-| `wiibble/analysis/calibration.py` | Tare detection and body-weight calibration blocking loops | Renders its own screens inline; calls `dpg.render_dearpygui_frame()` directly |
+| `wiibble/ui/calibration_flow.py` | Tare detection and body-weight calibration blocking loops | Renders calibration screens inline; calls `dpg.render_dearpygui_frame()` directly |
 | `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
 | `wiibble/utils/constants.py` | Hardware IDs, byte offsets, `SCALE_FACTOR_DEFAULT`, thresholds, UI sizes | Factory default scale factor; runtime value lives in settings |
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |

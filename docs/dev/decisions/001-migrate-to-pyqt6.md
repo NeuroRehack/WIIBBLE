@@ -47,7 +47,7 @@ The candidate decision is: **migrate the UI layer to PyQt6 (LGPL) or PySide6 (LG
 **Negative**
 
 - Non-trivial migration effort, all draw calls and layout code in `wiibble/ui/ui.py` must be rewritten
-- `wiibble/analysis/calibration.py` inline frame rendering must be redesigned as proper Qt dialogs
+- `wiibble/ui/calibration_flow.py` inline frame rendering must be redesigned as proper Qt dialogs
 - Build pipeline changes, Nuitka Qt bundle or switch to PyInstaller
 - Team must learn Qt layout/signal-slot model
 - Risk of introducing regressions in real-time rendering performance (requires benchmarking in spike)
@@ -65,4 +65,4 @@ Before committing, a prototype spike should:
 
 - [TODO.md](../TODO.md) Phase 2 item (now tracked here)
 - `wiibble/ui/ui.py` — primary migration target
-- `wiibble/analysis/calibration.py` — secondary migration target
+- `wiibble/ui/calibration_flow.py` - secondary migration target

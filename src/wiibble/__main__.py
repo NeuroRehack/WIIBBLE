@@ -1,84 +1,75 @@
-# __main__.py — WIIBBLE entry point for `python -m wiibble`
+"""WIIBBLE GUI entry point (`python -m wiibble` / `wiibble` CLI)."""
 
-import argparse
+from __future__ import annotations
+
 import logging
-import sys
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
+from dataclasses import dataclass
 
-# ── Configure logging before any application imports ──────────────────────
-_log_dir = Path.home() / ".wiibble"
-_log_dir.mkdir(exist_ok=True)
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)-8s %(name)-20s %(message)s",
-    handlers=[
-        RotatingFileHandler(
-            _log_dir / "wiibble.log",
-            maxBytes=5 * 1024 * 1024,  # 5 MB per file
-            backupCount=3,
-            encoding="utf-8",
-        ),
-        logging.StreamHandler(sys.stdout),
-    ],
-)
+import dearpygui.dearpygui as dpg
+import typer
+
+from wiibble.session import run
+from wiibble.ui.theme import apply_global_theme, load_fonts
+from wiibble.utils.display import get_screen_size
+from wiibble.utils.logging_config import configure_logging, install_uncaught_exception_hook
+from wiibble.utils.state import AppState, Settings
 
 log = logging.getLogger(__name__)
 
+MOCK_SCENARIOS = ["sway", "still", "lean_left", "lean_right", "hands", "step_on_off", "calibration"]
 
-def _log_uncaught_exception(exc_type, exc_value, exc_tb):
-    """Write any unhandled top-level exception to the log file before crashing."""
-    if issubclass(exc_type, KeyboardInterrupt):
-        sys.__excepthook__(exc_type, exc_value, exc_tb)
-        return
-    log.critical("Unhandled exception at startup", exc_info=(exc_type, exc_value, exc_tb))
-
-
-sys.excepthook = _log_uncaught_exception
-
-import dearpygui.dearpygui as dpg  # noqa: E402
-
-from wiibble.app import run  # noqa: E402
-from wiibble.ui.theme import apply_global_theme, load_fonts  # noqa: E402
-from wiibble.utils.display import get_screen_size  # noqa: E402
-from wiibble.utils.state import AppState, Settings  # noqa: E402
+app = typer.Typer(
+    name="wiibble",
+    help="Wii Balance Board Live Environment.",
+    no_args_is_help=False,
+    add_completion=False,
+)
 
 
-def parse_args():
-    """Parse command-line arguments for the WIIBBLE application."""
-    parser = argparse.ArgumentParser(description="WIIBBLE - Wii Balance Board Live Environment")
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Run without physical hardware using simulated sensor data",
-    )
-    parser.add_argument(
+@dataclass
+class LaunchOptions:
+    """Runtime options parsed from the WIIBBLE CLI."""
+
+    mock: bool = False
+    mock_scenario: str = "sway"
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    mock: bool = typer.Option(False, "--mock", help="Run with simulated sensor data"),
+    mock_scenario: str = typer.Option(
+        "sway",
         "--mock-scenario",
-        type=str,
-        default="sway",
-        choices=["sway", "still", "lean_left", "lean_right", "hands", "step_on_off", "calibration"],
-        help="Simulation scenario (default: sway)",
-    )
-    return parser.parse_args()
+        help="Mock scenario name",
+        case_sensitive=False,
+    ),
+) -> None:
+    """Launch the WIIBBLE desktop application."""
+    configure_logging(level=logging.DEBUG, log_to_file=True, stream=True)
+    install_uncaught_exception_hook(log)
 
+    if mock_scenario.lower() not in MOCK_SCENARIOS:
+        typer.echo(
+            f"Invalid mock scenario {mock_scenario!r}. "
+            f"Choose from: {', '.join(MOCK_SCENARIOS)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
 
-def main():
-    log.info("Starting WIIBBLE main entry point.")
+    options = LaunchOptions(mock=mock, mock_scenario=mock_scenario.lower())
+    log.info("Starting WIIBBLE (mock=%s, scenario=%s)", options.mock, options.mock_scenario)
+
     try:
-        args = parse_args()
-        log.debug("Args: %s", args)
-
         dpg.create_context()
         settings = Settings.load()
         screen_w, screen_h = get_screen_size()
 
         app_state = AppState(
             screen_width=screen_w,
-            screen_height=screen_h * 0.9,  # leave room for taskbar
+            screen_height=screen_h * 0.9,
             historical_coords=[(0, 0)] * settings.trail_length,
         )
 
-        # DPG init order: create_context → load_fonts → setup_dearpygui → create_viewport → show_viewport
         load_fonts()
         dpg.setup_dearpygui()
         apply_global_theme()
@@ -95,12 +86,13 @@ def main():
         dpg.show_viewport()
         dpg.maximize_viewport()
 
-        run(app_state, settings, args)
+        run(app_state, settings, options)
     except Exception:
         log.exception("Fatal exception in main")
+        raise typer.Exit(code=1) from None
     finally:
         dpg.destroy_context()
 
 
 if __name__ == "__main__":
-    main()
+    app()

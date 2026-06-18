@@ -26,34 +26,32 @@ Print → Save as PDF for a portable copy.
 
 from __future__ import annotations
 
-import argparse
 import datetime
 import json
 import logging
 import os
 import re
-import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
+import typer
 from jinja2 import Template
 from plotly.subplots import make_subplots
 
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
 from wiibble.analysis.analysis import load_recording, to_cop_array
+from wiibble.utils.logging_config import configure_logging
 
-start_all = time.time()
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
-log.info("Starting WIIBBLE report generation script…")
-log.info("Importing scientific libraries (this may take several seconds the first time)…")
 
-log.info("Imports complete.")
-
-log.info("Importing WIIBBLE analysis modules…")
-
-log.info("WIIBBLE analysis code imported.")
+app = typer.Typer(
+    name="wiibble-report",
+    help="Generate a posturographic HTML report from a WIIBBLE recording.",
+    no_args_is_help=True,
+    add_completion=False,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1000,6 +998,7 @@ def generate_report(
     str
         Absolute path of the written HTML file.
     """
+    start_all = time.time()
     csv_path = os.path.abspath(csv_path)
     if not os.path.isfile(csv_path):
         raise FileNotFoundError(f"CSV not found: {csv_path}")
@@ -1107,44 +1106,41 @@ def generate_report(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Generate a posturographic HTML report from a WIIBBLE recording.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=(
-            "Examples:\n"
-            "  python report.py recordings/recording_20260420_130030.csv\n"
-            "  python report.py recordings/recording_20260420_130030.csv \\\n"
-            "      --features recordings/features_20260420_130030.json \\\n"
-            "      --out reports/session1.html"
-        ),
-    )
-    p.add_argument("csv", help="Path to the WIIBBLE recording CSV file.")
-    p.add_argument(
+@app.callback(invoke_without_command=True)
+def main(
+    csv: Path = typer.Argument(..., help="Path to the WIIBBLE recording CSV file", exists=True),
+    features: Path | None = typer.Option(
+        None,
         "--features",
-        metavar="JSON",
-        default=None,
-        help="Path to the features JSON file (auto-detected if omitted).",
-    )
-    p.add_argument(
+        help="Path to the features JSON file (auto-detected if omitted)",
+        exists=True,
+        dir_okay=False,
+        readable=True,
+    ),
+    out: Path | None = typer.Option(
+        None,
         "--out",
-        metavar="HTML",
-        default=None,
-        help="Output HTML file path (default: recordings/report_<timestamp>.html).",
+        help="Output HTML file path (default: recordings/report_<timestamp>.html)",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable DEBUG logging"),
+) -> None:
+    """Generate a posturographic HTML report from a WIIBBLE recording."""
+    configure_logging(
+        level=logging.DEBUG if verbose else logging.INFO,
+        log_to_file=False,
+        stream=True,
     )
-    p.add_argument("--verbose", "-v", action="store_true", help="Enable DEBUG logging.")
-    return p
+    try:
+        output = generate_report(
+            str(csv),
+            features_path=str(features) if features else None,
+            out_path=str(out) if out else None,
+        )
+        typer.echo(f"Report saved to: {output}")
+    except Exception as exc:
+        log.error("Report generation failed: %s", exc)
+        raise typer.Exit(code=1) from exc
 
 
 if __name__ == "__main__":
-    args = _build_parser().parse_args()
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(levelname)s %(name)s: %(message)s",
-    )
-    try:
-        output = generate_report(args.csv, features_path=args.features, out_path=args.out)
-        print(f"Report saved to: {output}")
-    except Exception as exc:
-        log.error("Report generation failed: %s", exc)
-        sys.exit(1)
+    app()

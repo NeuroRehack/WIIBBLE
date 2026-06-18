@@ -158,14 +158,21 @@ def plot_sway_path(stab: Stabilogram, features: dict | None) -> go.Figure:
         )
     )
 
-    ellipse_area = features.get("confidence_ellipse_area_ML_AND_AP") if features else None
-    title_suffix = f"  |  Ellipse area: {ellipse_area:.2f} cm²" if ellipse_area is not None else ""
+    ellipse_area = (
+        features.get("confidence_ellipse_area_ML_AND_AP") if features else None
+    )
+    title_suffix = (
+        f"  |  Ellipse area: {ellipse_area:.2f} cm²" if ellipse_area is not None else ""
+    )
 
     fig.update_layout(
         **_base_layout(
             title=f"CoP Sway Path + 95% Confidence Ellipse{title_suffix}",
             xaxis=dict(
-                title="Mediolateral (cm)", zeroline=True, zerolinecolor="#ccc", gridcolor="#eee"
+                title="Mediolateral (cm)",
+                zeroline=True,
+                zerolinecolor="#ccc",
+                gridcolor="#eee",
             ),
             yaxis=dict(
                 title="Anteroposterior (cm)",
@@ -531,9 +538,27 @@ _TABLE_SECTIONS: list = [
     ("data", "range_ML_AND_AP", "Range — ML+AP", "cm", ".3f"),
     ("data", "range_ratio_ML_AND_AP", "Range ratio ML/AP", "", ".3f"),
     ("data", "planar_deviation_ML_AND_AP", "Planar deviation", "cm", ".3f"),
-    ("data", "coefficient_sway_direction_ML_AND_AP", "Sway direction coefficient", "", ".5f"),
-    ("data", "confidence_ellipse_area_ML_AND_AP", "95% confidence ellipse area", "cm²", ".3f"),
-    ("data", "principal_sway_direction_ML_AND_AP", "Principal sway direction", "°", ".2f"),
+    (
+        "data",
+        "coefficient_sway_direction_ML_AND_AP",
+        "Sway direction coefficient",
+        "",
+        ".5f",
+    ),
+    (
+        "data",
+        "confidence_ellipse_area_ML_AND_AP",
+        "95% confidence ellipse area",
+        "cm²",
+        ".3f",
+    ),
+    (
+        "data",
+        "principal_sway_direction_ML_AND_AP",
+        "Principal sway direction",
+        "°",
+        ".2f",
+    ),
     ("header", "Dynamic"),
     ("data", "mean_velocity_ML", "Mean velocity — ML", "cm/s", ".3f"),
     ("data", "mean_velocity_AP", "Mean velocity — AP", "cm/s", ".3f"),
@@ -545,21 +570,63 @@ _TABLE_SECTIONS: list = [
     ("data", "fractal_dimension_ML_AND_AP", "Fractal dimension", "", ".4f"),
     ("header", "Sway Density (SPD)"),
     ("data", "zero_crossing_SPD_ML", "Zero crossings — ML", "", "d"),
-    ("data", "peak_velocity_pos_SPD_ML", "Peak velocity (positive) — ML", "cm/s", ".4f"),
-    ("data", "peak_velocity_neg_SPD_ML", "Peak velocity (negative) — ML", "cm/s", ".4f"),
+    (
+        "data",
+        "peak_velocity_pos_SPD_ML",
+        "Peak velocity (positive) — ML",
+        "cm/s",
+        ".4f",
+    ),
+    (
+        "data",
+        "peak_velocity_neg_SPD_ML",
+        "Peak velocity (negative) — ML",
+        "cm/s",
+        ".4f",
+    ),
     ("data", "peak_velocity_all_SPD_ML", "Peak velocity (mean) — ML", "cm/s", ".4f"),
     ("data", "zero_crossing_SPD_AP", "Zero crossings — AP", "", "d"),
-    ("data", "peak_velocity_pos_SPD_AP", "Peak velocity (positive) — AP", "cm/s", ".4f"),
-    ("data", "peak_velocity_neg_SPD_AP", "Peak velocity (negative) — AP", "cm/s", ".4f"),
+    (
+        "data",
+        "peak_velocity_pos_SPD_AP",
+        "Peak velocity (positive) — AP",
+        "cm/s",
+        ".4f",
+    ),
+    (
+        "data",
+        "peak_velocity_neg_SPD_AP",
+        "Peak velocity (negative) — AP",
+        "cm/s",
+        ".4f",
+    ),
     ("data", "peak_velocity_all_SPD_AP", "Peak velocity (mean) — AP", "cm/s", ".4f"),
     ("data", "mean_peak_Sway_Density", "Mean peak sway density", "s", ".4f"),
-    ("data", "mean_distance_peak_Sway_Density", "Mean distance between SD peaks", "cm", ".4f"),
+    (
+        "data",
+        "mean_distance_peak_Sway_Density",
+        "Mean distance between SD peaks",
+        "cm",
+        ".4f",
+    ),
     ("header", "Frequency (Power Spectral Density)"),
     ("data", "mean_frequency_ML", "Mean frequency — ML", "Hz", ".4f"),
     ("data", "mean_frequency_AP", "Mean frequency — AP", "Hz", ".4f"),
     ("data", "mean_frequency_ML_AND_AP", "Mean frequency — ML+AP", "Hz", ".4f"),
-    ("data", "total_power_Power_Spectrum_Density_ML", "Total PSD power — ML", "cm²/Hz", ".4f"),
-    ("data", "total_power_Power_Spectrum_Density_AP", "Total PSD power — AP", "cm²/Hz", ".4f"),
+    (
+        "data",
+        "total_power_Power_Spectrum_Density_ML",
+        "Total PSD power — ML",
+        "cm²/Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "total_power_Power_Spectrum_Density_AP",
+        "Total PSD power — AP",
+        "cm²/Hz",
+        ".4f",
+    ),
     (
         "data",
         "power_frequency_50_Power_Spectrum_Density_ML",
@@ -588,8 +655,20 @@ _TABLE_SECTIONS: list = [
         "Hz",
         ".4f",
     ),
-    ("data", "frequency_mode_Power_Spectrum_Density_ML", "Frequency mode — ML", "Hz", ".4f"),
-    ("data", "frequency_mode_Power_Spectrum_Density_AP", "Frequency mode — AP", "Hz", ".4f"),
+    (
+        "data",
+        "frequency_mode_Power_Spectrum_Density_ML",
+        "Frequency mode — ML",
+        "Hz",
+        ".4f",
+    ),
+    (
+        "data",
+        "frequency_mode_Power_Spectrum_Density_AP",
+        "Frequency mode — AP",
+        "Hz",
+        ".4f",
+    ),
     (
         "data",
         "centroid_frequency_Power_Spectrum_Density_ML",
@@ -632,8 +711,20 @@ _TABLE_SECTIONS: list = [
         "cm²",
         ".4f",
     ),
-    ("data", "energy_content_05_2_Power_Spectrum_Density_ML", "Energy 0.5–2 Hz — ML", "cm²", ".5f"),
-    ("data", "energy_content_05_2_Power_Spectrum_Density_AP", "Energy 0.5–2 Hz — AP", "cm²", ".5f"),
+    (
+        "data",
+        "energy_content_05_2_Power_Spectrum_Density_ML",
+        "Energy 0.5–2 Hz — ML",
+        "cm²",
+        ".5f",
+    ),
+    (
+        "data",
+        "energy_content_05_2_Power_Spectrum_Density_AP",
+        "Energy 0.5–2 Hz — AP",
+        "cm²",
+        ".5f",
+    ),
     (
         "data",
         "energy_content_above_2_Power_Spectrum_Density_ML",
@@ -648,8 +739,20 @@ _TABLE_SECTIONS: list = [
         "cm²",
         ".6f",
     ),
-    ("data", "frequency_quotient_Power_Spectrum_Density_ML", "Frequency quotient — ML", "", ".6f"),
-    ("data", "frequency_quotient_Power_Spectrum_Density_AP", "Frequency quotient — AP", "", ".6f"),
+    (
+        "data",
+        "frequency_quotient_Power_Spectrum_Density_ML",
+        "Frequency quotient — ML",
+        "",
+        ".6f",
+    ),
+    (
+        "data",
+        "frequency_quotient_Power_Spectrum_Density_AP",
+        "Frequency quotient — AP",
+        "",
+        ".6f",
+    ),
     ("header", "Diffusion / SDA — Mediolateral"),
     (
         "data",
@@ -658,11 +761,35 @@ _TABLE_SECTIONS: list = [
         "cm²/s",
         ".4f",
     ),
-    ("data", "long_time_diffusion_Diffusion_ML", "Long-time diffusion coeff — ML", "cm²/s", ".4f"),
+    (
+        "data",
+        "long_time_diffusion_Diffusion_ML",
+        "Long-time diffusion coeff — ML",
+        "cm²/s",
+        ".4f",
+    ),
     ("data", "critical_time_Diffusion_ML", "Critical time (t*) — ML", "s", ".3f"),
-    ("data", "critical_displacement_Diffusion_ML", "Critical displacement — ML", "cm²", ".4f"),
-    ("data", "short_time_scaling_Diffusion_ML", "Short-time Hurst exponent — ML", "", ".4f"),
-    ("data", "long_time_scaling_Diffusion_ML", "Long-time Hurst exponent — ML", "", ".4f"),
+    (
+        "data",
+        "critical_displacement_Diffusion_ML",
+        "Critical displacement — ML",
+        "cm²",
+        ".4f",
+    ),
+    (
+        "data",
+        "short_time_scaling_Diffusion_ML",
+        "Short-time Hurst exponent — ML",
+        "",
+        ".4f",
+    ),
+    (
+        "data",
+        "long_time_scaling_Diffusion_ML",
+        "Long-time Hurst exponent — ML",
+        "",
+        ".4f",
+    ),
     ("header", "Diffusion / SDA — Anteroposterior"),
     (
         "data",
@@ -671,11 +798,35 @@ _TABLE_SECTIONS: list = [
         "cm²/s",
         ".4f",
     ),
-    ("data", "long_time_diffusion_Diffusion_AP", "Long-time diffusion coeff — AP", "cm²/s", ".4f"),
+    (
+        "data",
+        "long_time_diffusion_Diffusion_AP",
+        "Long-time diffusion coeff — AP",
+        "cm²/s",
+        ".4f",
+    ),
     ("data", "critical_time_Diffusion_AP", "Critical time (t*) — AP", "s", ".3f"),
-    ("data", "critical_displacement_Diffusion_AP", "Critical displacement — AP", "cm²", ".4f"),
-    ("data", "short_time_scaling_Diffusion_AP", "Short-time Hurst exponent — AP", "", ".4f"),
-    ("data", "long_time_scaling_Diffusion_AP", "Long-time Hurst exponent — AP", "", ".4f"),
+    (
+        "data",
+        "critical_displacement_Diffusion_AP",
+        "Critical displacement — AP",
+        "cm²",
+        ".4f",
+    ),
+    (
+        "data",
+        "short_time_scaling_Diffusion_AP",
+        "Short-time Hurst exponent — AP",
+        "",
+        ".4f",
+    ),
+    (
+        "data",
+        "long_time_scaling_Diffusion_AP",
+        "Long-time Hurst exponent — AP",
+        "",
+        ".4f",
+    ),
 ]
 
 _SECTION_FILL = "#dce6f5"
@@ -696,7 +847,10 @@ def build_feature_table(features: dict) -> go.Figure:
         if entry[0] == "header":
             labels_col.append(f"<b>{entry[1]}</b>")
             values_col.append("")
-            for col_fill, col_font in [(fill_labels, font_labels), (fill_values, font_values)]:
+            for col_fill, col_font in [
+                (fill_labels, font_labels),
+                (fill_values, font_values),
+            ]:
                 col_fill.append(_SECTION_FILL)
                 col_font.append(_SECTION_FONT)
         else:
@@ -1037,7 +1191,9 @@ def generate_report(
     data, metadata = load_recording(csv_path)
     weight_kg = float((features or metadata).get("total_weight_kg", 0))
     if weight_kg <= 0:
-        raise ValueError("Cannot determine total_weight_kg — pass it explicitly or re-record.")
+        raise ValueError(
+            "Cannot determine total_weight_kg — pass it explicitly or re-record."
+        )
 
     log.info("Generating Stabilogram and computing CoP series…")
     cop = to_cop_array(data, weight_kg)
@@ -1055,7 +1211,9 @@ def generate_report(
     else:
         session_date = "Unknown"
 
-    duration_s = features.get("duration_s") if features else float(data[-1, 0] - data[0, 0])
+    duration_s = (
+        features.get("duration_s") if features else float(data[-1, 0] - data[0, 0])
+    )
 
     log.info("Creating all report figures (Plotly)…")
     t_fig_start = time.time()
@@ -1093,10 +1251,7 @@ def generate_report(
 
     # ── Write output ─────────────────────────────────────────────────────────
     log.info("Writing HTML report to disk…")
-    if out_path is None:
-        out_file = _default_report_path(csv_file)
-    else:
-        out_file = Path(out_path)
+    out_file = _default_report_path(csv_file) if out_path is None else Path(out_path)
     out_file = out_file.resolve()
     out_file.write_text(html, encoding="utf-8")
     elapsed = time.time() - start_all

@@ -1,7 +1,8 @@
 """CoP feature extraction pipeline for WIIBBLE recordings.
 
 End-to-end pipeline:
-    load_recording() → to_cop_array() → Stabilogram.from_array() → compute_all_features()
+    load_recording() → to_cop_array() → Stabilogram.from_array()
+    → compute_all_features()
 
 WBB geometry source:
     Leach et al. (2014) Sensors 14:18244-18267, doi:10.3390/s141018244, Figure 3.
@@ -170,8 +171,10 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
         raw = metadata.get("total_weight_kg")
         if raw is None:
             raise ValueError(
-                f"total_weight_kg not found in '{path}' and not provided as an argument. "
-                "Re-record with the current WIIBBLE version, or pass total_weight_kg explicitly."
+                f"total_weight_kg not found in '{path}' "
+                "and not provided as an argument. "
+                "Re-record with the current WIIBBLE version, "
+                "or pass total_weight_kg explicitly."
             )
         weight_kg = float(raw)
 

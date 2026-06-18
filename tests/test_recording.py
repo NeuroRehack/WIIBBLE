@@ -89,7 +89,9 @@ class TestFilenaming:
     def test_custom_prefix(self, tmp_path):
         recordings_dir = os.path.join(tmp_path, "recordings")
         start = datetime.datetime(2026, 11, 1, 17, 45, 43)
-        _save_recording_csv([], out_dir=recordings_dir, prefix="SPI001_SitStand", start_time=start)
+        _save_recording_csv(
+            [], out_dir=recordings_dir, prefix="SPI001_SitStand", start_time=start
+        )
         assert os.listdir(recordings_dir) == ["SPI001_SitStand_261101174543.csv"]
 
     def test_unsafe_prefix_chars_removed(self):
@@ -100,12 +102,16 @@ class TestFilenaming:
     def test_spaces_replaced_with_underscores(self):
         start = datetime.datetime(2026, 11, 1, 17, 45, 43)
         assert (
-            build_recording_filename("SPI001 SitStand", start) == "SPI001_SitStand_261101174543.csv"
+            build_recording_filename("SPI001 SitStand", start)
+            == "SPI001_SitStand_261101174543.csv"
         )
 
     def test_build_recording_filename_strips_whitespace(self):
         start = datetime.datetime(2026, 1, 2, 3, 4, 5)
-        assert build_recording_filename("  myprefix  ", start) == "myprefix_260102030405.csv"
+        assert (
+            build_recording_filename("  myprefix  ", start)
+            == "myprefix_260102030405.csv"
+        )
 
     def test_prefix_truncated_to_max_length(self):
         long_prefix = "A" * 50

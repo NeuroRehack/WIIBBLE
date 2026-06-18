@@ -9,9 +9,26 @@ import time
 import dearpygui.dearpygui as dpg
 
 import wiibble.ui.theme as _theme_module
-from wiibble.board.recording import DEFAULT_RECORDING_DIR, normalize_recording_prefix
 from wiibble.features.data_processing import logical_to_viewport
-from wiibble.session_recording import toggle_recording
+from wiibble.session_actions import (
+    apply_board_cal_reference,
+    apply_body_weight,
+    apply_cursor_size,
+    apply_filter_window,
+    apply_flip_horizontal,
+    apply_flip_vertical,
+    apply_record_duration,
+    apply_recording_dir,
+    apply_recording_prefix,
+    apply_setting_bool,
+    apply_target_dwell_seconds,
+    apply_trail_length,
+    apply_zoom_slider,
+    request_calibrate_board,
+    request_calibrate_scale,
+    toggle_cursor_mode,
+    toggle_recording,
+)
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -62,7 +79,10 @@ from wiibble.utils.constants import (
     TARGET_DWELL_MIN,
     ZOOM_MAX,
     ZOOM_MIN,
-    ZOOM_SCALE,
+)
+from wiibble.utils.recording_names import (
+    DEFAULT_RECORDING_DIR,
+    normalize_recording_prefix,
 )
 from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
 
@@ -239,7 +259,11 @@ def update_stats_bar(
     dpg.delete_item("stats_dl", children_only=True)
 
     dpg.draw_rectangle(
-        (0, bar_top), (sw, bar_bot), fill=BAR_GREY_COLOR, color=BAR_GREY_COLOR, parent="stats_dl"
+        (0, bar_top),
+        (sw, bar_bot),
+        fill=BAR_GREY_COLOR,
+        color=BAR_GREY_COLOR,
+        parent="stats_dl",
     )
 
     percent = curr_weight / calib_weight if calib_weight > 0 else 0
@@ -252,7 +276,11 @@ def update_stats_bar(
         pl = pr = 0.5
     x0 = sw // 2 - pl * sw // 2
     dpg.draw_rectangle(
-        (x0, bar_top), (sw // 2, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
+        (x0, bar_top),
+        (sw // 2, bar_bot),
+        fill=bar_color,
+        color=bar_color,
+        parent="stats_dl",
     )
     x0 = sw // 2
     x1 = sw // 2 + pr * sw // 2
@@ -261,7 +289,11 @@ def update_stats_bar(
     )
 
     t = dpg.draw_text(
-        (10, y), f"{left_val}%", color=STATS_TEXT_COLOR, size=font_size, parent="stats_dl"
+        (10, y),
+        f"{left_val}%",
+        color=STATS_TEXT_COLOR,
+        size=font_size,
+        parent="stats_dl",
     )
     bind_text_font(t)
     t = dpg.draw_text(
@@ -316,7 +348,9 @@ def build_panel_window(
         dpg.add_separator()
         dpg.add_spacer(height=PANEL_SECTION_SPACING)
         # Scrollable area for settings controls only
-        header_height = 128  # buffer enough for header, separator, spacing and window padding
+        header_height = (
+            128  # buffer enough for header, separator, spacing and window padding
+        )
         controls_height = max(40, screen_height - header_height)
         with dpg.child_window(
             tag="settings_scroll",
@@ -346,56 +380,64 @@ def _left_quick_access_window_size(num_buttons: int) -> tuple[int, int]:
     return content_w + QUICK_ACCESS_WINDOW_PAD, btn + QUICK_ACCESS_WINDOW_PAD // 2 + 4
 
 
-def build_left_quick_access(gear_label: str, toggle_callback, session_state: dict) -> None:
+def build_left_quick_access(
+    gear_label: str, toggle_callback, session_state: dict
+) -> None:
     """Create the top-left quick-access bar (gear + clear screen + reset counter)."""
     if dpg.does_item_exist("left_quick_access_window"):
         dpg.delete_item("left_quick_access_window")
 
-    clear_label = _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
+    clear_label = (
+        _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
+    )
     reset_label = (
-        _theme_module.ICON_COUNTER_RESET if _theme_module.FA_ICON_FONT is not None else "Rst"
+        _theme_module.ICON_COUNTER_RESET
+        if _theme_module.FA_ICON_FONT is not None
+        else "Rst"
     )
     btn = PANEL_TOGGLE_BTN_SIZE
     margin = QUICK_ACCESS_MARGIN
     window_w, window_h = _left_quick_access_window_size(3)
 
-    with dpg.window(
-        tag="left_quick_access_window",
-        no_title_bar=True,
-        no_resize=True,
-        no_move=True,
-        no_scrollbar=True,
-        no_collapse=True,
-        no_background=True,
-        pos=(margin, margin),
-        width=window_w,
-        height=window_h,
-        show=False,
+    with (
+        dpg.window(
+            tag="left_quick_access_window",
+            no_title_bar=True,
+            no_resize=True,
+            no_move=True,
+            no_scrollbar=True,
+            no_collapse=True,
+            no_background=True,
+            pos=(margin, margin),
+            width=window_w,
+            height=window_h,
+            show=False,
+        ),
+        dpg.group(horizontal=True),
     ):
-        with dpg.group(horizontal=True):
-            dpg.add_button(
-                tag="panel_float_btn",
-                label=gear_label,
-                callback=toggle_callback,
-                width=btn,
-                height=btn,
-            )
-            dpg.add_button(
-                tag="clear_screen_quick_btn",
-                label=clear_label,
-                callback=lambda: session_state.update({"action": "clear"}),
-                width=btn,
-                height=btn,
-            )
-            reset_btn = dpg.add_button(
-                tag="reset_counter_quick_btn",
-                label=reset_label,
-                callback=lambda: session_state.update({"action": "reset_target_counter"}),
-                width=btn,
-                height=btn,
-            )
-            if _theme_module.FA_ICON_FONT is not None:
-                dpg.bind_item_font(reset_btn, _theme_module.FA_ICON_FONT)
+        dpg.add_button(
+            tag="panel_float_btn",
+            label=gear_label,
+            callback=toggle_callback,
+            width=btn,
+            height=btn,
+        )
+        dpg.add_button(
+            tag="clear_screen_quick_btn",
+            label=clear_label,
+            callback=lambda: session_state.update({"action": "clear"}),
+            width=btn,
+            height=btn,
+        )
+        reset_btn = dpg.add_button(
+            tag="reset_counter_quick_btn",
+            label=reset_label,
+            callback=lambda: session_state.update({"action": "reset_target_counter"}),
+            width=btn,
+            height=btn,
+        )
+        if _theme_module.FA_ICON_FONT is not None:
+            dpg.bind_item_font(reset_btn, _theme_module.FA_ICON_FONT)
 
     with dpg.tooltip(parent="reset_counter_quick_btn"):
         dpg.add_text("Reset the target hit counter to zero.")
@@ -405,7 +447,9 @@ def build_left_quick_access(gear_label: str, toggle_callback, session_state: dic
         dpg.bind_item_font("clear_screen_quick_btn", _theme_module.FA_ICON_FONT)
 
     with dpg.tooltip(parent="clear_screen_quick_btn"):
-        dpg.add_text("Clear Screen — remove targets and sway trail.\nShortcut: Ctrl+Shift+C")
+        dpg.add_text(
+            "Clear Screen — remove targets and sway trail.\nShortcut: Ctrl+Shift+C"
+        )
 
 
 def build_recording_quick_btn(app_state, settings) -> None:
@@ -446,7 +490,9 @@ def build_recording_quick_btn(app_state, settings) -> None:
         dpg.add_text("Start / Stop Recording.\nShortcut: Ctrl+Space")
 
 
-def update_left_quick_access_layout(toolbar_visible: bool, toolbar_enabled: bool) -> None:
+def update_left_quick_access_layout(
+    toolbar_visible: bool, toolbar_enabled: bool
+) -> None:
     """Reposition and show/hide left quick-access buttons based on panel state."""
     if not dpg.does_item_exist("left_quick_access_window"):
         return
@@ -467,7 +513,10 @@ def update_left_quick_access_layout(toolbar_visible: bool, toolbar_enabled: bool
         window_w, window_h = _left_quick_access_window_size(3)
 
     dpg.configure_item(
-        "left_quick_access_window", width=window_w, height=window_h, show=toolbar_enabled
+        "left_quick_access_window",
+        width=window_w,
+        height=window_h,
+        show=toolbar_enabled,
     )
 
 
@@ -510,7 +559,11 @@ def is_mouse_over_quick_access() -> bool:
         "reset_counter_quick_btn",
         "recording_quick_btn",
     ):
-        if dpg.does_item_exist(tag) and dpg.is_item_shown(tag) and dpg.is_item_hovered(tag):
+        if (
+            dpg.does_item_exist(tag)
+            and dpg.is_item_shown(tag)
+            and dpg.is_item_hovered(tag)
+        ):
             return True
     return False
 
@@ -576,7 +629,11 @@ def _recording_indicator_layout(sw: int, limit_seconds: int | float = 0) -> dict
     limit_w = _recording_limit_width(limit_seconds, limit_font)
     # Anchor button + limit from the right; elapsed timer grows left from the button.
     dot_cx = (
-        sw - RECORDING_INDICATOR_RIGHT_MARGIN - limit_w - RECORDING_INDICATOR_SPACING - dot_radius
+        sw
+        - RECORDING_INDICATOR_RIGHT_MARGIN
+        - limit_w
+        - RECORDING_INDICATOR_SPACING
+        - dot_radius
     )
     dot_cy = RECORDING_INDICATOR_Y + dot_radius
     x_limit = dot_cx + dot_radius + RECORDING_INDICATOR_SPACING
@@ -590,7 +647,9 @@ def _recording_indicator_layout(sw: int, limit_seconds: int | float = 0) -> dict
     }
 
 
-def _elapsed_timer_x(timer_str: str, font_size: int, dot_cx: float, dot_radius: float) -> float:
+def _elapsed_timer_x(
+    timer_str: str, font_size: int, dot_cx: float, dot_radius: float
+) -> float:
     """Right-align the elapsed timer immediately left of the record button."""
     width = _measure_crisp_text_width(timer_str, font_size)
     return dot_cx - dot_radius - RECORDING_INDICATOR_TIMER_GAP - width
@@ -600,21 +659,28 @@ def _get_recording_quick_idle_theme():
     """Round red record button shown when idle."""
     global _recording_quick_idle_theme
     radius = RECORDING_INDICATOR_DOT_RADIUS
-    if _recording_quick_idle_theme is None or not dpg.does_item_exist(_recording_quick_idle_theme):
-        with dpg.theme() as t:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Button, (220, 40, 40, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonHovered, (240, 60, 60, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonActive, (255, 80, 80, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_style(
-                    dpg.mvStyleVar_FrameRounding, radius, category=dpg.mvThemeCat_Core
-                )
+    if _recording_quick_idle_theme is None or not dpg.does_item_exist(
+        _recording_quick_idle_theme
+    ):
+        with dpg.theme() as t, dpg.theme_component(dpg.mvButton):
+            dpg.add_theme_color(
+                dpg.mvThemeCol_Button,
+                (220, 40, 40, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonHovered,
+                (240, 60, 60, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonActive,
+                (255, 80, 80, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_style(
+                dpg.mvStyleVar_FrameRounding, radius, category=dpg.mvThemeCat_Core
+            )
         _recording_quick_idle_theme = t
     return _recording_quick_idle_theme
 
@@ -625,18 +691,25 @@ def _get_recording_quick_active_theme():
     if _recording_quick_active_theme is None or not dpg.does_item_exist(
         _recording_quick_active_theme
     ):
-        with dpg.theme() as t:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Button, (180, 50, 50, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonHovered, (200, 70, 70, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonActive, (220, 90, 90, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+        with dpg.theme() as t, dpg.theme_component(dpg.mvButton):
+            dpg.add_theme_color(
+                dpg.mvThemeCol_Button,
+                (180, 50, 50, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonHovered,
+                (200, 70, 70, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonActive,
+                (220, 90, 90, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_style(
+                dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core
+            )
         _recording_quick_active_theme = t
     return _recording_quick_active_theme
 
@@ -645,21 +718,22 @@ def _get_trail_active_theme():
     """Return (creating on demand) the highlighted theme for the active trail button."""
     global _trail_active_theme
     if _trail_active_theme is None or not dpg.does_item_exist(_trail_active_theme):
-        with dpg.theme() as t:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Button, _theme_module.C_BRAND, category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonHovered,
-                    _theme_module.C_BTN_ACTIVE,
-                    category=dpg.mvThemeCat_Core,
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonActive,
-                    _theme_module.C_BTN_ACTIVE,
-                    category=dpg.mvThemeCat_Core,
-                )
+        with dpg.theme() as t, dpg.theme_component(dpg.mvButton):
+            dpg.add_theme_color(
+                dpg.mvThemeCol_Button,
+                _theme_module.C_BRAND,
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonHovered,
+                _theme_module.C_BTN_ACTIVE,
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonActive,
+                _theme_module.C_BTN_ACTIVE,
+                category=dpg.mvThemeCat_Core,
+            )
         _trail_active_theme = t
     return _trail_active_theme
 
@@ -667,18 +741,25 @@ def _get_trail_active_theme():
 def _get_recording_theme():
     """Return (creating on demand) a red theme for the Stop Recording button."""
     global _recording_active_theme
-    if _recording_active_theme is None or not dpg.does_item_exist(_recording_active_theme):
-        with dpg.theme() as t:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Button, (180, 50, 50, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonHovered, (200, 70, 70, 255), category=dpg.mvThemeCat_Core
-                )
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonActive, (220, 90, 90, 255), category=dpg.mvThemeCat_Core
-                )
+    if _recording_active_theme is None or not dpg.does_item_exist(
+        _recording_active_theme
+    ):
+        with dpg.theme() as t, dpg.theme_component(dpg.mvButton):
+            dpg.add_theme_color(
+                dpg.mvThemeCol_Button,
+                (180, 50, 50, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonHovered,
+                (200, 70, 70, 255),
+                category=dpg.mvThemeCat_Core,
+            )
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonActive,
+                (220, 90, 90, 255),
+                category=dpg.mvThemeCat_Core,
+            )
         _recording_active_theme = t
     return _recording_active_theme
 
@@ -726,7 +807,7 @@ def _update_flip_buttons(settings) -> None:
 
 
 def _build_section_header(label: str, accent_color=None) -> None:
-    """Render a section label with an optional coloured accent bar and a separator line."""
+    """Render a section label with accent bar and separator line."""
     dpg.add_spacer(height=PANEL_SECTION_SPACING)
     with dpg.group(horizontal=True):
         if accent_color is not None:
@@ -734,25 +815,30 @@ def _build_section_header(label: str, accent_color=None) -> None:
             with dpg.theme() as _accent_theme:
                 with dpg.theme_component(dpg.mvButton):
                     dpg.add_theme_color(
-                        dpg.mvThemeCol_Button, accent_color, category=dpg.mvThemeCat_Core
+                        dpg.mvThemeCol_Button,
+                        accent_color,
+                        category=dpg.mvThemeCat_Core,
                     )
                     dpg.add_theme_color(
-                        dpg.mvThemeCol_ButtonHovered, accent_color, category=dpg.mvThemeCat_Core
+                        dpg.mvThemeCol_ButtonHovered,
+                        accent_color,
+                        category=dpg.mvThemeCat_Core,
                     )
                     dpg.add_theme_color(
-                        dpg.mvThemeCol_ButtonActive, accent_color, category=dpg.mvThemeCat_Core
+                        dpg.mvThemeCol_ButtonActive,
+                        accent_color,
+                        category=dpg.mvThemeCat_Core,
                     )
             dpg.bind_item_theme(accent_item, _accent_theme)
             dpg.add_spacer(width=4)
         t = dpg.add_text(label)
         # Apply dim text colour to section headings
-        with dpg.theme() as _section_theme:
-            with dpg.theme_component(dpg.mvText):
-                dpg.add_theme_color(
-                    dpg.mvThemeCol_Text,
-                    _theme_module.C_TEXT_DIM,
-                    category=dpg.mvThemeCat_Core,
-                )
+        with dpg.theme() as _section_theme, dpg.theme_component(dpg.mvText):
+            dpg.add_theme_color(
+                dpg.mvThemeCol_Text,
+                _theme_module.C_TEXT_DIM,
+                category=dpg.mvThemeCat_Core,
+            )
         dpg.bind_item_theme(t, _section_theme)
     dpg.add_separator()
     dpg.add_spacer(height=PANEL_SECTION_SPACING)
@@ -760,7 +846,9 @@ def _build_section_header(label: str, accent_color=None) -> None:
 
 def _cursor_label(settings):
     """Return what the cursor toggle button will switch TO (action label)."""
-    return "Switch to Avatar" if settings.cursor_mode == "circle" else "Switch to Circle"
+    return (
+        "Switch to Avatar" if settings.cursor_mode == "circle" else "Switch to Circle"
+    )
 
 
 def update_cursor_toggle_label(settings):
@@ -770,21 +858,18 @@ def update_cursor_toggle_label(settings):
 
 def _on_cursor_toggle(settings):
     """Toggle the cursor display mode and update the panel label."""
-    settings.toggle_cursor_mode()
+    toggle_cursor_mode(settings)
     update_cursor_toggle_label(settings)
 
 
 def _on_cursor_size_change(value: int, settings) -> None:
     """Persist a new cursor size selection and update settings."""
-    settings.cursor_size = value
-    settings.save()
+    apply_cursor_size(settings, value)
 
 
 def _on_record_duration_change(value: int, settings, app_state) -> None:
     """Persist a new recording duration selection in settings and runtime state."""
-    settings.record_duration = value
-    app_state.record_duration = value
-    settings.save()
+    apply_record_duration(settings, app_state, value)
     update_recording_quick_access_position(dpg.get_viewport_width(), value)
 
 
@@ -794,52 +879,36 @@ def _on_start_recording(app_state, settings) -> None:
     sync_recording_buttons(recording_active=active)
 
 
-def _clamp_body_weight(value: float) -> float:
-    """Clamp body weight to the allowed settings range."""
-    return max(BODY_WEIGHT_MIN, min(BODY_WEIGHT_MAX, float(value)))
-
-
 def _on_body_weight_change(value: float, settings, app_state) -> None:
     """Persist a manual body weight and sync it to runtime state."""
-    if value <= 0:
-        return
-    value = _clamp_body_weight(value)
-    settings.body_weight_kg = value
-    app_state.weight = value
-    settings.save()
-    if dpg.does_item_exist("body_weight_input"):
-        dpg.set_value("body_weight_input", value)
+    clamped = apply_body_weight(settings, app_state, value)
+    if clamped is not None and dpg.does_item_exist("body_weight_input"):
+        dpg.set_value("body_weight_input", clamped)
 
 
 def _on_calibrate_board(session_state: dict) -> None:
     """Request on-board weight calibration from the main loop."""
-    session_state.update({"action": "calibrate"})
-
-
-def _clamp_board_cal_reference(value: float) -> float:
-    """Clamp board calibration reference mass to the allowed range."""
-    return max(BOARD_CAL_REFERENCE_MIN, min(BOARD_CAL_REFERENCE_MAX, float(value)))
+    request_calibrate_board(session_state)
 
 
 def _on_board_cal_reference_change(value: float, settings) -> None:
     """Persist the reference mass used for board scale calibration."""
-    if value < BOARD_CAL_REFERENCE_MIN:
-        return
-    settings.board_cal_reference_kg = _clamp_board_cal_reference(value)
-    settings.save()
-    if dpg.does_item_exist("board_cal_reference_input"):
-        dpg.set_value("board_cal_reference_input", settings.board_cal_reference_kg)
+    clamped = apply_board_cal_reference(settings, value)
+    if clamped is not None and dpg.does_item_exist("board_cal_reference_input"):
+        dpg.set_value("board_cal_reference_input", clamped)
 
 
 def _on_calibrate_scale(session_state: dict) -> None:
     """Request board scale-factor calibration from the main loop."""
-    session_state.update({"action": "calibrate_scale"})
+    request_calibrate_scale(session_state)
 
 
 def update_scale_factor_label(settings) -> None:
     """Refresh the read-only scale factor display in the calibration panel."""
     if dpg.does_item_exist("scale_factor_label"):
-        dpg.set_value("scale_factor_label", f"Scale factor: {settings.scale_factor:.4f}")
+        dpg.set_value(
+            "scale_factor_label", f"Scale factor: {settings.scale_factor:.4f}"
+        )
 
 
 def _build_calibration_controls(app_state, settings, session_state: dict) -> None:
@@ -913,9 +982,7 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
 
 def _on_recording_prefix_change(value: str, settings) -> None:
     """Persist a custom recording filename prefix."""
-    normalized = normalize_recording_prefix(value or "")
-    settings.recording_prefix = normalized
-    settings.save()
+    normalized = apply_recording_prefix(settings, value)
     if (
         dpg.does_item_exist("recording_prefix_input")
         and dpg.get_value("recording_prefix_input") != normalized
@@ -933,25 +1000,37 @@ def _open_recording_dir_picker(settings) -> None:
         with dpg.theme(tag="recording_dir_dialog_theme"):
             with dpg.theme_component(dpg.mvAll):
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_WindowBg, (245, 245, 245, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_WindowBg,
+                    (245, 245, 245, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_ChildBg, (255, 255, 255, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_ChildBg,
+                    (255, 255, 255, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
                     dpg.mvThemeCol_Text, (20, 20, 20, 255), category=dpg.mvThemeCat_Core
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_Button, (220, 220, 220, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_Button,
+                    (220, 220, 220, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonHovered, (200, 200, 200, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_ButtonHovered,
+                    (200, 200, 200, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_ButtonActive, (180, 180, 180, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_ButtonActive,
+                    (180, 180, 180, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_FrameBg, (235, 235, 235, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_FrameBg,
+                    (235, 235, 235, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
                     dpg.mvThemeCol_FrameBgHovered,
@@ -959,10 +1038,14 @@ def _open_recording_dir_picker(settings) -> None:
                     category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_FrameBgActive, (200, 200, 200, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_FrameBgActive,
+                    (200, 200, 200, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_SliderGrab, (107, 143, 168, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_SliderGrab,
+                    (107, 143, 168, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
                     dpg.mvThemeCol_SliderGrabActive,
@@ -970,22 +1053,34 @@ def _open_recording_dir_picker(settings) -> None:
                     category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_Header, (220, 220, 220, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_Header,
+                    (220, 220, 220, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_HeaderHovered, (200, 200, 200, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_HeaderHovered,
+                    (200, 200, 200, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_HeaderActive, (180, 180, 180, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_HeaderActive,
+                    (180, 180, 180, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_Border, (180, 180, 180, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_Border,
+                    (180, 180, 180, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_ScrollbarBg, (235, 235, 235, 240), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_ScrollbarBg,
+                    (235, 235, 235, 240),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_ScrollbarGrab, (190, 220, 235, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_ScrollbarGrab,
+                    (190, 220, 235, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
                     dpg.mvThemeCol_ScrollbarGrabHovered,
@@ -999,10 +1094,14 @@ def _open_recording_dir_picker(settings) -> None:
                 )
                 # Brighter header and menu bar for dialog
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_TitleBg, (250, 250, 250, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_TitleBg,
+                    (250, 250, 250, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_TitleBgActive, (245, 245, 245, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_TitleBgActive,
+                    (245, 245, 245, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
                     dpg.mvThemeCol_TitleBgCollapsed,
@@ -1010,18 +1109,28 @@ def _open_recording_dir_picker(settings) -> None:
                     category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_MenuBarBg, (245, 245, 245, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_MenuBarBg,
+                    (245, 245, 245, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
-                dpg.add_theme_style(dpg.mvStyleVar_ScrollbarSize, 16, category=dpg.mvThemeCat_Core)
-                # Use very light colors for file dialog column header row (filename/type/size/date)
+                dpg.add_theme_style(
+                    dpg.mvStyleVar_ScrollbarSize, 16, category=dpg.mvThemeCat_Core
+                )
+                # Light colors for file dialog column header row
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_Header, (252, 252, 252, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_Header,
+                    (252, 252, 252, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_HeaderHovered, (240, 240, 240, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_HeaderHovered,
+                    (240, 240, 240, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
                 dpg.add_theme_color(
-                    dpg.mvThemeCol_HeaderActive, (230, 230, 230, 255), category=dpg.mvThemeCat_Core
+                    dpg.mvThemeCol_HeaderActive,
+                    (230, 230, 230, 255),
+                    category=dpg.mvThemeCat_Core,
                 )
 
     if not dpg.does_item_exist("recording_dir_dialog"):
@@ -1029,8 +1138,7 @@ def _open_recording_dir_picker(settings) -> None:
         def _on_dir_picker(sender, app_data):
             chosen = app_data.get("file_path_name")
             if chosen:
-                settings.recording_dir = chosen
-                settings.save()
+                apply_recording_dir(settings, chosen)
                 if dpg.does_item_exist("recording_dir_label"):
                     dpg.set_value("recording_dir_label", chosen)
 
@@ -1050,7 +1158,13 @@ def _open_recording_dir_picker(settings) -> None:
 
 
 # Duration preset values (seconds); 0 = indefinite
-_DURATION_PRESETS = [(10, "10s"), (20, "20s"), (30, "30s"), (60, "60s"), (0, ICON_INFINITY)]
+_DURATION_PRESETS = [
+    (10, "10s"),
+    (20, "20s"),
+    (30, "30s"),
+    (60, "60s"),
+    (0, ICON_INFINITY),
+]
 
 
 def _update_duration_preset_buttons(active_val: int) -> None:
@@ -1065,7 +1179,7 @@ def _update_duration_preset_buttons(active_val: int) -> None:
 
 
 def _on_duration_preset_change(val: int, settings, app_state) -> None:
-    """Apply a duration preset selection, sync the manual input, and update button highlight."""
+    """Apply a duration preset and sync the manual input."""
     _on_record_duration_change(val, settings, app_state)
     _update_duration_preset_buttons(val)
     if dpg.does_item_exist("record_duration_input"):
@@ -1073,14 +1187,14 @@ def _on_duration_preset_change(val: int, settings, app_state) -> None:
 
 
 def _on_manual_duration_change(val: int, settings, app_state) -> None:
-    """Apply a manually typed duration; clears preset highlight unless it matches a preset."""
+    """Apply a manually typed duration; clear preset unless it matches."""
     _on_record_duration_change(val, settings, app_state)
     preset_vals = {p[0] for p in _DURATION_PRESETS}
     _update_duration_preset_buttons(val if val in preset_vals else -1)
 
 
 def _build_recording_controls(app_state, settings) -> None:
-    """Add recording duration presets, manual input, and start/stop button to the panel."""
+    """Add recording duration presets, manual input, and start/stop button."""
     dpg.add_text("Duration (s)")
     # 5 preset buttons sharing PANEL_BTN_W; 4 gaps of 4 px between them
     _btn_w = (PANEL_BTN_W - 16) // 5
@@ -1092,7 +1206,9 @@ def _build_recording_controls(app_state, settings) -> None:
                 label=lbl,
                 width=_btn_w,
                 height=PANEL_BTN_H,
-                callback=lambda s, a, u: _on_duration_preset_change(u, settings, app_state),
+                callback=lambda s, a, u: _on_duration_preset_change(
+                    u, settings, app_state
+                ),
                 user_data=val,
             )
             tip = "Record indefinitely" if val == 0 else f"Record for {val} seconds"
@@ -1112,7 +1228,8 @@ def _build_recording_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="record_duration_input"):
         dpg.add_text(
-            "Custom duration in seconds (0 = record indefinitely).\nOr use the preset buttons above."
+            "Custom duration in seconds (0 = record indefinitely).\n"
+            "Or use the preset buttons above."
         )
     _update_duration_preset_buttons(int(settings.record_duration))
     dpg.add_spacer(height=4)
@@ -1125,7 +1242,9 @@ def _build_recording_controls(app_state, settings) -> None:
         enabled=not app_state.is_recording and not app_state.is_countdown,
     )
     with dpg.tooltip(parent="start_recording_btn"):
-        dpg.add_text("Begin recording after a 3-second countdown.\nClick again to stop.")
+        dpg.add_text(
+            "Begin recording after a 3-second countdown.\nClick again to stop."
+        )
     dpg.add_spacer(height=8)
     # Save location
     dpg.add_text("Save location")
@@ -1171,7 +1290,8 @@ def _build_cursor_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="cursor_toggle_btn"):
         dpg.add_text(
-            "Switch between avatar and circle cursor.\nYou can also click the cursor on screen."
+            "Switch between avatar and circle cursor.\n"
+            "You can also click the cursor on screen."
         )
     app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
     dpg.add_spacer(height=8)
@@ -1187,7 +1307,8 @@ def _build_cursor_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="cursor_size_slider"):
         dpg.add_text(
-            "Adjust the circle cursor radius.\nYou can also drag the cursor on screen to resize."
+            "Adjust the circle cursor radius.\n"
+            "You can also drag the cursor on screen to resize."
         )
     dpg.add_spacer(height=8)
     dpg.add_text("Sway trail")
@@ -1207,7 +1328,8 @@ def _build_cursor_controls(app_state, settings) -> None:
             )
             with dpg.tooltip(parent=tag):
                 dpg.add_text(
-                    f"Trail length: {lbl}\nLength of the historical position trail shown behind the cursor."
+                    f"Trail length: {lbl}\n"
+                    "Length of the historical position trail behind the cursor."
                 )
     _update_trail_buttons(current_label)
     dpg.add_spacer(height=8)
@@ -1276,7 +1398,8 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     )
     with dpg.tooltip(parent="show_local_axes_checkbox"):
         dpg.add_text(
-            "Dotted crosshairs at sway-bbox centre,\nbounded to the movement bounding box."
+            "Dotted crosshairs at sway-bbox centre,\n"
+            "bounded to the movement bounding box."
         )
     dpg.add_spacer(height=4)
     dpg.add_checkbox(
@@ -1300,7 +1423,8 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     )
     with dpg.tooltip(parent="target_dwell_slider"):
         dpg.add_text(
-            "Time the cursor must stay inside a target\nbefore the hit counter increases by one."
+            "Time the cursor must stay inside a target\n"
+            "before the hit counter increases by one."
         )
     dpg.add_spacer(height=4)
     dpg.add_checkbox(
@@ -1364,7 +1488,9 @@ def build_panel_controls(app_state, settings, session_state: dict) -> None:
     _build_section_header("RECORDING", accent_color=_theme_module.C_ACCENT_RECORDING)
     _build_recording_controls(app_state, settings)
 
-    _build_section_header("CURSOR & MOVEMENT", accent_color=_theme_module.C_ACCENT_CURSOR)
+    _build_section_header(
+        "CURSOR & MOVEMENT", accent_color=_theme_module.C_ACCENT_CURSOR
+    )
     _build_cursor_controls(app_state, settings)
 
     _build_section_header("VISUALISATION", accent_color=_theme_module.C_ACCENT_VISUAL)
@@ -1373,81 +1499,61 @@ def build_panel_controls(app_state, settings, session_state: dict) -> None:
 
 def _on_trail_change(value: int, settings) -> None:
     """Update the trail length setting used for the historical cursor path."""
-    settings.trail_length = value
-    settings.save()
+    apply_trail_length(settings, value)
     trail_rmap = {0: "None", 30: "Medium", 100: "Long"}
     _update_trail_buttons(trail_rmap.get(value, "Long"))
 
 
 def _on_filter_change(value: int, settings, app_state) -> None:
     """Update the moving average filter window and trim the current filter buffer."""
-    settings.filter_window = value
-    if len(app_state.filter_buffer) > value:
-        app_state.filter_buffer = app_state.filter_buffer[-value:]
-    settings.save()
+    apply_filter_window(settings, app_state, value)
 
 
 def _on_show_bbox_change(value: bool, settings) -> None:
     """Toggle bounding box visibility."""
-    settings.show_bbox = value
-    settings.save()
+    apply_setting_bool(settings, "show_bbox", value)
 
 
 def _on_show_global_axes_change(value: bool, settings) -> None:
     """Toggle global (screen-centred) axis crosshairs."""
-    settings.show_global_axes = value
-    settings.save()
+    apply_setting_bool(settings, "show_global_axes", value)
 
 
 def _on_show_local_axes_change(value: bool, settings) -> None:
     """Toggle local (bbox-centred) axis crosshairs."""
-    settings.show_local_axes = value
-    settings.save()
+    apply_setting_bool(settings, "show_local_axes", value)
 
 
 def _on_target_jelly_change(value: bool, settings) -> None:
     """Toggle target jelly animation on hit."""
-    settings.target_jelly = value
-    settings.save()
+    apply_setting_bool(settings, "target_jelly", value)
 
 
 def _on_target_dwell_change(value: int, settings) -> None:
     """Update the dwell time required to increment the hit counter."""
-    settings.target_dwell_seconds = max(TARGET_DWELL_MIN, min(TARGET_DWELL_MAX, int(value)))
-    settings.save()
+    apply_target_dwell_seconds(settings, value)
 
 
 def _on_show_target_counter_change(value: bool, settings) -> None:
     """Toggle on-screen target hit counter visibility."""
-    settings.show_target_counter = value
-    settings.save()
+    apply_setting_bool(settings, "show_target_counter", value)
 
 
 def _on_flip_vertical_toggle(settings, app_state) -> None:
     """Toggle vertical axis flip and reset sway trail/bbox extents."""
-    settings.flip_vertical = not settings.flip_vertical
-    settings.save()
-    app_state.reset_sway_extents(settings.trail_length)
+    apply_flip_vertical(settings, app_state)
     _update_flip_buttons(settings)
 
 
 def _on_flip_horizontal_toggle(settings, app_state) -> None:
     """Toggle horizontal axis flip and reset sway trail/bbox extents."""
-    settings.flip_horizontal = not settings.flip_horizontal
-    settings.save()
-    app_state.reset_sway_extents(settings.trail_length)
+    apply_flip_horizontal(settings, app_state)
     _update_flip_buttons(settings)
 
 
 def _on_zoom_change(value: float, settings, app_state) -> None:
     """Apply a new zoom factor and immediately rescale runtime extents."""
-    value = ZOOM_SCALE**value
-    settings.zoom_factor = value
-    app_state.zoomed_max_x = app_state.raw_max_x * value
-    app_state.zoomed_max_y = app_state.raw_max_y * value
-    app_state.zoomed_min_x = app_state.raw_min_x * value
-    app_state.zoomed_min_y = app_state.raw_min_y * value
-    settings.save()
+    apply_zoom_slider(settings, app_state, value)
 
 
 # ---------------------------------------------------------------------------
@@ -1455,7 +1561,9 @@ def _on_zoom_change(value: float, settings, app_state) -> None:
 # ---------------------------------------------------------------------------
 
 
-def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state) -> None:
+def draw_step_instruction(
+    dl, step: str, counter: int, max_count: int, app_state
+) -> None:
     """
     Draw the 'Step ON' or 'Step OFF' calibration screen.
     Reads live viewport dimensions so layout is always correct after resize.
@@ -1465,7 +1573,9 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
     sw = dpg.get_viewport_width()
     sh = dpg.get_viewport_height()
 
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
+    dpg.draw_rectangle(
+        (0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl
+    )
 
     tag = _wii_texture_tags[2 if step == "on" else 0]
     cfg = dpg.get_item_configuration(tag)
@@ -1481,7 +1591,9 @@ def draw_step_instruction(dl, step: str, counter: int, max_count: int, app_state
     text_y = int(sh * CALIB_TEXT_TOP)
     line_h = int(font_size * CALIB_TEXT_LINE_H)
 
-    _crisp_text((text_x, text_y), "Step", color=(250, 250, 250, 255), size=font_size, parent=dl)
+    _crisp_text(
+        (text_x, text_y), "Step", color=(250, 250, 250, 255), size=font_size, parent=dl
+    )
     _crisp_text(
         (text_x, text_y + line_h),
         "ON" if step == "on" else "OFF",
@@ -1515,7 +1627,9 @@ def draw_reference_weight_instruction(
     sw = dpg.get_viewport_width()
     sh = dpg.get_viewport_height()
 
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
+    dpg.draw_rectangle(
+        (0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl
+    )
 
     tag = _wii_texture_tags[2]
     cfg = dpg.get_item_configuration(tag)
@@ -1531,7 +1645,9 @@ def draw_reference_weight_instruction(
     text_y = int(sh * CALIB_TEXT_TOP)
     line_h = int(font_size * CALIB_TEXT_LINE_H)
 
-    _crisp_text((text_x, text_y), "Place", color=(250, 250, 250, 255), size=font_size, parent=dl)
+    _crisp_text(
+        (text_x, text_y), "Place", color=(250, 250, 250, 255), size=font_size, parent=dl
+    )
     _crisp_text(
         (text_x, text_y + line_h),
         f"{reference_kg:.0f} kg",
@@ -1578,13 +1694,17 @@ def _draw_arc(dl, sw, sh, counter: int, max_count: int, step: str) -> None:
         y0 = cy + radius * math.sin(a0)
         x1 = cx + radius * math.cos(a1)
         y1 = cy + radius * math.sin(a1)
-        dpg.draw_line((x0, y0), (x1, y1), color=color, thickness=CALIB_ARC_THICKNESS, parent=dl)
+        dpg.draw_line(
+            (x0, y0), (x1, y1), color=color, thickness=CALIB_ARC_THICKNESS, parent=dl
+        )
 
 
 def draw_connection_screen(dl, app_state) -> None:
     """Draw the 'Trying to connect' screen."""
     sw, sh = app_state.screen_width, app_state.screen_height
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
+    dpg.draw_rectangle(
+        (0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl
+    )
     font_size = int(sh * 0.06)
     mid_x = sw / 2.5
     mid_y = sh / 2.9
@@ -1600,7 +1720,9 @@ def draw_connection_screen(dl, app_state) -> None:
 def draw_connection_failed_screen(dl, app_state) -> None:
     """Draw the 'Failed to connect' screen with checklist."""
     sw, sh = app_state.screen_width, app_state.screen_height
-    dpg.draw_rectangle((0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl)
+    dpg.draw_rectangle(
+        (0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl
+    )
 
     cfg = dpg.get_item_configuration(_connection_texture_tag)
     iw_orig, ih_orig = cfg["width"], cfg["height"]
@@ -1609,7 +1731,10 @@ def draw_connection_failed_screen(dl, app_state) -> None:
     img_x = sw // 2 - scaled_w // 2
     img_y = sh // 2 - scaled_h // 2
     dpg.draw_image(
-        _connection_texture_tag, (img_x, img_y), (img_x + scaled_w, img_y + scaled_h), parent=dl
+        _connection_texture_tag,
+        (img_x, img_y),
+        (img_x + scaled_w, img_y + scaled_h),
+        parent=dl,
     )
 
     font_size = int(sh * 0.05)
@@ -1624,7 +1749,9 @@ def draw_connection_failed_screen(dl, app_state) -> None:
         ("Press Enter to try again", (250, 250, 250, 255)),
     ]
     for i, (text, color) in enumerate(lines):
-        _crisp_text((mx, my + i * font_size * 1.4), text, color=color, size=font_size, parent=dl)
+        _crisp_text(
+            (mx, my + i * font_size * 1.4), text, color=color, size=font_size, parent=dl
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1646,7 +1773,9 @@ def dashed_line_segments(p1, p2, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP):
     pos = 0.0
     while pos < length:
         end = min(pos + dash, length)
-        segments.append(((x0 + ux * pos, y0 + uy * pos), (x0 + ux * end, y0 + uy * end)))
+        segments.append(
+            ((x0 + ux * pos, y0 + uy * pos), (x0 + ux * end, y0 + uy * end))
+        )
         pos = end + gap
     return segments
 
@@ -1654,9 +1783,11 @@ def dashed_line_segments(p1, p2, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP):
 def _draw_dashed_line(
     p1, p2, *, color, thickness, parent, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP
 ):
-    """Draw a dashed line using repeated solid segments (DearPyGui has no native dash)."""
+    """Draw a dashed line from repeated solid segments (no native dash)."""
     for seg_start, seg_end in dashed_line_segments(p1, p2, dash=dash, gap=gap):
-        dpg.draw_line(seg_start, seg_end, color=color, thickness=thickness, parent=parent)
+        dpg.draw_line(
+            seg_start, seg_end, color=color, thickness=thickness, parent=parent
+        )
 
 
 def _logical_rect_viewport_bounds(
@@ -1709,7 +1840,7 @@ def _target_hit_at_point(
 def update_target_dwell(
     app_state, settings, hit_by_index: dict[int, bool], *, dt: float | None = None
 ) -> None:
-    """Accumulate per-target dwell time and increment counter when thresholds are reached."""
+    """Accumulate per-target dwell time and increment counter at threshold."""
     if dt is None:
         now = time.perf_counter()
         if app_state._target_dwell_last_tick <= 0:
@@ -1789,7 +1920,11 @@ def draw_main_screen(
         dpg.draw_line((0, cy), (sw, cy), color=CANVAS_LINE, thickness=line_w, parent=dl)
         dpg.draw_line((cx, 0), (cx, sh), color=CANVAS_LINE, thickness=line_w, parent=dl)
         dpg.draw_circle(
-            (cx, cy), CANVAS_CENTRE_R, color=CANVAS_CENTRE_DOT, fill=CANVAS_CENTRE_DOT, parent=dl
+            (cx, cy),
+            CANVAS_CENTRE_R,
+            color=CANVAS_CENTRE_DOT,
+            fill=CANVAS_CENTRE_DOT,
+            parent=dl,
         )
 
     # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
@@ -1836,11 +1971,15 @@ def draw_main_screen(
             min_vx, min_vy, max_vx, max_vy = _logical_rect_viewport_bounds(
                 target["min"], target["max"], cx, cy, zoom, flip_h, flip_v
             )
-            hit = _target_hit_at_point(target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v)
+            hit = _target_hit_at_point(
+                target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v
+            )
             target_hits[idx] = hit
             app_state._prev_hit_states[idx] = hit
             fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
-            dpg.draw_rectangle((min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl)
+            dpg.draw_rectangle(
+                (min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl
+            )
             continue
         if isinstance(target, dict):
             (lx, ly) = target["center"]
@@ -1860,7 +1999,9 @@ def draw_main_screen(
         # Compute display radius with damped sinusoidal jelly if active
         age = app_state._jelly_ages.get(idx, -1)
         if age >= 0 and settings.target_jelly:
-            jelly_r = scaled_radius * (1.0 + 0.25 * math.exp(-0.13 * age) * math.sin(0.55 * age))
+            jelly_r = scaled_radius * (
+                1.0 + 0.25 * math.exp(-0.13 * age) * math.sin(0.55 * age)
+            )
             age += 1
             if age >= 50:
                 del app_state._jelly_ages[idx]
@@ -1895,12 +2036,18 @@ def draw_main_screen(
             vx, vy = logical_to_viewport(lx, ly, cx, cy, zoom, flip_h, flip_v)
             scaled_radius = logical_radius * zoom
             dpg.draw_circle(
-                (vx, vy), scaled_radius, color=(0, 200, 255, 180), fill=(0, 200, 255, 60), parent=dl
+                (vx, vy),
+                scaled_radius,
+                color=(0, 200, 255, 180),
+                fill=(0, 200, 255, 60),
+                parent=dl,
             )
 
     # Trail (S2: sliced to trail_length; coords are in viewport space)
     coords = (
-        app_state.historical_coords[-settings.trail_length :] if settings.trail_length > 0 else []
+        app_state.historical_coords[-settings.trail_length :]
+        if settings.trail_length > 0
+        else []
     )
     n = len(coords)
     for i in range(1, n):
@@ -1926,7 +2073,11 @@ def draw_main_screen(
     else:
         scaled_cursor = max(1, int(settings.cursor_size * settings.zoom_factor))
         dpg.draw_circle(
-            (ball_x, ball_y), scaled_cursor, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl
+            (ball_x, ball_y),
+            scaled_cursor,
+            color=CURSOR_COLOR,
+            fill=CURSOR_COLOR,
+            parent=dl,
         )
 
     # Weight bar and stats text are both drawn on stats_dl in app.py
@@ -1987,7 +2138,9 @@ def draw_main_screen(
                         layout["dot_cx"],
                         layout["dot_radius"],
                     ),
-                    _recording_indicator_text_y(layout["timer_font_size"], layout["dot_cy"]),
+                    _recording_indicator_text_y(
+                        layout["timer_font_size"], layout["dot_cy"]
+                    ),
                 ),
                 timer_str,
                 color=(255, 0, 0, 255),

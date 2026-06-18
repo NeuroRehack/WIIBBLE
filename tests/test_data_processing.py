@@ -16,7 +16,12 @@ from wiibble.features.data_processing import (
     read_latest_data,
     viewport_to_logical,
 )
-from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR, SCALE_FACTOR_MAX, SCALE_FACTOR_MIN
+from wiibble.utils.constants import (
+    COORD_SCALE,
+    SCALE_FACTOR,
+    SCALE_FACTOR_MAX,
+    SCALE_FACTOR_MIN,
+)
 
 # ---------------------------------------------------------------------------
 # read_latest_data
@@ -311,13 +316,17 @@ class TestAxisFlipHelpers:
         cx, cy, zoom = 640.0, 360.0, 2.0
         vx, vy = 700.0, 400.0
         lx, ly = viewport_to_logical(vx, vy, cx, cy, zoom, False, False)
-        assert logical_to_viewport(lx, ly, cx, cy, zoom, False, False) == pytest.approx((vx, vy))
+        assert logical_to_viewport(lx, ly, cx, cy, zoom, False, False) == pytest.approx(
+            (vx, vy)
+        )
 
     def test_viewport_logical_round_trip_with_flip(self):
         cx, cy, zoom = 640.0, 360.0, 2.0
         vx, vy = 700.0, 400.0
         lx, ly = viewport_to_logical(vx, vy, cx, cy, zoom, True, True)
-        assert logical_to_viewport(lx, ly, cx, cy, zoom, True, True) == pytest.approx((vx, vy))
+        assert logical_to_viewport(lx, ly, cx, cy, zoom, True, True) == pytest.approx(
+            (vx, vy)
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -347,10 +356,24 @@ class TestCalculateCoordinates:
         tl, tr, bl, br = 10, 5, 5, 10
         w = tl + tr + bl + br
         x1, y1 = calculate_coordinates(
-            tl, tr, bl, br, weight=w, screen_width=self.SW, screen_height=self.SH, zoom=1.0
+            tl,
+            tr,
+            bl,
+            br,
+            weight=w,
+            screen_width=self.SW,
+            screen_height=self.SH,
+            zoom=1.0,
         )
         x2, y2 = calculate_coordinates(
-            tl, tr, bl, br, weight=w, screen_width=self.SW, screen_height=self.SH, zoom=2.0
+            tl,
+            tr,
+            bl,
+            br,
+            weight=w,
+            screen_width=self.SW,
+            screen_height=self.SH,
+            zoom=2.0,
         )
         assert x2 == pytest.approx(2 * x1)
         assert y2 == pytest.approx(2 * y1)

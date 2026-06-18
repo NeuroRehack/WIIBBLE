@@ -16,7 +16,11 @@ from wiibble.ui.ui import (
     draw_step_instruction,
     ensure_textures_loaded,
 )
-from wiibble.utils.constants import CALIB_MIN_WEIGHT_DELTA, RAW_STABILITY_DELTA, TARE_MAX_WEIGHT
+from wiibble.utils.constants import (
+    CALIB_MIN_WEIGHT_DELTA,
+    RAW_STABILITY_DELTA,
+    TARE_MAX_WEIGHT,
+)
 
 log = logging.getLogger(__name__)
 
@@ -71,12 +75,15 @@ def wait_for_tare(device, dl, app_state, scale_factor: float) -> float:
     return weight
 
 
-def sensitivity_calibration(device, dl, app_state, scale_factor: float, on_start=None) -> float:
+def sensitivity_calibration(
+    device, dl, app_state, scale_factor: float, on_start=None
+) -> float:
     """
     Show 'Step ON' screen and wait until stable body weight is detected.
 
     Baseline measured first (board empty), then on_start() called.
-    Passes when 20 consecutive readings stable and > baseline + CALIB_MIN_WEIGHT_DELTA kg.
+    Passes when 20 consecutive readings stable and
+    > baseline + CALIB_MIN_WEIGHT_DELTA kg.
     Returns calibrated body weight.
     """
     log.debug("sensitivity_calibration: waiting for subject to step on...")
@@ -157,7 +164,9 @@ def reference_weight_scale_calibration(
             last_raw = raw_load
 
         dpg.delete_item(dl, children_only=True)
-        draw_reference_weight_instruction(dl, reference_kg, counter, max_count, app_state)
+        draw_reference_weight_instruction(
+            dl, reference_kg, counter, max_count, app_state
+        )
         dpg.render_dearpygui_frame()
 
     try:
@@ -195,8 +204,12 @@ def run_board_weight_calibration(device, dl, app_state, scale_factor: float) -> 
             log.exception("run_board_weight_calibration: tare failed")
             return -1
 
-        on_start = device.trigger_step_on if hasattr(device, "trigger_step_on") else None
-        return sensitivity_calibration(device, dl, app_state, scale_factor, on_start=on_start)
+        on_start = (
+            device.trigger_step_on if hasattr(device, "trigger_step_on") else None
+        )
+        return sensitivity_calibration(
+            device, dl, app_state, scale_factor, on_start=on_start
+        )
 
     return _with_blocking_reads(device, _run)
 

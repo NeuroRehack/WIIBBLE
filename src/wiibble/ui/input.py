@@ -9,7 +9,11 @@ import math
 import dearpygui.dearpygui as dpg
 
 from wiibble.features.data_processing import logical_to_viewport, viewport_to_logical
-from wiibble.ui.ui import _on_start_recording, _on_zoom_change, is_mouse_over_quick_access
+from wiibble.ui.ui import (
+    _on_start_recording,
+    _on_zoom_change,
+    is_mouse_over_quick_access,
+)
 from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
     CURSOR_HIT_FRACTION,
@@ -31,16 +35,17 @@ _SETTINGS_INPUT_TAGS = (
 
 def _settings_input_active() -> bool:
     """Return True when focus is in a settings text field."""
-    return any(dpg.does_item_exist(tag) and dpg.is_item_active(tag) for tag in _SETTINGS_INPUT_TAGS)
+    return any(
+        dpg.does_item_exist(tag) and dpg.is_item_active(tag)
+        for tag in _SETTINGS_INPUT_TAGS
+    )
 
 
 def _keyboard_shortcuts_allowed(session_state: dict) -> bool:
     """Return True when canvas keyboard shortcuts should fire."""
     if not session_state.get("toolbar_enabled"):
         return False
-    if _settings_input_active():
-        return False
-    return True
+    return not _settings_input_active()
 
 
 def _handle_clear_shortcut(session_state: dict) -> None:
@@ -194,9 +199,11 @@ def _find_target_at(mx: float, my: float, app_state, settings):
     return None
 
 
-def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
+def _handle_canvas_click(
+    mx: float, my: float, app_state, settings, session_state
+) -> None:
     """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
-    # Suppress canvas click if mouse is over any UI element (e.g., settings panel, dialogs)
+    # Suppress canvas click if mouse is over UI (settings panel, dialogs)
     if (
         is_mouse_over_quick_access()
         or (mx <= PANEL_W and session_state.get("toolbar_visible", False))
@@ -267,9 +274,13 @@ def _handle_cursor_drag(app_state, settings) -> None:
     if not getattr(app_state, "cursor_drag_in_progress", False):
         return
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
-    dist = math.sqrt((mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2)
+    dist = math.sqrt(
+        (mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2
+    )
     # dist is in screen pixels; divide by zoom so cursor_size stays in logical units
-    new_size = int(max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist / settings.zoom_factor)))
+    new_size = int(
+        max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist / settings.zoom_factor))
+    )
     settings.cursor_size = new_size
     if dpg.does_item_exist("cursor_size_slider"):
         dpg.set_value("cursor_size_slider", new_size)
@@ -303,7 +314,10 @@ def _handle_target_drag(app_state, settings):
     # Only begin resizing once the mouse has moved meaningfully from the click point.
     if not tip.get("drag_started", False):
         cx0, cy0 = tip.get("click_screen", (mouse_x, mouse_y))
-        if math.sqrt((mouse_x - cx0) ** 2 + (mouse_y - cy0) ** 2) < CURSOR_DRAG_THRESHOLD:
+        if (
+            math.sqrt((mouse_x - cx0) ** 2 + (mouse_y - cy0) ** 2)
+            < CURSOR_DRAG_THRESHOLD
+        ):
             return
         tip["drag_started"] = True
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
@@ -445,7 +459,9 @@ def register_input_handlers(app_state, settings, session_state):
             ),
         )
         dpg.add_mouse_wheel_handler(
-            callback=lambda s, v: _handle_mouse_wheel(v, app_state, session_state, settings),
+            callback=lambda s, v: _handle_mouse_wheel(
+                v, app_state, session_state, settings
+            ),
         )
         dpg.add_mouse_drag_handler(
             button=0,
@@ -458,7 +474,8 @@ def register_input_handlers(app_state, settings, session_state):
                     if getattr(app_state, "cursor_drag_in_progress", False)
                     else (
                         _handle_target_move_drag(app_state, settings)
-                        if getattr(app_state, "target_move_in_progress", None) is not None
+                        if getattr(app_state, "target_move_in_progress", None)
+                        is not None
                         else _handle_target_drag(app_state, settings)
                     )
                 )
@@ -474,7 +491,8 @@ def register_input_handlers(app_state, settings, session_state):
                     if getattr(app_state, "cursor_drag_in_progress", False)
                     else (
                         _handle_target_move_release(app_state)
-                        if getattr(app_state, "target_move_in_progress", None) is not None
+                        if getattr(app_state, "target_move_in_progress", None)
+                        is not None
                         else _handle_target_release(app_state, settings)
                     )
                 )
@@ -486,5 +504,7 @@ def register_input_handlers(app_state, settings, session_state):
         )
         dpg.add_key_press_handler(
             key=dpg.mvKey_Spacebar,
-            callback=lambda: _handle_record_shortcut(app_state, settings, session_state),
+            callback=lambda: _handle_record_shortcut(
+                app_state, settings, session_state
+            ),
         )

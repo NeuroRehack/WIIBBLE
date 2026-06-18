@@ -94,7 +94,9 @@ def test_handle_target_move_drag_updates_target_center(monkeypatch):
     app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
     app_state.target_move_in_progress = {"index": 0, "grab_offset": (0.0, 0.0)}
     settings = DummySettings(zoom_factor=1.0)
-    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (160, 85))
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (160, 85)
+    )
 
     input_module._handle_target_move_drag(app_state, settings)
 
@@ -128,9 +130,15 @@ def test_handle_target_move_click_without_drag_leaves_center_unchanged(monkeypat
 
 def test_handle_target_drag_updates_target_radius(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100)
-    app_state.target_in_progress = {"center": (0.0, 0.0), "radius": 5.0, "drag_started": True}
+    app_state.target_in_progress = {
+        "center": (0.0, 0.0),
+        "radius": 5.0,
+        "drag_started": True,
+    }
     settings = DummySettings(zoom_factor=1.0)
-    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (110, 50))
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (110, 50)
+    )
 
     input_module._handle_target_drag(app_state, settings)
 
@@ -179,7 +187,9 @@ def test_handle_target_drag_updates_rect_bounds(monkeypatch):
         "click_screen": (100, 50),
     }
     settings = DummySettings(zoom_factor=1.0)
-    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (110, 55))
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (110, 55)
+    )
 
     input_module._handle_target_drag(app_state, settings)
 
@@ -209,7 +219,9 @@ def test_handle_target_release_appends_default_rect_without_drag():
 
 def test_find_target_at_hits_rect_target():
     app_state = AppState(screen_width=200, screen_height=100)
-    app_state.clicked_locations = [{"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}]
+    app_state.clicked_locations = [
+        {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
+    ]
     settings = DummySettings(zoom_factor=1.0)
 
     hit = input_module._find_target_at(150, 75, app_state, settings)
@@ -220,10 +232,14 @@ def test_find_target_at_hits_rect_target():
 
 def test_handle_target_move_drag_translates_rect(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100)
-    app_state.clicked_locations = [{"shape": "rect", "min": (0.0, 0.0), "max": (20.0, 20.0)}]
+    app_state.clicked_locations = [
+        {"shape": "rect", "min": (0.0, 0.0), "max": (20.0, 20.0)}
+    ]
     app_state.target_move_in_progress = {"index": 0, "grab_offset": (0.0, 0.0)}
     settings = DummySettings(zoom_factor=1.0)
-    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (120, 70))
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (120, 70)
+    )
 
     input_module._handle_target_move_drag(app_state, settings)
 
@@ -232,7 +248,9 @@ def test_handle_target_move_drag_translates_rect(monkeypatch):
 
 
 def test_handle_pan_drag_starts_and_moves(monkeypatch):
-    app_state = AppState(screen_width=200, screen_height=100, pan_offset_x=0.0, pan_offset_y=0.0)
+    app_state = AppState(
+        screen_width=200, screen_height=100, pan_offset_x=0.0, pan_offset_y=0.0
+    )
     session_state = {}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: True)
     monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (50, 50))
@@ -261,20 +279,28 @@ def test_handle_pan_release_resets_panning():
 
 
 def test_handle_mouse_wheel_performs_pan_and_zooms(monkeypatch):
-    app_state = AppState(screen_width=200, screen_height=100, pan_offset_x=0.0, pan_offset_y=0.0)
+    app_state = AppState(
+        screen_width=200, screen_height=100, pan_offset_x=0.0, pan_offset_y=0.0
+    )
     settings = DummySettings(zoom_factor=1.0)
     session_state = {}
     recorded = {"value": None, "zoom_called": False}
 
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: True)
-    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (120, 60))
     monkeypatch.setattr(
-        input_module.dpg, "set_value", lambda tag, value: recorded.update({"value": value})
+        input_module.dpg, "get_mouse_pos", lambda local=False: (120, 60)
+    )
+    monkeypatch.setattr(
+        input_module.dpg,
+        "set_value",
+        lambda tag, value: recorded.update({"value": value}),
     )
     monkeypatch.setattr(
         input_module,
         "_on_zoom_change",
-        lambda slider_value, settings_, app_state_: recorded.update({"zoom_called": True}),
+        lambda slider_value, settings_, app_state_: recorded.update(
+            {"zoom_called": True}
+        ),
     )
 
     input_module._handle_mouse_wheel(1.0, app_state, session_state, settings)
@@ -292,9 +318,13 @@ def test_register_input_handlers_registers_mouse_handlers(monkeypatch):
     calls = []
 
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
-    monkeypatch.setattr(input_module.dpg, "delete_item", lambda tag: calls.append(("delete", tag)))
     monkeypatch.setattr(
-        input_module.dpg, "handler_registry", lambda *args, **kwargs: DummyRegistry(*args, **kwargs)
+        input_module.dpg, "delete_item", lambda tag: calls.append(("delete", tag))
+    )
+    monkeypatch.setattr(
+        input_module.dpg,
+        "handler_registry",
+        lambda *args, **kwargs: DummyRegistry(*args, **kwargs),
     )
     monkeypatch.setattr(
         input_module.dpg,
@@ -307,7 +337,9 @@ def test_register_input_handlers_registers_mouse_handlers(monkeypatch):
         lambda **kwargs: calls.append(("wheel", kwargs)),
     )
     monkeypatch.setattr(
-        input_module.dpg, "add_mouse_drag_handler", lambda **kwargs: calls.append(("drag", kwargs))
+        input_module.dpg,
+        "add_mouse_drag_handler",
+        lambda **kwargs: calls.append(("drag", kwargs)),
     )
     monkeypatch.setattr(
         input_module.dpg,
@@ -369,8 +401,12 @@ def test_clear_shortcut_ignored_when_toolbar_disabled(monkeypatch):
 def test_clear_shortcut_ignored_when_settings_input_active(monkeypatch):
     session_state = {"toolbar_enabled": True, "action": None}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: True)
-    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: tag == "body_weight_input")
-    monkeypatch.setattr(input_module.dpg, "is_item_active", lambda tag: tag == "body_weight_input")
+    monkeypatch.setattr(
+        input_module.dpg, "does_item_exist", lambda tag: tag == "body_weight_input"
+    )
+    monkeypatch.setattr(
+        input_module.dpg, "is_item_active", lambda tag: tag == "body_weight_input"
+    )
 
     input_module._handle_clear_shortcut(session_state)
 
@@ -383,7 +419,9 @@ def test_record_shortcut_calls_start_recording_when_allowed(monkeypatch):
     session_state = {"toolbar_enabled": True}
     called = {"value": False}
     monkeypatch.setattr(
-        input_module.dpg, "is_key_down", lambda key: key == input_module.dpg.mvKey_LControl
+        input_module.dpg,
+        "is_key_down",
+        lambda key: key == input_module.dpg.mvKey_LControl,
     )
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
     monkeypatch.setattr(

@@ -62,13 +62,29 @@ class MockHIDDevice:
     def _set_scenario(self, scenario):
         """Configure the simulated weight pattern for a named scenario."""
         if scenario == "still":
-            self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.03, "sway": 0.0}
+            self._scenario_params = {
+                "base": [18.0, 18.0, 18.0, 18.0],
+                "noise": 0.03,
+                "sway": 0.0,
+            }
         elif scenario == "lean_left":
-            self._scenario_params = {"base": [12.0, 12.0, 24.0, 24.0], "noise": 0.1, "sway": 0.5}
+            self._scenario_params = {
+                "base": [12.0, 12.0, 24.0, 24.0],
+                "noise": 0.1,
+                "sway": 0.5,
+            }
         elif scenario == "lean_right":
-            self._scenario_params = {"base": [24.0, 24.0, 12.0, 12.0], "noise": 0.1, "sway": 0.5}
+            self._scenario_params = {
+                "base": [24.0, 24.0, 12.0, 12.0],
+                "noise": 0.1,
+                "sway": 0.5,
+            }
         elif scenario == "hands":
-            self._scenario_params = {"base": [1.5, 1.5, 1.5, 1.5], "noise": 0.03, "sway": 0.05}
+            self._scenario_params = {
+                "base": [1.5, 1.5, 1.5, 1.5],
+                "noise": 0.03,
+                "sway": 0.05,
+            }
         elif scenario == "step_on_off":
             # Parameters for step on/off: base weight, noise, cycle duration
             self._scenario_params = {
@@ -81,9 +97,17 @@ class MockHIDDevice:
             }
         elif scenario == "calibration":
             # Stable load for testing on-demand board calibration without hardware
-            self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.03, "sway": 0.0}
+            self._scenario_params = {
+                "base": [18.0, 18.0, 18.0, 18.0],
+                "noise": 0.03,
+                "sway": 0.0,
+            }
         else:  # "sway" default
-            self._scenario_params = {"base": [18.0, 18.0, 18.0, 18.0], "noise": 0.15, "sway": 1.0}
+            self._scenario_params = {
+                "base": [18.0, 18.0, 18.0, 18.0],
+                "noise": 0.15,
+                "sway": 1.0,
+            }
 
     def open(self, vendor_id, product_id):
         """Initialize the mock device and reset its calibration phase."""
@@ -94,7 +118,10 @@ class MockHIDDevice:
         self._last_data_time = None
 
     def set_nonblocking(self, nonblocking):
-        """Mirror hid.device.set_nonblocking: when 1, read() returns [] if no new report."""
+        """Mirror hid.device.set_nonblocking.
+
+        When 1, read() returns [] if no new report.
+        """
         self._nonblocking = bool(nonblocking)
 
     def close(self):
@@ -143,15 +170,18 @@ class MockHIDDevice:
         In non-blocking mode, returns [] if called faster than the real board's
         100 Hz report rate, matching hid.device behaviour.
         """
-        if self._nonblocking and self._last_data_time is not None:
-            if time.time() - self._last_data_time < _BOARD_REPORT_INTERVAL:
-                return []
+        if (
+            self._nonblocking
+            and self._last_data_time is not None
+            and time.time() - self._last_data_time < _BOARD_REPORT_INTERVAL
+        ):
+            return []
         self._last_data_time = time.time()
 
         kg_vals = self._get_kg_values()
         data = [0] * size
         indices = [3, 5, 7, 9]  # top_right, bottom_right, top_left, bottom_left
-        for idx, kg in zip(indices, kg_vals):
+        for idx, kg in zip(indices, kg_vals, strict=False):
             raw = max(0.0, kg) / self._scale_factor
             int_part = int(raw)
             frac_part = int((raw - int_part) * 255)
@@ -213,12 +243,7 @@ class MockHIDDevice:
             # Cycle: step on for step_duration, then off for off_duration
             cycle = p["step_duration"] + p["off_duration"]
             t_mod = t % cycle
-            if t_mod < p["step_duration"]:
-                # Stepping on
-                weight = p["step_weight"]
-            else:
-                # Stepping off
-                weight = p["off_weight"]
+            weight = p["step_weight"] if t_mod < p["step_duration"] else p["off_weight"]
             return [weight + random.gauss(0, noise) for _ in range(4)]
 
         else:  # sway

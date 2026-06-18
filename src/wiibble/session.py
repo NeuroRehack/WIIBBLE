@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import logging
 import math
@@ -67,7 +68,9 @@ log = logging.getLogger(__name__)
 
 
 def connect_wii_board(
-    use_mock: bool = False, mock_scenario: str = "sway", scale_factor: float | None = None
+    use_mock: bool = False,
+    mock_scenario: str = "sway",
+    scale_factor: float | None = None,
 ):
     """Return an open HID device (real or mock)."""
     if use_mock:
@@ -83,7 +86,7 @@ def connect_wii_board(
         device.open(VENDOR_ID, PRODUCT_ID)
         log.info("Connected successfully!")
         return device
-    except IOError as e:
+    except OSError as e:
         log.error("Failed to connect: %s", e)
         return None
 
@@ -164,7 +167,9 @@ def _collapse_ui_for_calibration(session_state: dict) -> bool:
     return was_visible
 
 
-def _restore_ui_after_calibration(session_state: dict, was_toolbar_visible: bool) -> None:
+def _restore_ui_after_calibration(
+    session_state: dict, was_toolbar_visible: bool
+) -> None:
     """Restore settings panel and stats bar after calibration completes."""
     session_state["toolbar_visible"] = was_toolbar_visible
     toolbar_enabled = session_state.get("toolbar_enabled", False)
@@ -218,7 +223,9 @@ def _update_recording_frame(
 ):
     """Advance recording state and append a CSV row for the current frame."""
     if app_state.is_recording:
-        elapsed = now - (record_start_time if record_start_time else app_state.record_start)
+        elapsed = now - (
+            record_start_time if record_start_time else app_state.record_start
+        )
         app_state.stopwatch_elapsed = elapsed
         # Always record raw (unfiltered) corner values so the UI filter
         # setting does not affect the posturographic analysis data.
@@ -226,7 +233,9 @@ def _update_recording_frame(
         x_kg, y_kg = calculate_force_deviation_kg(
             rc["top_left"], rc["top_right"], rc["bottom_left"], rc["bottom_right"]
         )
-        x_kg, y_kg = apply_axis_flip(x_kg, y_kg, settings.flip_horizontal, settings.flip_vertical)
+        x_kg, y_kg = apply_axis_flip(
+            x_kg, y_kg, settings.flip_horizontal, settings.flip_vertical
+        )
         app_state.record_buffer.append((elapsed, x_kg, y_kg))
         if app_state.record_duration > 0 and elapsed >= app_state.record_duration:
             app_state.is_recording = False
@@ -284,18 +293,17 @@ def _update_countdown_and_recording(
     bottom_right,
 ):
     """Advance countdown and recording state for the current frame."""
-    if app_state.is_countdown:
-        if now - last_countdown_tick >= 1.0:
-            app_state.countdown_value -= 1
-            last_countdown_tick = now
-            if app_state.countdown_value <= 0:
-                app_state.is_countdown = False
-                app_state.is_recording = True
-                app_state.recording_indicator = True
-                record_start_time = now
-                app_state.record_start = now
-                app_state.record_buffer = []
-                app_state.stopwatch_elapsed = 0.0
+    if app_state.is_countdown and now - last_countdown_tick >= 1.0:
+        app_state.countdown_value -= 1
+        last_countdown_tick = now
+        if app_state.countdown_value <= 0:
+            app_state.is_countdown = False
+            app_state.is_recording = True
+            app_state.recording_indicator = True
+            record_start_time = now
+            app_state.record_start = now
+            app_state.record_buffer = []
+            app_state.stopwatch_elapsed = 0.0
 
     record_start_time = _update_recording_frame(
         now,
@@ -359,7 +367,7 @@ def _clear_screen_state(app_state, settings) -> None:
 
 
 def _apply_zoom_to_bbox(app_state, settings) -> None:
-    """Fit zoom and pan so the recorded sway bounding box is centred and fully visible."""
+    """Fit zoom and pan so the sway bounding box is centred and fully visible."""
     _on_zoom_to_bbox(
         app_state.raw_max_x,
         app_state.raw_max_y,
@@ -395,7 +403,7 @@ def _resume_acquisition(session_state: dict) -> None:
 
 
 def _handle_session_action(action, device, dl, app_state, settings, session_state):
-    """Process a toolbar action request and return a loop result if a session restart is needed."""
+    """Process a toolbar action; return loop result if session restart needed."""
     if action == "restart":
         log.info("Session restart requested by user.")
         device.close()
@@ -428,7 +436,9 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
         _pause_acquisition(session_state)
         try:
-            weight = run_board_weight_calibration(device, dl, app_state, app_state.scale_factor)
+            weight = run_board_weight_calibration(
+                device, dl, app_state, app_state.scale_factor
+            )
             if weight > 0:
                 settings.body_weight_kg = weight
                 app_state.weight = weight
@@ -505,7 +515,9 @@ def _prepare_session(dl, app_state, settings, session_state, args):
     )
     if dpg.does_item_exist("recording_quick_window"):
         dpg.configure_item("recording_quick_window", show=True)
-        update_recording_quick_access_position(dpg.get_viewport_width(), settings.record_duration)
+        update_recording_quick_access_position(
+            dpg.get_viewport_width(), settings.record_duration
+        )
     if hasattr(device, "enter_running_mode"):
         device.enter_running_mode()
 
@@ -605,7 +617,9 @@ def _process_frame_data(
         screen_height=app_state.screen_height,
         zoom=1.0,
     )
-    raw_x, raw_y = apply_axis_flip(raw_x, raw_y, settings.flip_horizontal, settings.flip_vertical)
+    raw_x, raw_y = apply_axis_flip(
+        raw_x, raw_y, settings.flip_horizontal, settings.flip_vertical
+    )
 
     app_state.raw_max_x = max(app_state.raw_max_x, raw_x)
     app_state.raw_max_y = max(app_state.raw_max_y, raw_y)
@@ -654,8 +668,10 @@ def _process_frame_data(
 # ---------------------------------------------------------------------------
 
 
-def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings) -> None:
-    """Scale zoom so the actual bounding box fits the visible area and centre the view on it."""
+def _on_zoom_to_bbox(
+    raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, settings
+) -> None:
+    """Scale zoom so the bounding box fits the visible area and centre the view."""
     bbox_w = raw_max_x - raw_min_x
     bbox_h = raw_max_y - raw_min_y
     base_w = app_state.screen_width * COORD_SCALE
@@ -665,7 +681,9 @@ def _on_zoom_to_bbox(raw_max_x, raw_max_y, raw_min_x, raw_min_y, app_state, sett
     new_zoom = round(min(base_w / bbox_w, base_h / bbox_h), 10)
     new_zoom = max(ZOOM_MIN, min(ZOOM_MAX, new_zoom))
     settings.zoom_factor = new_zoom
-    slider_value = math.log(new_zoom) / math.log(ZOOM_SCALE)  # convert back to slider value
+    slider_value = math.log(new_zoom) / math.log(
+        ZOOM_SCALE
+    )  # convert back to slider value
     dpg.set_value("zoom_slider", slider_value)
     settings.save()
     # Pan so the bbox centre sits at the screen centre
@@ -714,10 +732,14 @@ class _LoopDiagnostics:
         fps = self._frames / elapsed
         sensor_hz = self._sensor_updates / elapsed
         avg_drained = (
-            self._sum_reports_drained / self._sensor_updates if self._sensor_updates else 0.0
+            self._sum_reports_drained / self._sensor_updates
+            if self._sensor_updates
+            else 0.0
         )
         # If N reports were queued, the oldest would lag ~(N-1) report periods behind.
-        est_backlog_lag_ms = max(0, self._max_reports_drained - 1) * _HID_REPORT_INTERVAL_S * 1000
+        est_backlog_lag_ms = (
+            max(0, self._max_reports_drained - 1) * _HID_REPORT_INTERVAL_S * 1000
+        )
         log.info(
             "Loop perf: fps=%.1f sensor_hz=%.1f empty_reads=%d "
             "max_hid_batch=%d avg_hid_batch=%.1f est_backlog_lag_ms=%.0f",
@@ -763,7 +785,9 @@ def _run_session(app_state, settings, args) -> int:
     Returns 0 to restart, 1 to quit.
     """
     log.info(
-        "Session starting (mock=%s, scenario=%s).", args.mock, getattr(args, "mock_scenario", "n/a")
+        "Session starting (mock=%s, scenario=%s).",
+        args.mock,
+        getattr(args, "mock_scenario", "n/a"),
     )
     app_state.reset()
 
@@ -816,10 +840,8 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
     app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
 
-    try:
+    with contextlib.suppress(Exception):
         device.set_nonblocking(1)
-    except Exception:
-        pass
 
     last_countdown_tick = time.time()
     record_start_time = None
@@ -847,7 +869,9 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
             _flush_record_buffer_if_complete(app_state, settings)
 
             action = session_state.get("action")
-            result = _handle_session_action(action, device, dl, app_state, settings, session_state)
+            result = _handle_session_action(
+                action, device, dl, app_state, settings, session_state
+            )
             if result is not None:
                 return result
 

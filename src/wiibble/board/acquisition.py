@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from queue import Empty, Full, Queue
@@ -30,7 +31,9 @@ class SensorAcquisition:
             return
         self._stop.clear()
         self._paused.clear()
-        self._thread = Thread(target=self._run, name="wiibble-hid-acquisition", daemon=True)
+        self._thread = Thread(
+            target=self._run, name="wiibble-hid-acquisition", daemon=True
+        )
         self._thread.start()
         log.debug("Sensor acquisition thread started")
 
@@ -95,11 +98,7 @@ class SensorAcquisition:
             try:
                 self._queue.put_nowait(data)
             except Full:
-                try:
+                with contextlib.suppress(Empty):
                     self._queue.get_nowait()
-                except Empty:
-                    pass
-                try:
+                with contextlib.suppress(Full):
                     self._queue.put_nowait(data)
-                except Full:
-                    pass

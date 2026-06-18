@@ -1,6 +1,10 @@
 # tests/test_ui.py
 from wiibble.ui.theme import ICON_INFINITY
-from wiibble.ui.ui import _format_record_limit, dashed_line_segments, sync_recording_buttons
+from wiibble.ui.ui import (
+    _format_record_limit,
+    dashed_line_segments,
+    sync_recording_buttons,
+)
 
 
 class TestDashedLineSegments:
@@ -51,7 +55,9 @@ class TestSyncRecordingButtons:
         monkeypatch.setattr(ui_module.dpg, "does_item_exist", fake_exists)
         monkeypatch.setattr(ui_module.dpg, "set_item_label", fake_set_label)
         monkeypatch.setattr(ui_module.dpg, "bind_item_theme", fake_bind_theme)
-        monkeypatch.setattr(ui_module, "_get_recording_quick_idle_theme", lambda: idle_theme)
+        monkeypatch.setattr(
+            ui_module, "_get_recording_quick_idle_theme", lambda: idle_theme
+        )
 
         sync_recording_buttons(recording_active=False)
 
@@ -81,7 +87,9 @@ class TestSyncRecordingButtons:
         monkeypatch.setattr(ui_module.dpg, "set_item_label", fake_set_label)
         monkeypatch.setattr(ui_module.dpg, "bind_item_theme", fake_bind_theme)
         monkeypatch.setattr(ui_module, "_get_recording_theme", lambda: recording_theme)
-        monkeypatch.setattr(ui_module, "_get_recording_quick_active_theme", lambda: active_theme)
+        monkeypatch.setattr(
+            ui_module, "_get_recording_quick_active_theme", lambda: active_theme
+        )
 
         sync_recording_buttons(recording_active=True)
 

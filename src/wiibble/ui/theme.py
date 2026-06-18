@@ -164,7 +164,9 @@ def load_fonts() -> None:
             FA_ICON_FONT_DRAW = fa_font_draw
             log.debug("FontAwesome loaded from %s", FA_SOLID_FONT_PATH)
         else:
-            log.warning("FontAwesome not found at %s — using ASCII fallback", FA_SOLID_FONT_PATH)
+            log.warning(
+                "FontAwesome not found at %s — using ASCII fallback", FA_SOLID_FONT_PATH
+            )
             FA_ICON_FONT = None
 
         # --- Crisp text font at 100px ---
@@ -176,7 +178,9 @@ def load_fonts() -> None:
             TEXT_FONT = text_font
             log.debug("Text font loaded: %s @ 100px", Path(text_font_path).name)
         else:
-            log.warning("No system text font found — draw_text will use default (may be blurry)")
+            log.warning(
+                "No system text font found — draw_text will use default (may be blurry)"
+            )
             TEXT_FONT = None
 
 
@@ -185,88 +189,129 @@ def apply_global_theme() -> None:
     Apply DPG colours and styles.
     Call after dpg.setup_dearpygui(). Font loading is separate (load_fonts).
     """
-    with dpg.theme() as global_theme:
-        with dpg.theme_component(dpg.mvAll):
-            # Window backgrounds (fully opaque)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_WindowBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ChildBg, (*C_BG_WINDOW[:3], 255), category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_PopupBg, (*C_BG_TOOLBAR[:3], 255), category=dpg.mvThemeCat_Core
-            )
-            # Text
-            dpg.add_theme_color(dpg.mvThemeCol_Text, C_TEXT, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_TextDisabled, C_TEXT_DIM, category=dpg.mvThemeCat_Core
-            )
-            # Buttons
-            dpg.add_theme_color(dpg.mvThemeCol_Button, C_BTN, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ButtonHovered, C_BTN_HOVER, category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ButtonActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
-            )
-            # Black border for all buttons
-            dpg.add_theme_color(dpg.mvThemeCol_Border, (0, 0, 0, 255), category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5, category=dpg.mvThemeCat_Core)
-            # Sliders / frames
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, C_FRAME, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_FrameBgHovered, C_FRAME_HOVER, category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_FrameBgActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
-            )
-            # Slider grab
-            dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, C_BRAND, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_SliderGrabActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
-            )
-            # Header (combo dropdown items)
-            dpg.add_theme_color(dpg.mvThemeCol_Header, C_BTN, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_HeaderHovered, C_BTN_HOVER, category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_HeaderActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
-            )
-            # Borders
-            dpg.add_theme_color(dpg.mvThemeCol_Border, C_BORDER, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(
-                dpg.mvThemeCol_BorderShadow, (0, 0, 0, 0), category=dpg.mvThemeCat_Core
-            )
-            # Scrollbar
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarBg, (*C_FRAME[:3], 240), category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarGrab, (190, 220, 235, 255), category=dpg.mvThemeCat_Core
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarGrabHovered,
-                (215, 235, 245, 255),
-                category=dpg.mvThemeCat_Core,
-            )
-            dpg.add_theme_color(
-                dpg.mvThemeCol_ScrollbarGrabActive,
-                (240, 255, 255, 255),
-                category=dpg.mvThemeCat_Core,
-            )
-            # Rounding — subtle, not pill-shaped
-            dpg.add_theme_style(dpg.mvStyleVar_ScrollbarSize, 14, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_ScrollbarRounding, 6, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 0, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_GrabRounding, 6, category=dpg.mvThemeCat_Core)
-            # Padding
-            dpg.add_theme_style(dpg.mvStyleVar_WindowPadding, 6, 4, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 6, 4, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 8, 4, category=dpg.mvThemeCat_Core)
-            # No border on windows
-            dpg.add_theme_style(dpg.mvStyleVar_WindowBorderSize, 0, category=dpg.mvThemeCat_Core)
+    with dpg.theme() as global_theme, dpg.theme_component(dpg.mvAll):
+        # Window backgrounds (fully opaque)
+        dpg.add_theme_color(
+            dpg.mvThemeCol_WindowBg,
+            (*C_BG_WINDOW[:3], 255),
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ChildBg,
+            (*C_BG_WINDOW[:3], 255),
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_PopupBg,
+            (*C_BG_TOOLBAR[:3], 255),
+            category=dpg.mvThemeCat_Core,
+        )
+        # Text
+        dpg.add_theme_color(dpg.mvThemeCol_Text, C_TEXT, category=dpg.mvThemeCat_Core)
+        dpg.add_theme_color(
+            dpg.mvThemeCol_TextDisabled, C_TEXT_DIM, category=dpg.mvThemeCat_Core
+        )
+        # Buttons
+        dpg.add_theme_color(dpg.mvThemeCol_Button, C_BTN, category=dpg.mvThemeCat_Core)
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ButtonHovered, C_BTN_HOVER, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ButtonActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
+        )
+        # Black border for all buttons
+        dpg.add_theme_color(
+            dpg.mvThemeCol_Border, (0, 0, 0, 255), category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_FrameBorderSize, 1.5, category=dpg.mvThemeCat_Core
+        )
+        # Sliders / frames
+        dpg.add_theme_color(
+            dpg.mvThemeCol_FrameBg, C_FRAME, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_FrameBgHovered,
+            C_FRAME_HOVER,
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_FrameBgActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
+        )
+        # Slider grab
+        dpg.add_theme_color(
+            dpg.mvThemeCol_SliderGrab, C_BRAND, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_SliderGrabActive,
+            C_BTN_ACTIVE,
+            category=dpg.mvThemeCat_Core,
+        )
+        # Header (combo dropdown items)
+        dpg.add_theme_color(dpg.mvThemeCol_Header, C_BTN, category=dpg.mvThemeCat_Core)
+        dpg.add_theme_color(
+            dpg.mvThemeCol_HeaderHovered, C_BTN_HOVER, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_HeaderActive, C_BTN_ACTIVE, category=dpg.mvThemeCat_Core
+        )
+        # Borders
+        dpg.add_theme_color(
+            dpg.mvThemeCol_Border, C_BORDER, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_BorderShadow, (0, 0, 0, 0), category=dpg.mvThemeCat_Core
+        )
+        # Scrollbar
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ScrollbarBg,
+            (*C_FRAME[:3], 240),
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ScrollbarGrab,
+            (190, 220, 235, 255),
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ScrollbarGrabHovered,
+            (215, 235, 245, 255),
+            category=dpg.mvThemeCat_Core,
+        )
+        dpg.add_theme_color(
+            dpg.mvThemeCol_ScrollbarGrabActive,
+            (240, 255, 255, 255),
+            category=dpg.mvThemeCat_Core,
+        )
+        # Rounding — subtle, not pill-shaped
+        dpg.add_theme_style(
+            dpg.mvStyleVar_ScrollbarSize, 14, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_ScrollbarRounding, 6, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_FrameRounding, 6, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_WindowRounding, 0, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_GrabRounding, 6, category=dpg.mvThemeCat_Core
+        )
+        # Padding
+        dpg.add_theme_style(
+            dpg.mvStyleVar_WindowPadding, 6, 4, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_FramePadding, 6, 4, category=dpg.mvThemeCat_Core
+        )
+        dpg.add_theme_style(
+            dpg.mvStyleVar_ItemSpacing, 8, 4, category=dpg.mvThemeCat_Core
+        )
+        # No border on windows
+        dpg.add_theme_style(
+            dpg.mvStyleVar_WindowBorderSize, 0, category=dpg.mvThemeCat_Core
+        )
 
     dpg.bind_theme(global_theme)

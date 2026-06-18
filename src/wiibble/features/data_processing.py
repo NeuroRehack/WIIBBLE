@@ -17,8 +17,10 @@ def calculate_force_deviation_kg(
 ) -> tuple:
     """
     Calculate x and y force deviations (in kg) from the four corner sensor readings.
-    x: Net left-right force (kg), positive = more weight on right, negative = more on left
-    y: Net front-back force (kg), positive = more weight forward, negative = more backward
+    x: Net left-right force (kg), positive = more weight on right,
+       negative = more on left
+    y: Net front-back force (kg), positive = more weight forward,
+       negative = more backward
     Returns (x, y) in kg.
     """
     # x axis: right sensors minus left sensors
@@ -132,7 +134,9 @@ def parse_data(data: list, data_struct: dict, scale_factor: float) -> dict:
     for key, val in data_struct.items():
         raw_index = val["rawIndex"]
         tare = val["tare"]
-        corners[key] = round((data[raw_index] + data[raw_index + 1] / 255 - tare) * scale_factor, 2)
+        corners[key] = round(
+            (data[raw_index] + data[raw_index + 1] / 255 - tare) * scale_factor, 2
+        )
     return corners
 
 
@@ -179,7 +183,8 @@ def compute_scale_factor(reference_kg: float, raw_load: float) -> float:
     """Derive kg/raw scale factor from a known reference mass and tared raw sum."""
     if raw_load <= 0 or reference_kg <= 0:
         raise ValueError(
-            f"reference_kg and raw_load must be positive, got {reference_kg}, {raw_load}"
+            f"reference_kg and raw_load must be positive, "
+            f"got {reference_kg}, {raw_load}"
         )
     factor = reference_kg / raw_load
     return max(SCALE_FACTOR_MIN, min(SCALE_FACTOR_MAX, factor))

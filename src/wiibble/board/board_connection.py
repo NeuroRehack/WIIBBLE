@@ -10,12 +10,21 @@ from pathlib import Path
 import clr
 from System import Activator, AppDomain
 
-from wiibble.board.exceptions import DeviceNotFoundError, DeviceProtocolError
+from wiibble.board.exceptions import (
+    DeviceConnectionError,
+    DeviceError,
+    DeviceNotFoundError,
+    DeviceProtocolError,
+)
 
 log = logging.getLogger(__name__)
 
 DLL_RELATIVE_PATH = (
-    Path("WiiBalanceBoardLibrary") / "bin" / "Debug" / "net48" / "WiiBalanceBoardLibrary.dll"
+    Path("WiiBalanceBoardLibrary")
+    / "bin"
+    / "Debug"
+    / "net48"
+    / "WiiBalanceBoardLibrary.dll"
 )
 SLEEP_INTERVAL = 0.1
 
@@ -33,19 +42,24 @@ def load_dll(dll_path: Path):
     """Load the DLL and add it to the Python environment."""
     clr.AddReference(str(dll_path))
     return next(
-        a for a in AppDomain.CurrentDomain.GetAssemblies() if "WiiBalanceBoardLibrary" in str(a)
+        a
+        for a in AppDomain.CurrentDomain.GetAssemblies()
+        if "WiiBalanceBoardLibrary" in str(a)
     )
 
 
 def get_class_types(assembly):
     """Retrieve the necessary class types from the loaded assembly."""
     try:
-        balance_board_manager = assembly.GetType("WiiBalanceBoardLibrary.BalanceBoardManager")
+        balance_board_manager = assembly.GetType(
+            "WiiBalanceBoardLibrary.BalanceBoardManager"
+        )
         balance_board_data_event_args = assembly.GetType(
             "WiiBalanceBoardLibrary.BalanceBoardDataEventArgs"
         )
         log.debug(
-            "Successfully accessed BalanceBoardManager and BalanceBoardDataEventArgs classes."
+            "Successfully accessed BalanceBoardManager "
+            "and BalanceBoardDataEventArgs classes."
         )
         return balance_board_manager, balance_board_data_event_args
     except Exception as exc:
@@ -59,7 +73,9 @@ def create_balance_board_manager(balance_board_manager):
         log.debug("Instance of BalanceBoardManager created.")
         return manager_instance
     except Exception as exc:
-        raise DeviceProtocolError(f"Error creating instance of BalanceBoardManager: {exc}") from exc
+        raise DeviceProtocolError(
+            f"Error creating instance of BalanceBoardManager: {exc}"
+        ) from exc
 
 
 def connect_balance_board(manager_instance) -> None:
@@ -68,7 +84,9 @@ def connect_balance_board(manager_instance) -> None:
         manager_instance.Connect()
         log.info("Connected to the balance board. Waiting for data...")
     except Exception as exc:
-        raise DeviceProtocolError(f"Error connecting to the balance board: {exc}") from exc
+        raise DeviceProtocolError(
+            f"Error connecting to the balance board: {exc}"
+        ) from exc
 
 
 def disconnect_balance_board(manager_instance) -> None:
@@ -92,6 +110,27 @@ def on_balance_board_data_received(sender, event_args) -> None:
     )
 
 
+def connect_board(dll_path: str | Path | None = None) -> None:
+    """Trigger the OS-level Bluetooth handshake via the C# DLL.
+
+    Raises:
+        DeviceError: If the DLL cannot be loaded or connect fails.
+    """
+    try:
+        resolved = get_dll_path() if dll_path is None else Path(dll_path).resolve()
+        assembly = load_dll(resolved)
+        balance_board_manager, _ = get_class_types(assembly)
+        manager_instance = create_balance_board_manager(balance_board_manager)
+        try:
+            connect_balance_board(manager_instance)
+        finally:
+            disconnect_balance_board(manager_instance)
+    except DeviceError:
+        raise
+    except Exception as exc:
+        raise DeviceConnectionError(str(exc)) from exc
+
+
 def try_connection(dll_path: str | Path | None = None, mock_mode: bool = False) -> int:
     """Try to connect to the Wii Balance Board.
 
@@ -101,24 +140,12 @@ def try_connection(dll_path: str | Path | None = None, mock_mode: bool = False) 
     if mock_mode:
         log.debug("Skipping DLL connection in mock mode.")
         return 0
-
-    manager_instance = None
     try:
-        resolved = get_dll_path() if dll_path is None else Path(dll_path).resolve()
-        assembly = load_dll(resolved)
-        balance_board_manager, _ = get_class_types(assembly)
-        manager_instance = create_balance_board_manager(balance_board_manager)
-        connect_balance_board(manager_instance)
+        connect_board(dll_path)
         return 0
-    except Exception:
-        log.exception("An error occurred in try_connection")
+    except DeviceError:
+        log.exception("Board connection failed")
         return 1
-    finally:
-        if manager_instance is not None:
-            try:
-                disconnect_balance_board(manager_instance)
-            except Exception:
-                pass
 
 
 if __name__ == "__main__":

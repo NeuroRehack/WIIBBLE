@@ -31,7 +31,9 @@ analysis = [
     "statsmodels>=0.14.2",
 ]
 dev = [
+    "commitizen>=4.0",
     "nuitka>=2.0",
+    "pip-audit>=2.10",
     "pre-commit>=4.0",
     "pytest>=7.0",
     "pytest-cov>=5.0",
@@ -55,13 +57,18 @@ build-backend = "setuptools.build_meta"
 package = true
 
 [tool.ruff]
-line-length = 100
+line-length = 88
 target-version = "py311"
 exclude = ["src/code_descriptors_postural_control"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+select = ["E", "F", "I", "UP", "N", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/wiibble/cli/*.py" = ["B008"]
+"src/wiibble/cli/report.py" = ["B008", "E501"]
+"src/wiibble/session.py" = ["N806"]
+"src/wiibble/ui/ui.py" = ["SIM117"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -71,6 +78,10 @@ addopts = [
     "--cov=wiibble.features.data_processing",
     "--cov=wiibble.utils.state",
     "--cov=wiibble.board.recording",
+    "--cov=wiibble.session_actions",
+    "--cov=wiibble.utils.recording_names",
+    "--cov=wiibble.board.acquisition",
+    "--cov=wiibble.board.exceptions",
     "--cov-report=term-missing",
     "--cov-fail-under=80",
 ]
@@ -96,9 +107,3 @@ version = "2.0.1"
 version_files = ["pyproject.toml:version"]
 tag_format = "v$version"
 update_changelog_on_bump = false
-
-[dependency-groups]
-dev = [
-    "commitizen>=4.16.3",
-    "pip-audit>=2.10.1",
-]

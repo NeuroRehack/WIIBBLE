@@ -18,7 +18,9 @@ def _use_recording_dir(tmp_path, monkeypatch, dirname: str = "recordings"):
     rec_dir = tmp_path / dirname
     rec_dir.mkdir()
     settings_path = tmp_path / "settings.json"
-    settings_path.write_text(json.dumps({"recording_dir": str(rec_dir)}), encoding="utf-8")
+    settings_path.write_text(
+        json.dumps({"recording_dir": str(rec_dir)}), encoding="utf-8"
+    )
     monkeypatch.setenv("WIIBBLE_SETTINGS_PATH", str(settings_path))
     return rec_dir
 
@@ -48,7 +50,9 @@ def test_process_recordings_skips_short_recording(tmp_path, monkeypatch):
     """Recordings shorter than the minimum duration are skipped."""
     rec_dir = _use_recording_dir(tmp_path, monkeypatch)
     csv_path = rec_dir / "recording_test.csv"
-    csv_path.write_text("# total_weight_kg=70.0\n0.0,0.1,0.2\n1.0,0.1,0.2\n", encoding="utf-8")
+    csv_path.write_text(
+        "# total_weight_kg=70.0\n0.0,0.1,0.2\n1.0,0.1,0.2\n", encoding="utf-8"
+    )
 
     result = runner.invoke(process_app, [str(csv_path)])
     assert result.exit_code == 0
@@ -85,7 +89,9 @@ def test_report_success(tmp_path):
         encoding="utf-8",
     )
 
-    with patch("wiibble.cli.report.generate_report", return_value=str(tmp_path / "out.html")):
+    with patch(
+        "wiibble.cli.report.generate_report", return_value=str(tmp_path / "out.html")
+    ):
         result = runner.invoke(report_app, [str(csv_path)])
 
     assert result.exit_code == 0
@@ -109,7 +115,9 @@ def test_report_new_skips_existing_report(tmp_path, monkeypatch):
         "time (s),x (kg),y (kg)\n" + "\n".join(f"{i:.1f},0.1,0.2" for i in range(300)),
         encoding="utf-8",
     )
-    (rec_dir / "report_20260101_120000.html").write_text("<html></html>", encoding="utf-8")
+    (rec_dir / "report_20260101_120000.html").write_text(
+        "<html></html>", encoding="utf-8"
+    )
 
     result = runner.invoke(report_app, ["--new"])
     assert result.exit_code == 1

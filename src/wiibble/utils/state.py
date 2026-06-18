@@ -6,13 +6,13 @@ import platform
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from wiibble.board.recording import normalize_recording_prefix
 from wiibble.utils.constants import (
     SCALE_FACTOR_DEFAULT,
     TARGET_DWELL_DEFAULT,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
 )
+from wiibble.utils.recording_names import normalize_recording_prefix
 
 log = logging.getLogger(__name__)
 
@@ -47,13 +47,17 @@ class Settings:
     show_global_axes: bool = True  # solid crosshairs at screen centre
     show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
-    target_dwell_seconds: int = TARGET_DWELL_DEFAULT  # hold time to increment hit counter
+    target_dwell_seconds: int = (
+        TARGET_DWELL_DEFAULT  # hold time to increment hit counter
+    )
     show_target_counter: bool = True  # whether to show the on-screen hit counter
     flip_horizontal: bool = False  # invert left-right display and recording mapping
     flip_vertical: bool = False  # invert forward-back display and recording mapping
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
     recording_prefix: str = ""  # filename prefix ("" = use default "recording")
-    body_weight_kg: float = 70.0  # reference body weight for cursor normalization and recordings
+    body_weight_kg: float = (
+        70.0  # reference body weight for cursor normalization and recordings
+    )
     scale_factor: float = SCALE_FACTOR_DEFAULT  # HID raw → kg conversion for this board
     board_cal_reference_kg: float = 20.0  # known mass used for board scale calibration
 
@@ -95,7 +99,8 @@ class Settings:
             if isinstance(loaded.target_dwell_seconds, float):
                 loaded.target_dwell_seconds = int(round(loaded.target_dwell_seconds))
             loaded.target_dwell_seconds = max(
-                TARGET_DWELL_MIN, min(TARGET_DWELL_MAX, int(loaded.target_dwell_seconds))
+                TARGET_DWELL_MIN,
+                min(TARGET_DWELL_MAX, int(loaded.target_dwell_seconds)),
             )
             raw_prefix = loaded.recording_prefix
             loaded.recording_prefix = normalize_recording_prefix(raw_prefix)
@@ -119,7 +124,9 @@ class AppState:
     screen_width: float = 1280
     screen_height: float = 720
     weight: float = 0.1  # calibrated body weight from sensitivity_calibration()
-    scale_factor: float = SCALE_FACTOR_DEFAULT  # runtime HID → kg factor (synced from settings)
+    scale_factor: float = (
+        SCALE_FACTOR_DEFAULT  # runtime HID → kg factor (synced from settings)
+    )
 
     # Current cursor position in screen pixels — updated every frame.
     # Stored here so click handlers can access it without frame-ordering issues.
@@ -205,7 +212,9 @@ class AppState:
 
     # Target dwell hit counter — session runtime only
     target_hit_count: int = 0
-    _target_dwell_elapsed: dict = field(default_factory=dict)  # per-target seconds while armed
+    _target_dwell_elapsed: dict = field(
+        default_factory=dict
+    )  # per-target seconds while armed
     _target_dwell_disarmed: set = field(
         default_factory=set
     )  # targets awaiting exit before re-count

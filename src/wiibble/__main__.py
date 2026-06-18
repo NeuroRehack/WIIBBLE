@@ -11,12 +11,23 @@ import typer
 from wiibble.session import run
 from wiibble.ui.theme import apply_global_theme, load_fonts
 from wiibble.utils.display import get_screen_size
-from wiibble.utils.logging_config import configure_logging, install_uncaught_exception_hook
+from wiibble.utils.logging_config import (
+    configure_logging,
+    install_uncaught_exception_hook,
+)
 from wiibble.utils.state import AppState, Settings
 
 log = logging.getLogger(__name__)
 
-MOCK_SCENARIOS = ["sway", "still", "lean_left", "lean_right", "hands", "step_on_off", "calibration"]
+MOCK_SCENARIOS = [
+    "sway",
+    "still",
+    "lean_left",
+    "lean_right",
+    "hands",
+    "step_on_off",
+    "calibration",
+]
 
 app = typer.Typer(
     name="wiibble",
@@ -50,13 +61,16 @@ def main(
 
     if mock_scenario.lower() not in MOCK_SCENARIOS:
         typer.echo(
-            f"Invalid mock scenario {mock_scenario!r}. Choose from: {', '.join(MOCK_SCENARIOS)}",
+            "Invalid mock scenario "
+            f"{mock_scenario!r}. Choose from: {', '.join(MOCK_SCENARIOS)}",
             err=True,
         )
         raise typer.Exit(code=1)
 
     options = LaunchOptions(mock=mock, mock_scenario=mock_scenario.lower())
-    log.info("Starting WIIBBLE (mock=%s, scenario=%s)", options.mock, options.mock_scenario)
+    log.info(
+        "Starting WIIBBLE (mock=%s, scenario=%s)", options.mock, options.mock_scenario
+    )
 
     try:
         dpg.create_context()

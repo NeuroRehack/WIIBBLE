@@ -90,8 +90,12 @@ def _process_file(
     try:
         t0 = time.time()
         features = analyse_recording(str(csv_path), total_weight_kg=total_weight_kg)
-        json_path.write_text(json.dumps(features, indent=2, default=str), encoding="utf-8")
-        log.info("    JSON written: %s (total %.2f s)", json_path.name, time.time() - t0)
+        json_path.write_text(
+            json.dumps(features, indent=2, default=str), encoding="utf-8"
+        )
+        log.info(
+            "    JSON written: %s (total %.2f s)", json_path.name, time.time() - t0
+        )
 
         if with_report:
             try:
@@ -125,12 +129,18 @@ def main(
     process_new: bool = typer.Option(
         False,
         "--new",
-        help="Process unanalysed CSVs in the configured recordings directory (skip existing JSON sidecars)",
+        help=(
+            "Process unanalysed CSVs in the configured recordings directory "
+            "(skip existing JSON sidecars)"
+        ),
     ),
     reprocess_all: bool = typer.Option(
         False,
         "--all",
-        help="Reprocess all CSVs in the configured recordings directory, overwriting JSON sidecars",
+        help=(
+            "Reprocess all CSVs in the configured recordings directory, "
+            "overwriting JSON sidecars"
+        ),
     ),
     weight: float | None = typer.Option(
         None,
@@ -172,12 +182,15 @@ def main(
     with_report = not no_report
     log.info("Processing %d file(s)...", len(csv_files))
     succeeded = sum(
-        _process_file(p, total_weight_kg=weight, overwrite=overwrite, with_report=with_report)
+        _process_file(
+            p, total_weight_kg=weight, overwrite=overwrite, with_report=with_report
+        )
         for p in csv_files
     )
     elapsed = time.time() - start_all
     typer.echo(
-        f"Done - {succeeded}/{len(csv_files)} file(s) analysed in {elapsed:.1f} seconds.",
+        f"Done - {succeeded}/{len(csv_files)} file(s) analysed "
+        f"in {elapsed:.1f} seconds.",
         err=True,
     )
 

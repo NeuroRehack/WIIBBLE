@@ -1199,21 +1199,18 @@ analysis = [
     { name = "statsmodels" },
 ]
 dev = [
+    { name = "commitizen" },
     { name = "nuitka" },
+    { name = "pip-audit" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "commitizen" },
-    { name = "pip-audit" },
-]
-
 [package.metadata]
 requires-dist = [
+    { name = "commitizen", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "dearpygui", specifier = "==2.1.1" },
     { name = "hidapi", specifier = ">=0.14.0.post4" },
     { name = "jinja2", specifier = ">=3.1" },
@@ -1221,6 +1218,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26,<3" },
     { name = "pandas", specifier = ">=1.5" },
     { name = "pandas", marker = "extra == 'analysis'", specifier = ">=1.5" },
+    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10" },
     { name = "plotly", specifier = ">=5.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
@@ -1238,12 +1236,6 @@ requires-dist = [
     { name = "typer", specifier = ">=0.26.7" },
 ]
 provides-extras = ["analysis", "dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "commitizen", specifier = ">=4.16.3" },
-    { name = "pip-audit", specifier = ">=2.10.1" },
-]
 
 [[package]]
 name = "wrapt"

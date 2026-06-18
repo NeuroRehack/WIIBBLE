@@ -123,7 +123,9 @@ CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
 # Cursor size limits (circle mode only)
 CURSOR_SIZE_MIN = 1  # minimum circle cursor radius in pixels
 CURSOR_SIZE_MAX = 50  # maximum circle cursor radius in pixels
-CURSOR_DRAG_THRESHOLD = 5  # px size-delta below which a cursor press is treated as a click
+CURSOR_DRAG_THRESHOLD = (
+    5  # px size-delta below which a cursor press is treated as a click
+)
 
 # Target dwell counter — hold time required to increment hit count (whole seconds)
 TARGET_DWELL_MIN = 0
@@ -133,7 +135,8 @@ TARGET_DWELL_DEFAULT = 1
 # ---------------------------------------------------------------------------
 # Wii Balance Board platform geometry
 # Source: Leach et al. (2014) Sensors 14:18244-18267, doi:10.3390/s141018244, Figure 3.
-# X = 433 mm (mediolateral sensor-to-sensor), Y = 238 mm (anteroposterior sensor-to-sensor)
+# X = 433 mm (mediolateral sensor-to-sensor),
+# Y = 238 mm (anteroposterior sensor-to-sensor)
 # Half-distances in cm are used in the CoP formula (Leach et al. 2014, Equation 1):
 #   CoP_ML_cm = WBB_SENSOR_DIST_ML_CM * (F_R - F_L) / F_total
 #   CoP_AP_cm = WBB_SENSOR_DIST_AP_CM * (F_T - F_B) / F_total
@@ -145,5 +148,9 @@ WBB_SENSOR_DIST_AP_CM = 11.9  # Y/2 = 238 mm / 2, in cm (anteroposterior half-di
 # C# board library DLL — built by: cd WiiBalanceBoardLibrary && dotnet build
 # ---------------------------------------------------------------------------
 DLL_RELATIVE_PATH = str(
-    Path("WiiBalanceBoardLibrary") / "bin" / "Debug" / "net48" / "WiiBalanceBoardLibrary.dll"
+    Path("WiiBalanceBoardLibrary")
+    / "bin"
+    / "Debug"
+    / "net48"
+    / "WiiBalanceBoardLibrary.dll"
 )

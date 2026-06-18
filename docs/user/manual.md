@@ -175,7 +175,7 @@ This pairing persists — you do not need to repeat it each session.
 
 ### Case 2 — MAC address contains "00" (per-session pairing)
 
-Permanent pairing is not supported by this adapter type. Pair each session via:  
+Permanent pairing is not supported by this adapter type. Pair each session via:
 **Control Panel → Hardware and Sound → Devices and Printers**
 
 You may need to remove and re-pair if you switch adapters or restart Windows.

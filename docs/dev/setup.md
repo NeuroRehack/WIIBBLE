@@ -187,6 +187,7 @@ Use `just` as the primary entry point for quality checks. Run `just` or `just --
 | `just test` | Run pytest |
 | `just coverage` | Pytest with coverage report |
 | `just check` | Pre-commit hooks on all files |
+| `just audit` | Scan dependencies for known CVEs (`pip-audit`) |
 
 Install pre-commit hooks once after cloning:
 

@@ -85,6 +85,20 @@ omit = [
     "src/wiibble/ui/theme.py",
     "src/wiibble/ui/calibration_flow.py",
     "src/wiibble/board/board_connection.py",
+    "src/wiibble/board/acquisition.py",
     "src/wiibble/board/mock_board.py",
     "src/wiibble/utils/resources.py",
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "2.0.1"
+version_files = ["pyproject.toml:version"]
+tag_format = "v$version"
+update_changelog_on_bump = false
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.16.3",
+    "pip-audit>=2.10.1",
 ]

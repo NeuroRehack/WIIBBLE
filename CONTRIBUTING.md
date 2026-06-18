@@ -127,5 +127,3 @@ Open a GitHub Issue with:
 - Steps to reproduce
 - Expected vs actual behaviour
 - Relevant lines from `~/.wiibble/wiibble.log`
-
-

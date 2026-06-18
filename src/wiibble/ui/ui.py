@@ -4,14 +4,14 @@
 # window chrome around the canvas. UI controls sit in a separate overlay window.
 
 import math
-import os
 import time
 
 import dearpygui.dearpygui as dpg
 
 import wiibble.ui.theme as _theme_module
-from wiibble.board.recording import normalize_recording_prefix
+from wiibble.board.recording import DEFAULT_RECORDING_DIR, normalize_recording_prefix
 from wiibble.features.data_processing import logical_to_viewport
+from wiibble.session_recording import toggle_recording
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -790,21 +790,8 @@ def _on_record_duration_change(value: int, settings, app_state) -> None:
 
 def _on_start_recording(app_state, settings) -> None:
     """Start or stop a recording session from the controls toolbar."""
-    if app_state.is_recording or app_state.is_countdown:
-        app_state.is_recording = False
-        app_state.is_countdown = False
-        sync_recording_buttons(recording_active=False)
-        app_state.recording_indicator = False
-        app_state.stopwatch_elapsed = 0.0
-        return  # Prevent double start
-    app_state.is_countdown = True
-    app_state.countdown_value = 4
-    # Use a sentinel value for indefinite recording; app.py checks settings.record_indefinite
-    app_state.record_duration = settings.record_duration
-    app_state.record_buffer = []
-    app_state.recording_indicator = False
-    app_state.stopwatch_elapsed = 0.0
-    sync_recording_buttons(recording_active=True)
+    active = toggle_recording(app_state, settings)
+    sync_recording_buttons(recording_active=active)
 
 
 def _clamp_body_weight(value: float) -> float:
@@ -938,8 +925,7 @@ def _on_recording_prefix_change(value: str, settings) -> None:
 
 def _open_recording_dir_picker(settings) -> None:
     """Open the Dear PyGui file dialog in directory mode (light theme override)."""
-    documents = os.path.join(os.path.expanduser("~"), "Documents")
-    default_dir = os.path.join(documents, "WIIBBLE", "recordings")
+    default_dir = str(DEFAULT_RECORDING_DIR)
     initial = settings.recording_dir or default_dir
 
     # Create a more detailed light theme for the dialog if not already present
@@ -1143,8 +1129,7 @@ def _build_recording_controls(app_state, settings) -> None:
     dpg.add_spacer(height=8)
     # Save location
     dpg.add_text("Save location")
-    documents = os.path.join(os.path.expanduser("~"), "Documents")
-    _default_dir = os.path.join(documents, "WIIBBLE", "recordings")
+    _default_dir = str(DEFAULT_RECORDING_DIR)
     _display_dir = settings.recording_dir if settings.recording_dir else _default_dir
     dpg.add_text(_display_dir, tag="recording_dir_label", wrap=PANEL_BTN_W)
     dpg.add_spacer(height=4)

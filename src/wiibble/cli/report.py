@@ -29,7 +29,6 @@ from __future__ import annotations
 import datetime
 import json
 import logging
-import os
 import re
 import time
 from pathlib import Path
@@ -960,22 +959,23 @@ _HTML_TEMPLATE = """\
 
 def _find_features_json(csv_path: str) -> str | None:
     """Locate the features JSON that matches the CSV timestamp, if it exists."""
-    dirname = os.path.dirname(csv_path)
-    stem = os.path.splitext(os.path.basename(csv_path))[0]
+    csv = Path(csv_path)
+    dirname = csv.parent
+    stem = csv.stem
 
-    candidates = [os.path.join(dirname, f"features_{stem}.json")]
+    candidates = [dirname / f"features_{stem}.json"]
     if stem.startswith("recording_"):
-        candidates.append(os.path.join(dirname, f"features_{stem[len('recording_') :]}.json"))
+        candidates.append(dirname / f"features_{stem[len('recording_') :]}.json")
     m = re.search(r"(\d{12})$", stem)
     if m:
-        candidates.append(os.path.join(dirname, f"features_{m.group(1)}.json"))
+        candidates.append(dirname / f"features_{m.group(1)}.json")
     m = re.search(r"(\d{8}_\d{6})", stem)
     if m:
-        candidates.append(os.path.join(dirname, f"features_{m.group(1)}.json"))
+        candidates.append(dirname / f"features_{m.group(1)}.json")
 
     for candidate in candidates:
-        if os.path.isfile(candidate):
-            return candidate
+        if candidate.is_file():
+            return str(candidate)
     return None
 
 
@@ -999,9 +999,10 @@ def generate_report(
         Absolute path of the written HTML file.
     """
     start_all = time.time()
-    csv_path = os.path.abspath(csv_path)
-    if not os.path.isfile(csv_path):
-        raise FileNotFoundError(f"CSV not found: {csv_path}")
+    csv_file = Path(csv_path).resolve()
+    if not csv_file.is_file():
+        raise FileNotFoundError(f"CSV not found: {csv_file}")
+    csv_path = str(csv_file)
 
     # ── Features JSON ────────────────────────────────────────────────────────
     if features_path is None:
@@ -1011,13 +1012,12 @@ def generate_report(
         else:
             log.warning(
                 "No matching features JSON found for '%s'. Feature table will be omitted.",
-                os.path.basename(csv_path),
+                Path(csv_path).name,
             )
 
     features: dict | None = None
-    if features_path and os.path.isfile(features_path):
-        with open(features_path) as f:
-            features = json.load(f)
+    if features_path and Path(features_path).is_file():
+        features = json.loads(Path(features_path).read_text(encoding="utf-8"))
 
     log.info(f"Loading recording CSV: {csv_path}")
     data, metadata = load_recording(csv_path)
@@ -1032,7 +1032,7 @@ def generate_report(
     log.info("Signal processing complete.")
 
     # ── Session metadata for header ──────────────────────────────────────────
-    m = re.search(r"(\d{8}_\d{6})", os.path.basename(csv_path))
+    m = re.search(r"(\d{8}_\d{6})", csv_file.name)
     if m:
         raw_ts = m.group(1)
         session_date = datetime.datetime.strptime(raw_ts, "%Y%m%d_%H%M%S").strftime(
@@ -1071,7 +1071,7 @@ def generate_report(
         session_date=session_date,
         weight_kg=f"{weight_kg:.1f}",
         duration_s=f"{duration_s:.1f}",
-        source_file=os.path.basename(csv_path),
+        source_file=csv_file.name,
         generated_at=datetime.datetime.now().strftime("%d %b %Y %H:%M"),
         fig_table=div_map.get("fig_table"),
         **{k: v for k, v in div_map.items() if k != "fig_table"},
@@ -1080,25 +1080,24 @@ def generate_report(
     # ── Write output ─────────────────────────────────────────────────────────
     log.info("Writing HTML report to disk…")
     if out_path is None:
-        basename = os.path.basename(csv_path)
-        stem = os.path.splitext(basename)[0]
+        stem = csv_file.stem
         m = re.search(r"(\d{12})$", stem)
         if not m:
-            m = re.search(r"(\d{8}_\d{6})", basename)
+            m = re.search(r"(\d{8}_\d{6})", csv_file.name)
         if m:
             ts = m.group(1)
-            out_path = os.path.join(os.path.dirname(csv_path), f"report_{ts}.html")
+            out_file = csv_file.parent / f"report_{ts}.html"
         else:
-            # Fallback: use datetime now if the format is not as expected
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            out_path = os.path.join(os.path.dirname(csv_path), f"report_{ts}.html")
-    out_path = os.path.abspath(out_path)
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(html)
+            out_file = csv_file.parent / f"report_{ts}.html"
+    else:
+        out_file = Path(out_path)
+    out_file = out_file.resolve()
+    out_file.write_text(html, encoding="utf-8")
     elapsed = time.time() - start_all
-    log.info(f"Report written to {out_path} in {elapsed:.2f} seconds.")
-    log.info("Report written to %s (%.2f s total)", out_path, elapsed)
-    return out_path
+    log.info(f"Report written to {out_file} in {elapsed:.2f} seconds.")
+    log.info("Report written to %s (%.2f s total)", out_file, elapsed)
+    return str(out_file)
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # WIIBBLE — Open Issues & Roadmap
 
-This file tracks open work. Completed items have been moved to [CHANGELOG.md](../CHANGELOG.md).  
+This file tracks open work. Completed items have been moved to [CHANGELOG.md](../CHANGELOG.md).
 For major architectural proposals see [decisions/](decisions/).
 
 ---
@@ -14,7 +14,7 @@ For major architectural proposals see [decisions/](decisions/).
 
 ## 🟡 Code Quality
 
-- [ ] Further refactor `wiibble/app.py` (e.g. extract `wiibble/session.py`) for remaining logic
+- [x] Extract session lifecycle into `wiibble/session.py` (`app.py` is now a thin re-export)
 - [ ] Move C# interop code from `wiibble/board/board_connection.py` into a dedicated `wiibble/board/hardware_interface.py`
 - [ ] Add `utils.py` for shared helper functions that don't fit elsewhere
 
@@ -41,5 +41,6 @@ Status: **Proposed** — pending prototype spike.
 
 ## 🟢 CI Gaps
 
-- [ ] Add workflow to build the C# DLL (`dotnet build`) on push
-- [ ] Add workflow to build the Nuitka executable and archive as a CI artifact
+- [x] Add workflow to build the C# DLL (`dotnet build`) on push
+- [x] Add `pip-audit` security job to CI
+- [ ] Nuitka executable build in CI on every push (use manual [Build (develop)](../.github/workflows/build-develop.yml) workflow for QA artifacts)

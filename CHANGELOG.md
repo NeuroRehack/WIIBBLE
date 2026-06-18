@@ -1,7 +1,7 @@
 # Changelog
 
-All notable changes to WIIBBLE are documented here.  
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).  
+All notable changes to WIIBBLE are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/).
 
 ---

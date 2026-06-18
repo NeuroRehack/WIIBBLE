@@ -4,8 +4,6 @@ This module is responsible for serializing recording buffers to timestamped
 CSV files under the recordings directory.
 """
 
-# recording.py
-# CSV recording output — extracted from app.py to enable isolated unit testing.
 import csv
 import datetime
 import logging
@@ -15,6 +13,7 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 DEFAULT_RECORDING_PREFIX = "recording"
+DEFAULT_RECORDING_DIR = Path.home() / "Documents" / "WIIBBLE" / "recordings"
 RECORDING_PREFIX_MAX_LEN = 40
 _INVALID_PREFIX_CHARS = re.compile(r"[^A-Za-z0-9_-]")
 _WINDOWS_RESERVED_NAMES = frozenset(
@@ -101,7 +100,7 @@ def _save_recording_csv(
     Returns the absolute path of the written file.
     """
     if not out_dir:
-        out_path = Path.home() / "Documents" / "WIIBBLE" / "recordings"
+        out_path = DEFAULT_RECORDING_DIR
     else:
         out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)

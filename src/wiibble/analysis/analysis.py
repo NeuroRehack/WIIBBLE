@@ -25,7 +25,7 @@ Recording filter note:
 """
 
 import logging
-import os
+from pathlib import Path
 
 import numpy as np
 
@@ -184,7 +184,7 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
         log.warning(
             "Recording '%s' is only %.1f s long. "
             "At least 30 s is recommended for reliable posturographic estimates.",
-            os.path.basename(path),
+            Path(path).name,
             duration_s,
         )
 
@@ -201,7 +201,7 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
     features = compute_all_features(stabilogram)
 
     # ---- Provenance ---------------------------------------------------------
-    features["source_file"] = os.path.basename(path)
+    features["source_file"] = Path(path).name
     features["total_weight_kg"] = weight_kg
     features["ui_filter_window"] = fw
     features["n_samples_raw"] = len(data)
@@ -209,7 +209,7 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
 
     log.info(
         "Analysed '%s': %d features, %.1f s, %.0f Hz raw → 25 Hz resampled",
-        os.path.basename(path),
+        Path(path).name,
         len(features),
         duration_s,
         len(data) / duration_s if duration_s > 0 else 0,

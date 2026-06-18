@@ -1,7 +1,7 @@
 # Visualisation References & Justifications
 
-**Applies to:** `report.py` v1.x  
-**Last reviewed:** 2025-01  
+**Applies to:** `report.py` v1.x
+**Last reviewed:** 2025-01
 **Maintainer:** Update this document whenever a figure is added, removed, or changed in `report.py`.
 
 This document provides the literature basis for each visualisation included in the WIIBBLE posturographic report. Where a visualisation has been revised or added relative to the original `VISUALISATION_IDEAS.md`, the rationale is noted.

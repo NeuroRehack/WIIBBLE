@@ -65,8 +65,7 @@ def test_report_success(tmp_path):
     csv_path = tmp_path / "recording_20260101_120000.csv"
     csv_path.write_text(
         "# total_weight_kg=70.0\n"
-        "time (s),x (kg),y (kg)\n"
-        + "\n".join(f"{i:.1f},0.1,0.2" for i in range(300)),
+        "time (s),x (kg),y (kg)\n" + "\n".join(f"{i:.1f},0.1,0.2" for i in range(300)),
         encoding="utf-8",
     )
 

@@ -50,8 +50,7 @@ def main(
 
     if mock_scenario.lower() not in MOCK_SCENARIOS:
         typer.echo(
-            f"Invalid mock scenario {mock_scenario!r}. "
-            f"Choose from: {', '.join(MOCK_SCENARIOS)}",
+            f"Invalid mock scenario {mock_scenario!r}. Choose from: {', '.join(MOCK_SCENARIOS)}",
             err=True,
         )
         raise typer.Exit(code=1)

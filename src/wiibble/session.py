@@ -11,6 +11,7 @@ import dearpygui.dearpygui as dpg
 import hid
 
 import wiibble.ui.theme as _theme_module
+from wiibble.board.acquisition import SensorAcquisition
 from wiibble.board.mock_board import MockHIDDevice
 from wiibble.board.recording import _save_recording_csv
 from wiibble.features.data_processing import (
@@ -19,7 +20,6 @@ from wiibble.features.data_processing import (
     calculate_coordinates,
     calculate_force_deviation_kg,
     parse_data,
-    read_latest_data,
     tare,
 )
 from wiibble.ui.calibration_flow import (
@@ -380,6 +380,20 @@ def _reset_pan(app_state) -> None:
     app_state.pan_offset_y = 0.0
 
 
+def _pause_acquisition(session_state: dict) -> None:
+    """Pause background HID reads when calibration needs exclusive device access."""
+    acquisition = session_state.get("acquisition")
+    if acquisition is not None:
+        acquisition.pause()
+
+
+def _resume_acquisition(session_state: dict) -> None:
+    """Resume background HID reads after calibration completes."""
+    acquisition = session_state.get("acquisition")
+    if acquisition is not None:
+        acquisition.resume()
+
+
 def _handle_session_action(action, device, dl, app_state, settings, session_state):
     """Process a toolbar action request and return a loop result if a session restart is needed."""
     if action == "restart":
@@ -412,6 +426,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         return None
     if action == "calibrate":
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
+        _pause_acquisition(session_state)
         try:
             weight = run_board_weight_calibration(device, dl, app_state, app_state.scale_factor)
             if weight > 0:
@@ -421,11 +436,13 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
                 if dpg.does_item_exist("body_weight_input"):
                     dpg.set_value("body_weight_input", weight)
         finally:
+            _resume_acquisition(session_state)
             _restore_ui_after_calibration(session_state, was_toolbar_visible)
         _clear_session_action(session_state)
         return None
     if action == "calibrate_scale":
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
+        _pause_acquisition(session_state)
         try:
             ref_kg = settings.board_cal_reference_kg
             new_factor = run_board_scale_calibration(
@@ -439,6 +456,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
                     device.set_scale_factor(new_factor)
                 update_scale_factor_label(settings)
         finally:
+            _resume_acquisition(session_state)
             _restore_ui_after_calibration(session_state, was_toolbar_visible)
         _clear_session_action(session_state)
         return None
@@ -495,7 +513,7 @@ def _prepare_session(dl, app_state, settings, session_state, args):
 
 
 def _render_main_screen_frame(
-    device,
+    acquisition,
     dl,
     app_state,
     settings,
@@ -508,7 +526,7 @@ def _render_main_screen_frame(
 ):
     """Render the main session frame when sensor data is available."""
     frame_state, reports_drained = _process_frame_data(
-        device,
+        acquisition,
         app_state,
         settings,
         top_left,
@@ -556,7 +574,7 @@ def _render_main_screen_frame(
 
 
 def _process_frame_data(
-    device,
+    acquisition,
     app_state,
     settings,
     top_left: float,
@@ -565,7 +583,7 @@ def _process_frame_data(
     bottom_right: float,
 ):
     """Read sensor data and update runtime cursor state for the current frame."""
-    data, reports_drained = read_latest_data(device)
+    data, reports_drained = acquisition.drain_latest()
     if not data:
         return None, reports_drained
 
@@ -789,6 +807,10 @@ def _run_session(app_state, settings, args) -> int:
 
 def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     """Execute the main session render loop and return a session result."""
+    acquisition = SensorAcquisition(device)
+    acquisition.start()
+    session_state["acquisition"] = acquisition
+
     # Extents now stored in app_state so zoom callback can rescale them live.
     # app_state.reset() already zeroes these — nothing else needed here.
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
@@ -808,50 +830,51 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     top_left = top_right = bottom_left = bottom_right = 0.0
     diagnostics = _LoopDiagnostics()
 
-    while dpg.is_dearpygui_running():
-        now = time.time()
-        record_start_time, last_countdown_tick = _update_countdown_and_recording(
-            now,
-            last_countdown_tick,
-            record_start_time,
-            app_state,
-            settings,
-            top_left,
-            top_right,
-            bottom_left,
-            bottom_right,
-        )
-        _flush_record_buffer_if_complete(app_state, settings)
-        # Visual feedback overlays are now drawn in ui.draw_main_screen
+    try:
+        while dpg.is_dearpygui_running():
+            now = time.time()
+            record_start_time, last_countdown_tick = _update_countdown_and_recording(
+                now,
+                last_countdown_tick,
+                record_start_time,
+                app_state,
+                settings,
+                top_left,
+                top_right,
+                bottom_left,
+                bottom_right,
+            )
+            _flush_record_buffer_if_complete(app_state, settings)
 
-        action = session_state.get("action")
-        result = _handle_session_action(action, device, dl, app_state, settings, session_state)
-        if result is not None:
-            return result
+            action = session_state.get("action")
+            result = _handle_session_action(action, device, dl, app_state, settings, session_state)
+            if result is not None:
+                return result
 
-        _handle_viewport_resize(app_state, settings, session_state)
+            _handle_viewport_resize(app_state, settings, session_state)
 
-        top_left, top_right, bottom_left, bottom_right = _render_main_screen_frame(
-            device,
-            dl,
-            app_state,
-            settings,
-            session_state,
-            top_left,
-            top_right,
-            bottom_left,
-            bottom_right,
-            diagnostics=diagnostics,
-        )
+            top_left, top_right, bottom_left, bottom_right = _render_main_screen_frame(
+                acquisition,
+                dl,
+                app_state,
+                settings,
+                session_state,
+                top_left,
+                top_right,
+                bottom_left,
+                bottom_right,
+                diagnostics=diagnostics,
+            )
 
-        dpg.render_dearpygui_frame()
+            dpg.render_dearpygui_frame()
 
-        # Maintain frame cap — sleep any spare time so we don't spin at 1000fps.
-        # This keeps CPU usage sane without adding input latency.
-        now = time.perf_counter()
-        elapsed = now - _last_frame_time
-        if elapsed < _TARGET_FRAME_S:
-            time.sleep(_TARGET_FRAME_S - elapsed)
-        _last_frame_time = time.perf_counter()
+            now = time.perf_counter()
+            elapsed = now - _last_frame_time
+            if elapsed < _TARGET_FRAME_S:
+                time.sleep(_TARGET_FRAME_S - elapsed)
+            _last_frame_time = time.perf_counter()
+    finally:
+        acquisition.stop()
+        session_state.pop("acquisition", None)
 
     return 1

@@ -3,7 +3,7 @@
 # Call apply_global_theme() once after dpg.setup_dearpygui().
 
 import logging
-import os
+from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
@@ -46,7 +46,7 @@ def _find_text_font():
     """Return the resolved path to the first available text font, or None."""
     for candidate in _TEXT_FONT_CANDIDATES:
         p = resource_path(candidate)
-        if os.path.exists(p):
+        if Path(p).is_file():
             return p
     return None
 
@@ -152,7 +152,7 @@ def load_fonts() -> None:
 
     with dpg.font_registry():
         # --- FontAwesome icons ---
-        if os.path.exists(FA_SOLID_FONT_PATH):
+        if Path(FA_SOLID_FONT_PATH).is_file():
             with dpg.font(FA_SOLID_FONT_PATH, 20) as fa_font:
                 dpg.add_font_range(0xF000, 0xF8FF)
             FA_ICON_FONT = fa_font
@@ -174,7 +174,7 @@ def load_fonts() -> None:
             with dpg.font(text_font_path, 100) as text_font:
                 dpg.add_font_range_hint(dpg.mvFontRangeHint_Default)
             TEXT_FONT = text_font
-            log.debug("Text font loaded: %s @ 100px", os.path.basename(text_font_path))
+            log.debug("Text font loaded: %s @ 100px", Path(text_font_path).name)
         else:
             log.warning("No system text font found — draw_text will use default (may be blurry)")
             TEXT_FONT = None

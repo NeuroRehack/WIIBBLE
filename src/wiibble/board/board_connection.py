@@ -14,7 +14,9 @@ from wiibble.board.exceptions import DeviceNotFoundError, DeviceProtocolError
 
 log = logging.getLogger(__name__)
 
-DLL_RELATIVE_PATH = Path("WiiBalanceBoardLibrary") / "bin" / "Debug" / "net48" / "WiiBalanceBoardLibrary.dll"
+DLL_RELATIVE_PATH = (
+    Path("WiiBalanceBoardLibrary") / "bin" / "Debug" / "net48" / "WiiBalanceBoardLibrary.dll"
+)
 SLEEP_INTERVAL = 0.1
 
 
@@ -57,9 +59,7 @@ def create_balance_board_manager(balance_board_manager):
         log.debug("Instance of BalanceBoardManager created.")
         return manager_instance
     except Exception as exc:
-        raise DeviceProtocolError(
-            f"Error creating instance of BalanceBoardManager: {exc}"
-        ) from exc
+        raise DeviceProtocolError(f"Error creating instance of BalanceBoardManager: {exc}") from exc
 
 
 def connect_balance_board(manager_instance) -> None:

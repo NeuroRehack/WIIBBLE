@@ -60,3 +60,40 @@ jobs:
           name: coverage-report
           path: .coverage
           if-no-files-found: ignore
+
+  dotnet:
+    name: Build C# board library
+    runs-on: windows-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build WiiBalanceBoardLibrary
+        run: dotnet build WiiBalanceBoardLibrary/WiiBalanceBoardLibrary.csproj -c Debug
+
+  security:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Install dev dependencies
+        run: just sync
+
+      - name: Audit dependencies
+        run: just audit

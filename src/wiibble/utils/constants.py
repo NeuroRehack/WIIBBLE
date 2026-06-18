@@ -5,7 +5,7 @@ identifiers, sensor layout mapping, calibration thresholds, and UI layout
 constants.
 """
 
-import os
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Hardware identifiers
@@ -144,6 +144,6 @@ WBB_SENSOR_DIST_AP_CM = 11.9  # Y/2 = 238 mm / 2, in cm (anteroposterior half-di
 # ---------------------------------------------------------------------------
 # C# board library DLL — built by: cd WiiBalanceBoardLibrary && dotnet build
 # ---------------------------------------------------------------------------
-DLL_RELATIVE_PATH = os.path.join(
-    "WiiBalanceBoardLibrary", "bin", "Debug", "net48", "WiiBalanceBoardLibrary.dll"
+DLL_RELATIVE_PATH = str(
+    Path("WiiBalanceBoardLibrary") / "bin" / "Debug" / "net48" / "WiiBalanceBoardLibrary.dll"
 )

@@ -230,9 +230,7 @@ def _update_recording_frame(
         x_kg, y_kg = calculate_force_deviation_kg(
             rc["top_left"], rc["top_right"], rc["bottom_left"], rc["bottom_right"]
         )
-        x_kg, y_kg = apply_axis_flip(
-            x_kg, y_kg, settings.flip_horizontal, settings.flip_vertical
-        )
+        x_kg, y_kg = apply_axis_flip(x_kg, y_kg, settings.flip_horizontal, settings.flip_vertical)
         app_state.record_buffer.append((elapsed, x_kg, y_kg))
         if app_state.record_duration > 0 and elapsed >= app_state.record_duration:
             app_state.is_recording = False
@@ -593,9 +591,7 @@ def _process_frame_data(
         screen_height=app_state.screen_height,
         zoom=1.0,
     )
-    raw_x, raw_y = apply_axis_flip(
-        raw_x, raw_y, settings.flip_horizontal, settings.flip_vertical
-    )
+    raw_x, raw_y = apply_axis_flip(raw_x, raw_y, settings.flip_horizontal, settings.flip_vertical)
 
     app_state.raw_max_x = max(app_state.raw_max_x, raw_x)
     app_state.raw_max_y = max(app_state.raw_max_y, raw_y)

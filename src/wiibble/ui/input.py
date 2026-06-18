@@ -31,9 +31,7 @@ _SETTINGS_INPUT_TAGS = (
 
 def _settings_input_active() -> bool:
     """Return True when focus is in a settings text field."""
-    return any(
-        dpg.does_item_exist(tag) and dpg.is_item_active(tag) for tag in _SETTINGS_INPUT_TAGS
-    )
+    return any(dpg.does_item_exist(tag) and dpg.is_item_active(tag) for tag in _SETTINGS_INPUT_TAGS)
 
 
 def _keyboard_shortcuts_allowed(session_state: dict) -> bool:

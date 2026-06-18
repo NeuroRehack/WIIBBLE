@@ -311,17 +311,13 @@ class TestAxisFlipHelpers:
         cx, cy, zoom = 640.0, 360.0, 2.0
         vx, vy = 700.0, 400.0
         lx, ly = viewport_to_logical(vx, vy, cx, cy, zoom, False, False)
-        assert logical_to_viewport(lx, ly, cx, cy, zoom, False, False) == pytest.approx(
-            (vx, vy)
-        )
+        assert logical_to_viewport(lx, ly, cx, cy, zoom, False, False) == pytest.approx((vx, vy))
 
     def test_viewport_logical_round_trip_with_flip(self):
         cx, cy, zoom = 640.0, 360.0, 2.0
         vx, vy = 700.0, 400.0
         lx, ly = viewport_to_logical(vx, vy, cx, cy, zoom, True, True)
-        assert logical_to_viewport(lx, ly, cx, cy, zoom, True, True) == pytest.approx(
-            (vx, vy)
-        )
+        assert logical_to_viewport(lx, ly, cx, cy, zoom, True, True) == pytest.approx((vx, vy))
 
 
 # ---------------------------------------------------------------------------

@@ -967,7 +967,7 @@ def _find_features_json(csv_path: str) -> str | None:
 
     candidates = [os.path.join(dirname, f"features_{stem}.json")]
     if stem.startswith("recording_"):
-        candidates.append(os.path.join(dirname, f"features_{stem[len('recording_'):]}.json"))
+        candidates.append(os.path.join(dirname, f"features_{stem[len('recording_') :]}.json"))
     m = re.search(r"(\d{12})$", stem)
     if m:
         candidates.append(os.path.join(dirname, f"features_{m.group(1)}.json"))

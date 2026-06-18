@@ -209,9 +209,7 @@ def test_handle_target_release_appends_default_rect_without_drag():
 
 def test_find_target_at_hits_rect_target():
     app_state = AppState(screen_width=200, screen_height=100)
-    app_state.clicked_locations = [
-        {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
-    ]
+    app_state.clicked_locations = [{"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}]
     settings = DummySettings(zoom_factor=1.0)
 
     hit = input_module._find_target_at(150, 75, app_state, settings)
@@ -222,9 +220,7 @@ def test_find_target_at_hits_rect_target():
 
 def test_handle_target_move_drag_translates_rect(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100)
-    app_state.clicked_locations = [
-        {"shape": "rect", "min": (0.0, 0.0), "max": (20.0, 20.0)}
-    ]
+    app_state.clicked_locations = [{"shape": "rect", "min": (0.0, 0.0), "max": (20.0, 20.0)}]
     app_state.target_move_in_progress = {"index": 0, "grab_offset": (0.0, 0.0)}
     settings = DummySettings(zoom_factor=1.0)
     monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (120, 70))
@@ -386,7 +382,9 @@ def test_record_shortcut_calls_start_recording_when_allowed(monkeypatch):
     settings = DummySettings()
     session_state = {"toolbar_enabled": True}
     called = {"value": False}
-    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: key == input_module.dpg.mvKey_LControl)
+    monkeypatch.setattr(
+        input_module.dpg, "is_key_down", lambda key: key == input_module.dpg.mvKey_LControl
+    )
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
     monkeypatch.setattr(
         input_module,

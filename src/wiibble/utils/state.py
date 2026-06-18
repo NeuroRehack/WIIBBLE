@@ -7,7 +7,12 @@ import platform
 from dataclasses import asdict, dataclass, field
 
 from wiibble.board.recording import normalize_recording_prefix
-from wiibble.utils.constants import SCALE_FACTOR_DEFAULT, TARGET_DWELL_DEFAULT, TARGET_DWELL_MAX, TARGET_DWELL_MIN
+from wiibble.utils.constants import (
+    SCALE_FACTOR_DEFAULT,
+    TARGET_DWELL_DEFAULT,
+    TARGET_DWELL_MAX,
+    TARGET_DWELL_MIN,
+)
 
 log = logging.getLogger(__name__)
 
@@ -201,7 +206,9 @@ class AppState:
     # Target dwell hit counter — session runtime only
     target_hit_count: int = 0
     _target_dwell_elapsed: dict = field(default_factory=dict)  # per-target seconds while armed
-    _target_dwell_disarmed: set = field(default_factory=set)  # targets awaiting exit before re-count
+    _target_dwell_disarmed: set = field(
+        default_factory=set
+    )  # targets awaiting exit before re-count
     _target_dwell_last_tick: float = 0.0
 
     def reset_sway_extents(self, trail_length: int) -> None:

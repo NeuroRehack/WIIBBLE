@@ -25,9 +25,9 @@ from wiibble.ui.theme import (
     CANVAS_LINE_GAP,
     CANVAS_LINE_W,
     CURSOR_COLOR,
-    ICON_INFINITY,
     ICON_FLIP_HORIZONTAL,
     ICON_FLIP_VERTICAL,
+    ICON_INFINITY,
     STATS_TEXT_COLOR,
     TRAIL_COLOR_BASE,
     bind_text_font,
@@ -351,13 +351,9 @@ def build_left_quick_access(gear_label: str, toggle_callback, session_state: dic
     if dpg.does_item_exist("left_quick_access_window"):
         dpg.delete_item("left_quick_access_window")
 
-    clear_label = (
-        _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
-    )
+    clear_label = _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
     reset_label = (
-        _theme_module.ICON_COUNTER_RESET
-        if _theme_module.FA_ICON_FONT is not None
-        else "Rst"
+        _theme_module.ICON_COUNTER_RESET if _theme_module.FA_ICON_FONT is not None else "Rst"
     )
     btn = PANEL_TOGGLE_BTN_SIZE
     margin = QUICK_ACCESS_MARGIN
@@ -579,7 +575,9 @@ def _recording_indicator_layout(sw: int, limit_seconds: int | float = 0) -> dict
     limit_font = RECORDING_INDICATOR_LIMIT_FONT_SIZE
     limit_w = _recording_limit_width(limit_seconds, limit_font)
     # Anchor button + limit from the right; elapsed timer grows left from the button.
-    dot_cx = sw - RECORDING_INDICATOR_RIGHT_MARGIN - limit_w - RECORDING_INDICATOR_SPACING - dot_radius
+    dot_cx = (
+        sw - RECORDING_INDICATOR_RIGHT_MARGIN - limit_w - RECORDING_INDICATOR_SPACING - dot_radius
+    )
     dot_cy = RECORDING_INDICATOR_Y + dot_radius
     x_limit = dot_cx + dot_radius + RECORDING_INDICATOR_SPACING
     return {
@@ -931,9 +929,10 @@ def _on_recording_prefix_change(value: str, settings) -> None:
     normalized = normalize_recording_prefix(value or "")
     settings.recording_prefix = normalized
     settings.save()
-    if dpg.does_item_exist("recording_prefix_input") and dpg.get_value(
-        "recording_prefix_input"
-    ) != normalized:
+    if (
+        dpg.does_item_exist("recording_prefix_input")
+        and dpg.get_value("recording_prefix_input") != normalized
+    ):
         dpg.set_value("recording_prefix_input", normalized)
 
 
@@ -1662,14 +1661,14 @@ def dashed_line_segments(p1, p2, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP):
     pos = 0.0
     while pos < length:
         end = min(pos + dash, length)
-        segments.append(
-            ((x0 + ux * pos, y0 + uy * pos), (x0 + ux * end, y0 + uy * end))
-        )
+        segments.append(((x0 + ux * pos, y0 + uy * pos), (x0 + ux * end, y0 + uy * end)))
         pos = end + gap
     return segments
 
 
-def _draw_dashed_line(p1, p2, *, color, thickness, parent, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP):
+def _draw_dashed_line(
+    p1, p2, *, color, thickness, parent, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP
+):
     """Draw a dashed line using repeated solid segments (DearPyGui has no native dash)."""
     for seg_start, seg_end in dashed_line_segments(p1, p2, dash=dash, gap=gap):
         dpg.draw_line(seg_start, seg_end, color=color, thickness=thickness, parent=parent)
@@ -1856,9 +1855,7 @@ def draw_main_screen(
             target_hits[idx] = hit
             app_state._prev_hit_states[idx] = hit
             fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
-            dpg.draw_rectangle(
-                (min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl
-            )
+            dpg.draw_rectangle((min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl)
             continue
         if isinstance(target, dict):
             (lx, ly) = target["center"]

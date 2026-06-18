@@ -20,6 +20,8 @@ from wiibble.ui.theme import (
     CANVAS_CENTRE_DOT,
     CANVAS_CENTRE_R,
     CANVAS_LINE,
+    CANVAS_LINE_DASH,
+    CANVAS_LINE_GAP,
     CANVAS_LINE_W,
     CURSOR_COLOR,
     ICON_INFINITY,
@@ -935,6 +937,26 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
         dpg.add_text("Show or hide the movement bounding box on the canvas.")
     dpg.add_spacer(height=4)
     dpg.add_checkbox(
+        tag="show_global_axes_checkbox",
+        label="Show global axes",
+        default_value=settings.show_global_axes,
+        callback=lambda s, v: _on_show_global_axes_change(v, settings),
+    )
+    with dpg.tooltip(parent="show_global_axes_checkbox"):
+        dpg.add_text("Solid crosshairs at screen centre\n(neutral stance reference).")
+    dpg.add_spacer(height=4)
+    dpg.add_checkbox(
+        tag="show_local_axes_checkbox",
+        label="Show local axes",
+        default_value=settings.show_local_axes,
+        callback=lambda s, v: _on_show_local_axes_change(v, settings),
+    )
+    with dpg.tooltip(parent="show_local_axes_checkbox"):
+        dpg.add_text(
+            "Dotted crosshairs at sway-bbox centre,\nbounded to the movement bounding box."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_checkbox(
         tag="target_jelly_checkbox",
         label="Target jelly effect",
         default_value=settings.target_jelly,
@@ -1024,6 +1046,18 @@ def _on_filter_change(value: int, settings, app_state) -> None:
 def _on_show_bbox_change(value: bool, settings) -> None:
     """Toggle bounding box visibility."""
     settings.show_bbox = value
+    settings.save()
+
+
+def _on_show_global_axes_change(value: bool, settings) -> None:
+    """Toggle global (screen-centred) axis crosshairs."""
+    settings.show_global_axes = value
+    settings.save()
+
+
+def _on_show_local_axes_change(value: bool, settings) -> None:
+    """Toggle local (bbox-centred) axis crosshairs."""
+    settings.show_local_axes = value
     settings.save()
 
 
@@ -1242,6 +1276,33 @@ def draw_connection_failed_screen(dl, app_state) -> None:
 # ---------------------------------------------------------------------------
 
 
+def dashed_line_segments(p1, p2, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP):
+    """Return dash segment endpoints along the line from p1 to p2."""
+    x0, y0 = p1
+    x1, y1 = p2
+    dx = x1 - x0
+    dy = y1 - y0
+    length = math.hypot(dx, dy)
+    if length < 1e-6:
+        return []
+    ux, uy = dx / length, dy / length
+    segments = []
+    pos = 0.0
+    while pos < length:
+        end = min(pos + dash, length)
+        segments.append(
+            ((x0 + ux * pos, y0 + uy * pos), (x0 + ux * end, y0 + uy * end))
+        )
+        pos = end + gap
+    return segments
+
+
+def _draw_dashed_line(p1, p2, *, color, thickness, parent, dash=CANVAS_LINE_DASH, gap=CANVAS_LINE_GAP):
+    """Draw a dashed line using repeated solid segments (DearPyGui has no native dash)."""
+    for seg_start, seg_end in dashed_line_segments(p1, p2, dash=dash, gap=gap):
+        dpg.draw_line(seg_start, seg_end, color=color, thickness=thickness, parent=parent)
+
+
 def draw_main_screen(
     dl,
     corners: dict,
@@ -1276,13 +1337,46 @@ def draw_main_screen(
     # Background — full viewport
     dpg.draw_rectangle((0, 0), (sw, sh), fill=CANVAS_BG, color=CANVAS_BG, parent=dl)
 
-    # Centre lines
+    # Global axes — solid crosshairs at canvas centre
     line_w = CANVAS_LINE_W
-    dpg.draw_line((0, cy), (sw, cy), color=CANVAS_LINE, thickness=line_w, parent=dl)
-    dpg.draw_line((cx, 0), (cx, sh), color=CANVAS_LINE, thickness=line_w, parent=dl)
-    dpg.draw_circle(
-        (cx, cy), CANVAS_CENTRE_R, color=CANVAS_CENTRE_DOT, fill=CANVAS_CENTRE_DOT, parent=dl
-    )
+    if settings.show_global_axes:
+        dpg.draw_line((0, cy), (sw, cy), color=CANVAS_LINE, thickness=line_w, parent=dl)
+        dpg.draw_line((cx, 0), (cx, sh), color=CANVAS_LINE, thickness=line_w, parent=dl)
+        dpg.draw_circle(
+            (cx, cy), CANVAS_CENTRE_R, color=CANVAS_CENTRE_DOT, fill=CANVAS_CENTRE_DOT, parent=dl
+        )
+
+    # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
+    if settings.show_bbox:
+        dpg.draw_rectangle(
+            (cx + min_x, cy + min_y),
+            (cx + max_x, cy + max_y),
+            color=BBOX_COLOR,
+            thickness=BBOX_THICKNESS,
+            parent=dl,
+        )
+
+    # Local axes — dotted crosshairs centred on sway bbox, bounded to bbox edges
+    if settings.show_local_axes:
+        bbox_w = max_x - min_x
+        bbox_h = max_y - min_y
+        if bbox_w >= 1 and bbox_h >= 1:
+            local_cx = cx + (min_x + max_x) / 2
+            local_cy = cy + (min_y + max_y) / 2
+            _draw_dashed_line(
+                (cx + min_x, local_cy),
+                (cx + max_x, local_cy),
+                color=CANVAS_LINE,
+                thickness=line_w,
+                parent=dl,
+            )
+            _draw_dashed_line(
+                (local_cx, cy + min_y),
+                (local_cx, cy + max_y),
+                color=CANVAS_LINE,
+                thickness=line_w,
+                parent=dl,
+            )
 
     # Target circles (clicked locations — stored in logical/content coords)
     cx = sw // 2 + pan_offset_x
@@ -1376,17 +1470,6 @@ def draw_main_screen(
         scaled_cursor = max(1, int(settings.cursor_size * settings.zoom_factor))
         dpg.draw_circle(
             (ball_x, ball_y), scaled_cursor, color=CURSOR_COLOR, fill=CURSOR_COLOR, parent=dl
-        )
-
-    # Bounding box — max_x/min_x are relative coordinate extents (not viewport coords).
-    # They need to be offset by canvas centre (cx, cy) to get viewport coords.
-    if settings.show_bbox:
-        dpg.draw_rectangle(
-            (cx + min_x, cy + min_y),
-            (cx + max_x, cy + max_y),
-            color=BBOX_COLOR,
-            thickness=BBOX_THICKNESS,
-            parent=dl,
         )
 
     # Weight bar and stats text are both drawn on stats_dl in app.py

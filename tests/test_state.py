@@ -102,6 +102,8 @@ class TestSettingsRoundTrip:
             board_cal_reference_kg=25.0,
             flip_horizontal=True,
             flip_vertical=True,
+            show_global_axes=False,
+            show_local_axes=True,
         )
         original.save()
         loaded = Settings.load()
@@ -116,6 +118,8 @@ class TestSettingsRoundTrip:
         assert loaded.board_cal_reference_kg == 25.0
         assert loaded.flip_horizontal is True
         assert loaded.flip_vertical is True
+        assert loaded.show_global_axes is False
+        assert loaded.show_local_axes is True
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

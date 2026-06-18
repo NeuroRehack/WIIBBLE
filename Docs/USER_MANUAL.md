@@ -67,6 +67,10 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 **Show Bounding Box** — Toggles the movement extent overlay on the canvas.
 
+**Show Global Axes** — Toggles solid crosshairs at the screen centre (neutral stance reference).
+
+**Show Local Axes** — Toggles dotted crosshairs centred on the sway bounding box, bounded to the box edges.
+
 **Target Jelly Effect** — Animates targets with a wobble when hit.
 
 **Clear Screen** — Removes all targets and the sway trail from the canvas.
@@ -103,6 +107,10 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 **Sway Trail** — Fading history of recent movement.
 
 **Bounding Box** — Dashed rectangle showing the extent of movement since last clear.
+
+**Global Axes** — Solid grey crosshairs through the screen centre, marking the neutral board-centre reference.
+
+**Local Axes** — Optional dotted crosshairs through the centre of the sway bounding box, spanning only within the box.
 
 **Stats Bar** — Real-time left/right distribution and total weight.
 

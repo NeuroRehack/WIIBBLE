@@ -85,6 +85,8 @@ C_ACCENT_VISUAL = (155, 110, 210, 255)  # purple — visualisation
 CANVAS_BG = (250, 250, 250, 255)  # near-white canvas
 CANVAS_LINE = (180, 185, 190, 255)  # soft grey crosshairs
 CANVAS_LINE_W = 4  # thin crosshair lines
+CANVAS_LINE_DASH = 8  # dash length for local axes
+CANVAS_LINE_GAP = 6  # gap length for local axes
 CANVAS_CENTRE_DOT = (80, 90, 100, 255)  # small centre marker
 CANVAS_CENTRE_R = 6  # centre dot radius
 

@@ -36,6 +36,8 @@ class Settings:
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
     cursor_size: int = 20  # S1: circle cursor radius in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
+    show_global_axes: bool = True  # solid crosshairs at screen centre
+    show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
     flip_horizontal: bool = False  # invert left-right display and recording mapping
     flip_vertical: bool = False  # invert forward-back display and recording mapping

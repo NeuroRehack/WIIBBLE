@@ -107,15 +107,13 @@ QUICK_ACCESS_MARGIN = 4  # px from viewport edge
 QUICK_ACCESS_GAP = 4  # px between adjacent quick-access buttons
 
 # Top-right recording indicator cluster (timer + quick-access record button + limit)
-RECORDING_INDICATOR_RIGHT_MARGIN = 20
+RECORDING_INDICATOR_RIGHT_MARGIN = 21
 RECORDING_INDICATOR_DOT_RADIUS = 18
-RECORDING_INDICATOR_SPACING = 12
+RECORDING_INDICATOR_SPACING = 8  # gap between record button and limit label
+RECORDING_INDICATOR_TIMER_GAP = 4  # gap between elapsed timer and record button
 RECORDING_INDICATOR_Y = 8
 RECORDING_INDICATOR_TIMER_FONT_SIZE = 48  # elapsed time while recording
-RECORDING_INDICATOR_LIMIT_FONT_SIZE = 48  # configured duration limit (always visible)
-# Approximate text widths — used only to anchor labels beside the record button.
-RECORDING_INDICATOR_LIMIT_WIDTH = int(RECORDING_INDICATOR_LIMIT_FONT_SIZE * 0.58 * 5)
-RECORDING_INDICATOR_ELAPSED_CHAR_WIDTH = 0.58  # em width per character (digits / punctuation)
+RECORDING_INDICATOR_LIMIT_FONT_SIZE = 36  # configured duration limit (always visible)
 
 # Click detection radii
 CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius (fallback)

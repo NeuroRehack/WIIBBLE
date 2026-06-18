@@ -298,7 +298,7 @@ def _update_countdown_and_recording(
     return record_start_time, last_countdown_tick
 
 
-def _handle_viewport_resize(app_state, session_state):
+def _handle_viewport_resize(app_state, settings, session_state):
     """Update app dimensions and panel height on viewport resize."""
     vw = dpg.get_viewport_width()
     vh = dpg.get_viewport_height()
@@ -312,7 +312,7 @@ def _handle_viewport_resize(app_state, session_state):
     dpg.configure_item("control_panel", height=vh, show=toolbar_currently_visible)
     if toolbar_enabled:
         update_left_quick_access_layout(toolbar_currently_visible, toolbar_enabled)
-        update_recording_quick_access_position(vw)
+        update_recording_quick_access_position(vw, settings.record_duration)
     # stats_dl redraws itself at correct position on next value change
 
 
@@ -468,7 +468,7 @@ def _prepare_session(dl, app_state, settings, session_state, args):
     )
     if dpg.does_item_exist("recording_quick_window"):
         dpg.configure_item("recording_quick_window", show=True)
-        update_recording_quick_access_position(dpg.get_viewport_width())
+        update_recording_quick_access_position(dpg.get_viewport_width(), settings.record_duration)
     if hasattr(device, "enter_running_mode"):
         device.enter_running_mode()
 
@@ -812,7 +812,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
         if result is not None:
             return result
 
-        _handle_viewport_resize(app_state, session_state)
+        _handle_viewport_resize(app_state, settings, session_state)
 
         top_left, top_right, bottom_left, bottom_right = _render_main_screen_frame(
             device,

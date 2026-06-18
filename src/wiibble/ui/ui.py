@@ -50,12 +50,11 @@ from wiibble.utils.constants import (
     QUICK_ACCESS_GAP,
     QUICK_ACCESS_MARGIN,
     RECORDING_INDICATOR_DOT_RADIUS,
-    RECORDING_INDICATOR_ELAPSED_CHAR_WIDTH,
     RECORDING_INDICATOR_LIMIT_FONT_SIZE,
-    RECORDING_INDICATOR_LIMIT_WIDTH,
     RECORDING_INDICATOR_RIGHT_MARGIN,
     RECORDING_INDICATOR_SPACING,
     RECORDING_INDICATOR_TIMER_FONT_SIZE,
+    RECORDING_INDICATOR_TIMER_GAP,
     RECORDING_INDICATOR_Y,
     ZOOM_MAX,
     ZOOM_MIN,
@@ -115,9 +114,21 @@ def _crisp_icon_text(pos, text: str, color: tuple, size: int, parent) -> int:
     return tag
 
 
+def _measure_crisp_text_width(text: str, size: int) -> float:
+    """Measure draw_text width using the loaded crisp font atlas (100px → size)."""
+    if _theme_module.TEXT_FONT is not None:
+        try:
+            w, _ = dpg.get_text_size(text, font=_theme_module.TEXT_FONT)
+            return w * (size / 100.0)
+        except Exception:
+            pass
+    # Fallback before first frame or if font missing (~0.55 em per char for digits).
+    return len(text) * size * 0.55
+
+
 def _estimate_text_width(text: str, font_size: int) -> int:
-    """Approximate pixel width for draw_text labels (monospace-ish digits)."""
-    return int(len(text) * font_size * RECORDING_INDICATOR_ELAPSED_CHAR_WIDTH)
+    """Approximate pixel width for draw_text labels."""
+    return int(_measure_crisp_text_width(text, font_size))
 
 
 # ---------------------------------------------------------------------------
@@ -380,7 +391,7 @@ def build_recording_quick_btn(app_state, settings) -> None:
 
     btn = RECORDING_INDICATOR_DOT_RADIUS * 2
     vw = dpg.get_viewport_width()
-    layout = _recording_indicator_layout(vw)
+    layout = _recording_indicator_layout(vw, settings.record_duration)
     x = int(layout["dot_cx"] - layout["dot_radius"])
     y = int(layout["dot_cy"] - layout["dot_radius"])
 
@@ -434,11 +445,13 @@ def update_left_quick_access_layout(toolbar_visible: bool, toolbar_enabled: bool
     dpg.configure_item("left_quick_access_window", width=window_w, show=toolbar_enabled)
 
 
-def update_recording_quick_access_position(viewport_width: int) -> None:
+def update_recording_quick_access_position(
+    viewport_width: int, limit_seconds: int | float = 0
+) -> None:
     """Anchor the recording quick-access button over the recording-indicator dot."""
     if not dpg.does_item_exist("recording_quick_window"):
         return
-    layout = _recording_indicator_layout(viewport_width)
+    layout = _recording_indicator_layout(viewport_width, limit_seconds)
     btn = layout["dot_radius"] * 2
     x = int(layout["dot_cx"] - layout["dot_radius"])
     y = int(layout["dot_cy"] - layout["dot_radius"])
@@ -488,6 +501,20 @@ def _format_record_limit(seconds: int | float) -> str:
     return f"{total // 60:02d}:{total % 60:02d}"
 
 
+def _recording_limit_width(limit_seconds: int | float, font_size: int) -> int:
+    """Estimate pixel width for the limit label (single icon or mm:ss)."""
+    label = _format_record_limit(limit_seconds)
+    if label == ICON_INFINITY:
+        if _theme_module.FA_ICON_FONT_DRAW is not None:
+            try:
+                w, _ = dpg.get_text_size(label, font=_theme_module.FA_ICON_FONT_DRAW)
+                return int(w * (font_size / 100.0))
+            except Exception:
+                pass
+        return int(font_size * 0.85)
+    return int(_measure_crisp_text_width(label, font_size))
+
+
 def _draw_recording_limit_text(
     limit_seconds: int | float,
     *,
@@ -511,18 +538,13 @@ def _recording_indicator_text_y(font_size: int, dot_cy: float) -> float:
     return dot_cy - font_size // 2
 
 
-def _recording_indicator_layout(sw: int) -> dict:
+def _recording_indicator_layout(sw: int, limit_seconds: int | float = 0) -> dict:
     """Return shared layout metrics for the timer, record button, and limit label."""
     dot_radius = RECORDING_INDICATOR_DOT_RADIUS
-    dot_diameter = dot_radius * 2
+    limit_font = RECORDING_INDICATOR_LIMIT_FONT_SIZE
+    limit_w = _recording_limit_width(limit_seconds, limit_font)
     # Anchor button + limit from the right; elapsed timer grows left from the button.
-    dot_cx = (
-        sw
-        - RECORDING_INDICATOR_RIGHT_MARGIN
-        - RECORDING_INDICATOR_LIMIT_WIDTH
-        - RECORDING_INDICATOR_SPACING
-        - dot_radius
-    )
+    dot_cx = sw - RECORDING_INDICATOR_RIGHT_MARGIN - limit_w - RECORDING_INDICATOR_SPACING - dot_radius
     dot_cy = RECORDING_INDICATOR_Y + dot_radius
     x_limit = dot_cx + dot_radius + RECORDING_INDICATOR_SPACING
     return {
@@ -531,14 +553,14 @@ def _recording_indicator_layout(sw: int) -> dict:
         "dot_cy": dot_cy,
         "dot_radius": dot_radius,
         "timer_font_size": RECORDING_INDICATOR_TIMER_FONT_SIZE,
-        "limit_font_size": RECORDING_INDICATOR_LIMIT_FONT_SIZE,
+        "limit_font_size": limit_font,
     }
 
 
 def _elapsed_timer_x(timer_str: str, font_size: int, dot_cx: float, dot_radius: float) -> float:
     """Right-align the elapsed timer immediately left of the record button."""
-    width = _estimate_text_width(timer_str, font_size)
-    return dot_cx - dot_radius - RECORDING_INDICATOR_SPACING - width
+    width = _measure_crisp_text_width(timer_str, font_size)
+    return dot_cx - dot_radius - RECORDING_INDICATOR_TIMER_GAP - width
 
 
 def _get_recording_quick_idle_theme():
@@ -625,7 +647,7 @@ def _get_recording_theme():
                     dpg.mvThemeCol_ButtonActive, (220, 90, 90, 255), category=dpg.mvThemeCat_Core
                 )
         _recording_active_theme = t
-        return _recording_active_theme
+    return _recording_active_theme
 
 
 def sync_recording_buttons(*, recording_active: bool) -> None:
@@ -730,6 +752,7 @@ def _on_record_duration_change(value: int, settings, app_state) -> None:
     settings.record_duration = value
     app_state.record_duration = value
     settings.save()
+    update_recording_quick_access_position(dpg.get_viewport_width(), value)
 
 
 def _on_start_recording(app_state, settings) -> None:
@@ -1730,12 +1753,12 @@ def draw_main_screen(
 
     # Recording indicator cluster: elapsed timer (while recording) + limit (always).
     if toolbar_enabled:
-        layout = _recording_indicator_layout(sw)
         limit_seconds = (
             app_state.record_duration
             if getattr(app_state, "recording_indicator", False)
             else settings.record_duration
         )
+        layout = _recording_indicator_layout(sw, limit_seconds)
         limit_color = (255, 0, 0, 255)
         _draw_recording_limit_text(
             limit_seconds,

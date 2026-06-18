@@ -139,12 +139,100 @@ def test_handle_target_drag_updates_target_radius(monkeypatch):
 
 def test_handle_target_release_appends_target():
     app_state = AppState()
+    settings = DummySettings(cursor_size=20)
     app_state.target_in_progress = {"center": (4.0, 2.0), "radius": 5.0}
 
-    input_module._handle_target_release(app_state)
+    input_module._handle_target_release(app_state, settings)
 
     assert app_state.target_in_progress is None
     assert app_state.clicked_locations == [{"center": (4.0, 2.0), "radius": 5.0}]
+
+
+def test_handle_canvas_click_starts_rect_target_when_r_held(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
+    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    session_state = {"toolbar_visible": False}
+    monkeypatch.setattr(
+        input_module.dpg, "is_key_down", lambda key: key == input_module.dpg.mvKey_R
+    )
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module.dpg, "is_item_shown", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
+
+    input_module._handle_canvas_click(150, 75, app_state, settings, session_state)
+
+    assert app_state.target_in_progress is not None
+    assert app_state.target_in_progress["shape"] == "rect"
+    assert app_state.target_in_progress["anchor"] == (50.0, 25.0)
+    assert app_state.target_in_progress["min"] == (50.0, 25.0)
+    assert app_state.target_in_progress["max"] == (50.0, 25.0)
+
+
+def test_handle_target_drag_updates_rect_bounds(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.target_in_progress = {
+        "shape": "rect",
+        "anchor": (0.0, 0.0),
+        "min": (0.0, 0.0),
+        "max": (0.0, 0.0),
+        "drag_started": True,
+        "click_screen": (100, 50),
+    }
+    settings = DummySettings(zoom_factor=1.0)
+    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (110, 55))
+
+    input_module._handle_target_drag(app_state, settings)
+
+    assert app_state.target_in_progress["min"] == (0.0, 0.0)
+    assert app_state.target_in_progress["max"] == (10.0, 5.0)
+
+
+def test_handle_target_release_appends_default_rect_without_drag():
+    app_state = AppState()
+    settings = DummySettings(cursor_size=20)
+    app_state.target_in_progress = {
+        "shape": "rect",
+        "anchor": (50.0, 25.0),
+        "min": (50.0, 25.0),
+        "max": (50.0, 25.0),
+        "drag_started": False,
+        "click_screen": (150, 75),
+    }
+
+    input_module._handle_target_release(app_state, settings)
+
+    assert app_state.target_in_progress is None
+    assert app_state.clicked_locations == [
+        {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
+    ]
+
+
+def test_find_target_at_hits_rect_target():
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.clicked_locations = [
+        {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
+    ]
+    settings = DummySettings(zoom_factor=1.0)
+
+    hit = input_module._find_target_at(150, 75, app_state, settings)
+
+    assert hit is not None
+    assert hit[0] == 0
+
+
+def test_handle_target_move_drag_translates_rect(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.clicked_locations = [
+        {"shape": "rect", "min": (0.0, 0.0), "max": (20.0, 20.0)}
+    ]
+    app_state.target_move_in_progress = {"index": 0, "grab_offset": (0.0, 0.0)}
+    settings = DummySettings(zoom_factor=1.0)
+    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (120, 70))
+
+    input_module._handle_target_move_drag(app_state, settings)
+
+    assert app_state.clicked_locations[0]["min"] == (10.0, 10.0)
+    assert app_state.clicked_locations[0]["max"] == (30.0, 30.0)
 
 
 def test_handle_pan_drag_starts_and_moves(monkeypatch):

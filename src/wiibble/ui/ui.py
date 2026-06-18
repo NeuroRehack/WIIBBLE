@@ -1567,6 +1567,25 @@ def _draw_dashed_line(p1, p2, *, color, thickness, parent, dash=CANVAS_LINE_DASH
         dpg.draw_line(seg_start, seg_end, color=color, thickness=thickness, parent=parent)
 
 
+def _logical_rect_viewport_bounds(
+    min_pt: tuple[float, float],
+    max_pt: tuple[float, float],
+    cx: float,
+    cy: float,
+    zoom: float,
+    flip_horizontal: bool,
+    flip_vertical: bool,
+) -> tuple[float, float, float, float]:
+    """Convert logical rect corners to viewport min/max x/y (order-normalized)."""
+    vx0, vy0 = logical_to_viewport(
+        min_pt[0], min_pt[1], cx, cy, zoom, flip_horizontal, flip_vertical
+    )
+    vx1, vy1 = logical_to_viewport(
+        max_pt[0], max_pt[1], cx, cy, zoom, flip_horizontal, flip_vertical
+    )
+    return min(vx0, vx1), min(vy0, vy1), max(vx0, vx1), max(vy0, vy1)
+
+
 def draw_main_screen(
     dl,
     corners: dict,
@@ -1643,27 +1662,32 @@ def draw_main_screen(
                 parent=dl,
             )
 
-    # Target circles (clicked locations — stored in logical/content coords)
+    # Targets (clicked locations — stored in logical/content coords)
     cx = sw // 2 + pan_offset_x
     cy = sh // 2 + pan_offset_y
-    # Draw all finalized targets (support both old tuple and new dict format)
+    zoom = settings.zoom_factor
+    flip_h = settings.flip_horizontal
+    flip_v = settings.flip_vertical
     for idx, target in enumerate(app_state.clicked_locations):
+        if isinstance(target, dict) and target.get("shape") == "rect":
+            min_vx, min_vy, max_vx, max_vy = _logical_rect_viewport_bounds(
+                target["min"], target["max"], cx, cy, zoom, flip_h, flip_v
+            )
+            hit = min_vx <= ball_x <= max_vx and min_vy <= ball_y <= max_vy
+            app_state._prev_hit_states[idx] = hit
+            fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
+            dpg.draw_rectangle(
+                (min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl
+            )
+            continue
         if isinstance(target, dict):
             (lx, ly) = target["center"]
             logical_radius = target.get("radius", 5.0)
         else:
             (lx, ly) = target
             logical_radius = 5.0
-        vx, vy = logical_to_viewport(
-            lx,
-            ly,
-            cx,
-            cy,
-            settings.zoom_factor,
-            settings.flip_horizontal,
-            settings.flip_vertical,
-        )
-        scaled_radius = logical_radius * settings.zoom_factor
+        vx, vy = logical_to_viewport(lx, ly, cx, cy, zoom, flip_h, flip_v)
+        scaled_radius = logical_radius * zoom
         dist = math.sqrt((vx - ball_x) ** 2 + (vy - ball_y) ** 2)
         hit = dist < scaled_radius
         # Spawn jelly oscillation on False→True transition
@@ -1690,21 +1714,25 @@ def draw_main_screen(
     # Draw target-in-progress (preview)
     tip = getattr(app_state, "target_in_progress", None)
     if tip is not None:
-        (lx, ly) = tip["center"]
-        logical_radius = tip.get("radius", 5.0)
-        vx, vy = logical_to_viewport(
-            lx,
-            ly,
-            cx,
-            cy,
-            settings.zoom_factor,
-            settings.flip_horizontal,
-            settings.flip_vertical,
-        )
-        scaled_radius = logical_radius * settings.zoom_factor
-        dpg.draw_circle(
-            (vx, vy), scaled_radius, color=(0, 200, 255, 180), fill=(0, 200, 255, 60), parent=dl
-        )
+        if tip.get("shape") == "rect":
+            min_vx, min_vy, max_vx, max_vy = _logical_rect_viewport_bounds(
+                tip["min"], tip["max"], cx, cy, zoom, flip_h, flip_v
+            )
+            dpg.draw_rectangle(
+                (min_vx, min_vy),
+                (max_vx, max_vy),
+                color=(0, 200, 255, 180),
+                fill=(0, 200, 255, 60),
+                parent=dl,
+            )
+        else:
+            (lx, ly) = tip["center"]
+            logical_radius = tip.get("radius", 5.0)
+            vx, vy = logical_to_viewport(lx, ly, cx, cy, zoom, flip_h, flip_v)
+            scaled_radius = logical_radius * zoom
+            dpg.draw_circle(
+                (vx, vy), scaled_radius, color=(0, 200, 255, 180), fill=(0, 200, 255, 60), parent=dl
+            )
 
     # Trail (S2: sliced to trail_length; coords are in viewport space)
     coords = (

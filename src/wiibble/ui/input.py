@@ -109,29 +109,89 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
     session_state["action"] = "pan_changed"
 
 
-def _find_target_at(mx: float, my: float, app_state, settings):
-    """Return (index, target) for the first target hit at viewport coords, or None."""
+def _viewport_center(app_state) -> tuple[float, float]:
+    """Return the canvas centre in viewport pixels (including pan)."""
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    for idx, target in enumerate(app_state.clicked_locations):
-        if isinstance(target, dict):
-            lx, ly = target["center"]
-            logical_radius = target.get("radius", 5.0)
-        else:
-            lx, ly = target
-            logical_radius = 5.0
-        vx, vy = logical_to_viewport(
-            lx,
-            ly,
-            cx,
-            cy,
-            settings.zoom_factor,
-            settings.flip_horizontal,
-            settings.flip_vertical,
+    return cx, cy
+
+
+def _target_shape(target) -> str:
+    """Return ``circle`` or ``rect`` for a finalized or in-progress target."""
+    if isinstance(target, dict) and target.get("shape") == "rect":
+        return "rect"
+    return "circle"
+
+
+def _target_logical_center(target) -> tuple[float, float]:
+    """Return the logical centre of a target (circle centre or rect centroid)."""
+    if _target_shape(target) == "rect":
+        min_pt = target["min"]
+        max_pt = target["max"]
+        return ((min_pt[0] + max_pt[0]) / 2, (min_pt[1] + max_pt[1]) / 2)
+    if isinstance(target, dict):
+        return target["center"]
+    return target
+
+
+def _translate_target(target, dx: float, dy: float) -> None:
+    """Shift a target by a logical delta."""
+    if isinstance(target, dict) and _target_shape(target) == "rect":
+        min_x, min_y = target["min"]
+        max_x, max_y = target["max"]
+        target["min"] = (min_x + dx, min_y + dy)
+        target["max"] = (max_x + dx, max_y + dy)
+    elif isinstance(target, dict):
+        lx, ly = target["center"]
+        target["center"] = (lx + dx, ly + dy)
+
+
+def _logical_rect_to_viewport_bounds(
+    min_pt: tuple[float, float],
+    max_pt: tuple[float, float],
+    cx: float,
+    cy: float,
+    zoom: float,
+    flip_horizontal: bool,
+    flip_vertical: bool,
+) -> tuple[float, float, float, float]:
+    """Convert logical rect corners to viewport min/max x/y (order-normalized)."""
+    vx0, vy0 = logical_to_viewport(
+        min_pt[0], min_pt[1], cx, cy, zoom, flip_horizontal, flip_vertical
+    )
+    vx1, vy1 = logical_to_viewport(
+        max_pt[0], max_pt[1], cx, cy, zoom, flip_horizontal, flip_vertical
+    )
+    return min(vx0, vx1), min(vy0, vy1), max(vx0, vx1), max(vy0, vy1)
+
+
+def _point_hits_target(mx: float, my: float, target, app_state, settings) -> bool:
+    """Return True when viewport point (mx, my) is inside the target."""
+    cx, cy = _viewport_center(app_state)
+    zoom = settings.zoom_factor
+    flip_h = settings.flip_horizontal
+    flip_v = settings.flip_vertical
+    if _target_shape(target) == "rect":
+        min_vx, min_vy, max_vx, max_vy = _logical_rect_to_viewport_bounds(
+            target["min"], target["max"], cx, cy, zoom, flip_h, flip_v
         )
-        scaled_radius = logical_radius * settings.zoom_factor
-        dist = math.sqrt((mx - vx) ** 2 + (my - vy) ** 2)
-        if dist <= scaled_radius:
+        return min_vx <= mx <= max_vx and min_vy <= my <= max_vy
+    if isinstance(target, dict):
+        lx, ly = target["center"]
+        logical_radius = target.get("radius", 5.0)
+    else:
+        lx, ly = target
+        logical_radius = 5.0
+    vx, vy = logical_to_viewport(lx, ly, cx, cy, zoom, flip_h, flip_v)
+    scaled_radius = logical_radius * zoom
+    dist = math.sqrt((mx - vx) ** 2 + (my - vy) ** 2)
+    return dist <= scaled_radius
+
+
+def _find_target_at(mx: float, my: float, app_state, settings):
+    """Return (index, target) for the first target hit at viewport coords, or None."""
+    for idx, target in enumerate(app_state.clicked_locations):
+        if _point_hits_target(mx, my, target, app_state, settings):
             return idx, target
     return None
 
@@ -177,18 +237,25 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     hit = _find_target_at(mx, my, app_state, settings)
     if hit is not None:
         idx, target = hit
-        if isinstance(target, dict):
-            lx, ly = target["center"]
-        else:
-            lx, ly = target
+        tcx, tcy = _target_logical_center(target)
         app_state.target_move_in_progress = {
             "index": idx,
-            "grab_offset": (logical_x - lx, logical_y - ly),
+            "grab_offset": (logical_x - tcx, logical_y - tcy),
         }
         return
 
-    # cursor_size is in logical units; no division needed — target matches cursor at any zoom
     default_radius = float(settings.cursor_size)
+    if dpg.is_key_down(dpg.mvKey_R):
+        app_state.target_in_progress = {
+            "shape": "rect",
+            "anchor": (logical_x, logical_y),
+            "min": (logical_x, logical_y),
+            "max": (logical_x, logical_y),
+            "drag_started": False,
+            "click_screen": (mx, my),
+        }
+        return
+
     app_state.target_in_progress = {
         "center": (logical_x, logical_y),
         "radius": default_radius,
@@ -252,6 +319,11 @@ def _handle_target_drag(app_state, settings):
         settings.flip_horizontal,
         settings.flip_vertical,
     )
+    if tip.get("shape") == "rect":
+        ax, ay = tip["anchor"]
+        tip["min"] = (min(ax, logical_x), min(ay, logical_y))
+        tip["max"] = (max(ax, logical_x), max(ay, logical_y))
+        return
     x0, y0 = tip["center"]
     new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
     tip["radius"] = max(1.0, new_radius)
@@ -281,10 +353,16 @@ def _handle_target_move_drag(app_state, settings) -> None:
     grab_dx, grab_dy = move["grab_offset"]
     new_center = (logical_x - grab_dx, logical_y - grab_dy)
     target = app_state.clicked_locations[idx]
+    old_center = _target_logical_center(target)
+    dx = new_center[0] - old_center[0]
+    dy = new_center[1] - old_center[1]
     if isinstance(target, dict):
-        target["center"] = new_center
+        _translate_target(target, dx, dy)
     else:
-        app_state.clicked_locations[idx] = {"center": new_center, "radius": 5.0}
+        app_state.clicked_locations[idx] = {
+            "center": (target[0] + dx, target[1] + dy),
+            "radius": 5.0,
+        }
 
 
 def _handle_target_move_release(app_state) -> None:
@@ -292,11 +370,24 @@ def _handle_target_move_release(app_state) -> None:
     app_state.target_move_in_progress = None
 
 
-def _handle_target_release(app_state):
+def _handle_target_release(app_state, settings):
     """Finalize the current target when the mouse button is released."""
-    if app_state.target_in_progress is not None:
-        app_state.clicked_locations.append(app_state.target_in_progress)
-        app_state.target_in_progress = None
+    tip = app_state.target_in_progress
+    if tip is None:
+        return
+    if tip.get("shape") == "rect":
+        if not tip.get("drag_started", False):
+            ax, ay = tip["anchor"]
+            half = float(settings.cursor_size)
+            tip["min"] = (ax - half, ay - half)
+            tip["max"] = (ax + half, ay + half)
+        for key in ("click_screen", "drag_started", "anchor"):
+            tip.pop(key, None)
+    else:
+        for key in ("click_screen", "drag_started"):
+            tip.pop(key, None)
+    app_state.clicked_locations.append(tip)
+    app_state.target_in_progress = None
 
 
 def _handle_pan_drag(app_state, session_state):
@@ -386,7 +477,7 @@ def register_input_handlers(app_state, settings, session_state):
                     else (
                         _handle_target_move_release(app_state)
                         if getattr(app_state, "target_move_in_progress", None) is not None
-                        else _handle_target_release(app_state)
+                        else _handle_target_release(app_state, settings)
                     )
                 )
             ),

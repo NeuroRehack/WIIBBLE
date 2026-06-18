@@ -109,9 +109,9 @@ class AppState:
     ball_y: int = 0
 
     historical_coords: list = field(default_factory=lambda: [(0, 0)] * 100)
-    # Each target: {"center": (x, y), "radius": r} (all in logical/content coords)
+    # Each target: circle {"center", "radius"} or rect {"shape":"rect", "min", "max"}
     clicked_locations: list = field(default_factory=list)
-    # Temporary state for a target being created (None or dict with 'center' and 'radius')
+    # Temporary state for a target being created (None or in-progress target dict)
     target_in_progress: dict = None
     # Target reposition drag — {"index": int, "grab_offset": (dx, dy)} in logical coords
     target_move_in_progress: dict = None

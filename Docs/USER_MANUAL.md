@@ -93,6 +93,7 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 |---|---|
 | Left-click cursor | Begin resizing cursor (drag to resize) |
 | Left-click canvas (not cursor) | Start placing a new target; drag to set radius |
+| Hold R + left-click drag | Place a rectangular target |
 | Release | Finalise cursor size or new target |
 | Right-click a target | Remove that target |
 | Ctrl + Left-click drag | Pan the canvas |

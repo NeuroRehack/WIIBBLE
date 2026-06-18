@@ -48,8 +48,3 @@ def compute_all_features(signal, params_dic=default_param_dic):
 
 
     return features
-
-
-
-
-

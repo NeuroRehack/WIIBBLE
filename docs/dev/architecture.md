@@ -8,7 +8,7 @@ The key technical challenge is bridging a consumer gaming peripheral into a clin
 
 An intentional design constraint is that the app must run on computers that cannot have Python installed — clinicians get a single `.exe`. All business logic is in Python; a small C# DLL (`WiiBalanceBoardLibrary`) handles the one-time Bluetooth handshake that Windows requires before HID data flows.
 
-For developer setup, build instructions, and running the app, see [DEV.md](DEV.md).
+For developer setup, build instructions, and running the app, see [setup.md](setup.md).
 
 ---
 
@@ -233,7 +233,7 @@ The toolbar and gear button are created at startup but hidden until tare complet
 
 | Package | Purpose | Why this one | Notes / risks |
 |---|---|---|---|
-| `dearpygui==2.1.1` | Immediate-mode GPU GUI | Redraws full canvas every frame — the natural model for real-time sensor data. `viewport_drawlist` gives true full-screen drawing. | **Pin strictly** — API breaks between minor versions. See [ADR-0001](decisions/0001-migrate-to-pyqt6.md) for migration proposal. |
+| `dearpygui==2.1.1` | Immediate-mode GPU GUI | Redraws full canvas every frame, the natural model for real-time sensor data. `viewport_drawlist` gives true full-screen drawing. | **Pin strictly**, API breaks between minor versions. See [ADR-001](decisions/001-migrate-to-pyqt6.md) for migration proposal. |
 | `hidapi==0.14.0.post2` | Read raw 32-byte HID reports from the board | Only Python library that reads raw HID without a kernel driver. Board exposes itself as a standard HID device after pairing. | |
 | `pythonnet==3.0.3` | Load the C# DLL at runtime via `clr.AddReference()` | The Bluetooth handshake logic already existed in C# (WiiBalanceWalker lineage); `pythonnet` bridges it without a rewrite. | Must be 3.x — 2.x API is incompatible. |
 | `numpy==1.24.4` | Array averaging in `tare()` | Used in one place only. | **Pinned to last version supporting Python 3.8** — can be relaxed if minimum Python version is raised. |

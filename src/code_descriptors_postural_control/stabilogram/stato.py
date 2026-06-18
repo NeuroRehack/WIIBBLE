@@ -113,7 +113,7 @@ class Stabilogram():
 
         """
         Resample the stabilogram using SWARII, using the parameters recommended in the paper
-        
+
         """
 
         assert self.signal is not None, "Please provide a signal first"
@@ -132,8 +132,8 @@ class Stabilogram():
 
 
     def filter_(self, lower_bound=0, upper_bound=10, order = 4) -> None:
-        """ 
-        Filter the stabilogram using a Butterworth filter. Default parameters are the one used in the paper. 
+        """
+        Filter the stabilogram using a Butterworth filter. Default parameters are the one used in the paper.
         """
 
 
@@ -180,7 +180,7 @@ class Stabilogram():
 
     def _compute_radius(self)-> None:
         """
-        Compute the radius of the stabilogram (signal is supposed centered). 
+        Compute the radius of the stabilogram (signal is supposed centered).
         """
         self._radius = np.linalg.norm(self.signal, axis=1, keepdims=True)
 
@@ -188,7 +188,7 @@ class Stabilogram():
 
     def _compute_power_spectrum(self)-> None:
         """
-        Compute the PSD of the stabilogram using the Welch method. 
+        Compute the PSD of the stabilogram using the Welch method.
         """
 
         freqs, psd = welch(self.signal, fs=self.frequency, \
@@ -246,7 +246,7 @@ class Stabilogram():
 
     def _compute_diffusion_plot(self, duration_ratio=1/3)-> None:
         """
-        Compute the diffusion plot of the stabilogram. duration_ratio parameter set the limit for the computation, and should only be modified by experts familiar with the diffusion plot 
+        Compute the diffusion plot of the stabilogram. duration_ratio parameter set the limit for the computation, and should only be modified by experts familiar with the diffusion plot
         """
 
         n = len(self.signal)
@@ -259,7 +259,7 @@ class Stabilogram():
 
     def _compute_speed(self, window_length=5, polyorder=3) -> None:
         """
-        Speed is computed using savgol filter. Default parameters are the one used in the paper. 
+        Speed is computed using savgol filter. Default parameters are the one used in the paper.
         """
         cop = self.signal
         spd_savgol = savgol_filter( x = cop, window_length=window_length, polyorder=polyorder, deriv= 1, axis=0, delta=1/self.frequency  )
@@ -364,8 +364,3 @@ class Stabilogram():
         if name == labels.DIFF_MLAP:
             return self.diffusion_plot[:,0], self.diffusion_plot[:,1]+self.diffusion_plot[:,2]   # is it a sum really ?
         raise NotImplementedError
-
-
-
-
-

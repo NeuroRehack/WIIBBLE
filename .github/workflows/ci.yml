@@ -19,13 +19,14 @@ jobs:
           enable-cache: true
           python-version: "3.11"
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install dev dependencies
-        run: |
-          uv sync --extra dev
-          uv pip install -e .
+        run: just sync
 
       - name: Lint with ruff
-        run: uv run ruff check .
+        run: just lint
 
       - name: Check formatting
         run: uv run ruff format --check .
@@ -43,13 +44,14 @@ jobs:
           enable-cache: true
           python-version: "3.11"
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install dev dependencies
-        run: |
-          uv sync --extra dev
-          uv pip install -e .
+        run: just sync
 
       - name: Run tests with coverage
-        run: uv run pytest -v
+        run: just test
 
       - name: Upload coverage report
         if: always()

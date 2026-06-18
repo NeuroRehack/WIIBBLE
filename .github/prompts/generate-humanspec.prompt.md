@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-description: 'Generate a human-readable ARCHITECTURE.md with diagrams for this repository'
+description: 'Generate a human-readable architecture doc with diagrams for this repository'
 ---
 
 Before starting, read the file `repomix-output.md` in the repository root.
@@ -8,7 +8,7 @@ This file contains the full codebase packaged by repomix and is your
 primary source for analysis. If the file does not exist, stop and tell
 the user to run `repomix --output repomix-output.md --style markdown` first.
 
-Analyse it thoroughly and produce an `ARCHITECTURE.md` file in the repository root.
+Analyse it thoroughly and produce or update `docs/dev/architecture.md`.
 
 The goal is a document that a new developer could read in 10 minutes and come away with a genuine mental model of the project — how it works, how it's structured, and how to navigate it confidently. Prioritise clarity and visual communication over exhaustiveness.
 

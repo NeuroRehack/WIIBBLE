@@ -17,16 +17,16 @@ from scipy.interpolate import interp1d
 class Local_SWARII:
     """
     Implementation of the Sliding Windows Weighted Averaged Interpolation method
-    
+
     How To use :
         First instantiate the class with the desired parameters
         Then call resample on the desired signal
-        
+
     """
 
     def __init__(self, window_size=1, desired_frequency=25, verbose=0,**kwargs):
         """
-        Instantiate SWARII 
+        Instantiate SWARII
 
         Parameters :
             desired_frequency : The frequency desired for the output signal,
@@ -43,7 +43,7 @@ class Local_SWARII:
     def resample(self, time, signal,interpolate=1):
         """
         Apply the SWARII to resample a given signal.
-        
+
         Input :
             time:   The time stamps of the data point in the signal. A 1-d
                     array of shape n, where n is the number of points in the
@@ -52,7 +52,7 @@ class Local_SWARII:
                     shape (n,k), where n is the number of points in the signal,
                     and k is the dimension of the signal (e.g. 2 for a
                     statokinesigram).
-            skip_if_missing : will raise an exception if the number of empty windows is larger than 
+            skip_if_missing : will raise an exception if the number of empty windows is larger than
                               this value (default : + infty)
             interpolate : 0 - last point interpolation
                           1 - linear interpolation
@@ -60,9 +60,9 @@ class Local_SWARII:
 
             options :
                 count_interpolations : if True, will return the number of interpolated poitns
-                  
-                    
-        Output: 
+
+
+        Output:
             resampled_time : The time stamps of the signal after the resampling
             resampled_signal : The resampled signal.
         """
@@ -173,7 +173,7 @@ class SWARII :
     def resample(data,window_size=0.08,desired_frequency=25,interpolate = True, verbose=0, count_interpolations=False):
         """
         time should be in second
-        
+
         """
         swarii = Local_SWARII(window_size=window_size-1e-6,desired_frequency=desired_frequency, verbose=verbose, count_interpolations=count_interpolations)
         t = data[:,0]
@@ -190,4 +190,3 @@ class SWARII :
         else :
             nnt, nnsignal= swarii.resample( time =nt, signal= nsignal, interpolate=interpolate)
             return nnsignal[:,:2]
-

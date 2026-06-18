@@ -1,8 +1,7 @@
-# ADR-0001: Migrate UI Framework from DearPyGui to PyQt6/PySide6
+# ADR-001: Migrate UI Framework from DearPyGui to PyQt6/PySide6
 
-## Status
-
-Proposed
+**Date:** 2026-05-26
+**Status:** Proposed
 
 ## Context
 
@@ -11,7 +10,7 @@ WIIBBLE currently uses DearPyGui 2.1.1 as its immediate-mode GPU renderer. This 
 However, as the project matures and the settings panel grows more complex, several DearPyGui limitations have become friction points:
 
 - **Styling is severely constrained.** DearPyGui theming is limited to colour and font changes. Rounded panels, smooth transitions, and clinician-friendly layouts require hacks or are simply not achievable.
-- **No panel animations.** The collapsible settings panel cannot animate smoothly — it snaps open/closed. This is a minor but visible quality gap vs clinical software peers.
+- **No panel animations.** The collapsible settings panel cannot animate smoothly, it snaps open/closed. This is a minor but visible quality gap vs clinical software peers.
 - **Widget testing is not possible.** DearPyGui widgets cannot be instantiated headlessly, so UI logic cannot be unit-tested. Only the pure-pipeline modules (`wiibble/features/data_processing.py`, `wiibble/board/recording.py`, `wiibble/utils/state.py`) are currently testable.
 - **Minor-version API breakage.** DearPyGui breaks its API between minor releases, requiring strict pinning and periodic migration effort.
 - **Canvas drawing model.** The `viewport_drawlist` full-screen approach works, but `QPainter` on a `QWidget` with a `QTimer` driving updates is equivalent and more portable.
@@ -38,22 +37,25 @@ The candidate decision is: **migrate the UI layer to PyQt6 (LGPL) or PySide6 (LG
 ## Consequences
 
 **Positive**
-- Rich QSS styling — clinician-friendly, polished appearance
-- `QPropertyAnimation` — smooth panel collapse/expand
-- `pytest-qt` — headless widget testing, unblocking UI coverage
+
+- Rich QSS styling, clinician-friendly, polished appearance
+- `QPropertyAnimation`, smooth panel collapse/expand
+- `pytest-qt`, headless widget testing, unblocking UI coverage
 - Stable, mature API with strong long-term support
 - Larger ecosystem of Qt-native components
 
 **Negative**
-- Non-trivial migration effort — all draw calls and layout code in `wiibble/ui/ui.py` must be rewritten
+
+- Non-trivial migration effort, all draw calls and layout code in `wiibble/ui/ui.py` must be rewritten
 - `wiibble/analysis/calibration.py` inline frame rendering must be redesigned as proper Qt dialogs
-- Build pipeline changes — Nuitka Qt bundle or switch to PyInstaller
+- Build pipeline changes, Nuitka Qt bundle or switch to PyInstaller
 - Team must learn Qt layout/signal-slot model
 - Risk of introducing regressions in real-time rendering performance (requires benchmarking in spike)
 
 ## Spike Required Before Decision
 
 Before committing, a prototype spike should:
+
 1. Implement the main canvas + real-time cursor update using `QPainter` + `QTimer` at 100 Hz
 2. Measure rendering latency vs current DearPyGui baseline (mock mode)
 3. Implement the settings panel with `QPropertyAnimation` collapse
@@ -61,6 +63,6 @@ Before committing, a prototype spike should:
 
 ## Related
 
-- TODO.md Phase 2 item (now tracked here)
+- [TODO.md](../TODO.md) Phase 2 item (now tracked here)
 - `wiibble/ui/ui.py` — primary migration target
 - `wiibble/analysis/calibration.py` — secondary migration target

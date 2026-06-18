@@ -2,7 +2,7 @@
 name = "wiibble"
 version = "2.0.1"
 description = "Wii Balance Board Live Environment — clinical rehabilitation tool"
-readme = "ReadMe.md"
+readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { text = "GPL-3.0-or-later" }
 
@@ -31,6 +31,7 @@ analysis = [
 ]
 dev = [
     "nuitka>=2.0",
+    "pre-commit>=4.0",
     "pytest>=7.0",
     "pytest-cov>=5.0",
     "ruff>=0.4",
@@ -64,6 +65,7 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["integration: marks tests that require live services or hardware"]
 addopts = [
     "--cov=wiibble.features.data_processing",
     "--cov=wiibble.utils.state",

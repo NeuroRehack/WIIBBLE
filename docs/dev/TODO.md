@@ -1,7 +1,7 @@
 # WIIBBLE — Open Issues & Roadmap
 
 This file tracks open work. Completed items have been moved to [CHANGELOG.md](../CHANGELOG.md).  
-For major architectural proposals see [Docs/decisions/](decisions/).
+For major architectural proposals see [decisions/](decisions/).
 
 ---
 
@@ -33,7 +33,7 @@ Migrate UI from DearPyGui to PyQt6/PySide6 for richer styling, smooth panel anim
 
 **This is a significant architectural decision.** See the full proposal, spike requirements, and consequence analysis in:
 
-> [Docs/decisions/0001-migrate-to-pyqt6.md](decisions/0001-migrate-to-pyqt6.md)
+> [decisions/001-migrate-to-pyqt6.md](decisions/001-migrate-to-pyqt6.md)
 
 Status: **Proposed** — pending prototype spike.
 

@@ -7,9 +7,9 @@ Centre of Pressure data.
 
 ## Attribution
 
-**Original author:** Jythen  
-**Upstream repository:** https://github.com/Jythen/code_descriptors_postural_control  
-**Upstream commit pinned:** `c66a0e4` ("correct filtering option")  
+**Original author:** Jythen
+**Upstream repository:** https://github.com/Jythen/code_descriptors_postural_control
+**Upstream commit pinned:** `c66a0e4` ("correct filtering option")
 **License:** MIT — see [LICENSE](LICENSE)
 
 The original `LICENSE` file is preserved unchanged, as required by the MIT license terms.
@@ -26,7 +26,7 @@ All changes from the upstream pinned commit are described here.
 
 ### 1. `stabilogram/stato.py` — fix `from_array` with 3-column input
 
-**File:** `stabilogram/stato.py`  
+**File:** `stabilogram/stato.py`
 **Problem:** When `from_array` was called with a `(N, 3)` array (time, ML, AP), the
 `else` branch reshaped `time` to `(N, 1)` via `time = time[:,None]` and then attempted
 to assign it back into `signal[:,0]` (shape `(N,)`), raising:
@@ -42,7 +42,7 @@ The `[:,None]` reshape was only needed in the `if n_columns == 2` branch for
 
 ### 2. `stabilogram/stato.py` — fix `mean_value` shape in `else` branch
 
-**File:** `stabilogram/stato.py`  
+**File:** `stabilogram/stato.py`
 **Problem:** In the same `else` branch, `self.mean_value` was assigned the result of
 `np.mean(..., keepdims=True)`, giving shape `(1, 2)`. The `if n_columns == 2` branch
 correctly stores `mean[0]` (shape `(2,)`). Downstream code in

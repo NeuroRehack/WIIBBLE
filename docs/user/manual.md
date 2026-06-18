@@ -1,12 +1,12 @@
 # WIIBBLE User Manual
 
-This manual is written for **clinicians and end users**. For developer setup, analysis pipelines, and report generation, see the [Developer Guide](DEV.md).
+This manual is written for **clinicians and end users**. For developer setup, analysis pipelines, and report generation, see the [Developer Setup](../dev/setup.md).
 
 ---
 
 ## Main Interface
 
-![WIIBBLE main screen](../images/main_screen.png)
+![WIIBBLE main screen](../../images/main_screen.png)
 *Main screen: settings panel open on the left, live CoP cursor with sway trail on the canvas, weight and balance percentage in the stats bar at the bottom.*
 
 The interface has three areas:
@@ -209,14 +209,14 @@ The settings panel (gear button) is available as soon as the main canvas appears
 | Symptom | Solution |
 |---|---|
 | Board does not connect | Ensure Bluetooth is on, board is paired, and the LED is blinking blue. Check battery level. |
-| DLL loading error | Make sure `WiiBalanceBoardLibrary.dll` is built. See [DEV.md](DEV.md). |
+| DLL loading error | Make sure `WiiBalanceBoardLibrary.dll` is built. See [setup.md](../dev/setup.md). |
 | Black screen / no canvas | Restart the app. Update graphics drivers if persistent. |
 | Cursor very jittery | Increase the Smoothing Filter slider. |
 | Gear icon missing | Check `assets/fonts/fa-solid-900.ttf` is present. |
 | Settings lost | Delete `~/.wiibble/settings.json` to reset to defaults. |
-| Library error on startup | Run `uv sync` — see [DEV.md](DEV.md). |
+| Library error on startup | Run `uv sync` — see [setup.md](../dev/setup.md). |
 
-For developer and build issues see [DEV.md](DEV.md).
+For developer and build issues see [setup.md](../dev/setup.md).
 
 ---
 
@@ -239,4 +239,4 @@ These flags work with both `python -m wiibble` (`wiibble`) and the compiled `WII
 
 After recording, sessions can be analysed to extract clinical posturographic features, and an interactive HTML report can be generated for clinical records.
 
-These steps require technical setup and are intended for **administrators or developers**. If you need analysis or reports and do not see them generated automatically, ask your clinic IT administrator or the project technical lead, and point them to the [Developer Guide](DEV.md#posturographic-analysis-and-reporting).
+These steps require technical setup and are intended for **administrators or developers**. If you need analysis or reports and do not see them generated automatically, ask your clinic IT administrator or the project technical lead, and point them to the [Developer Setup](../dev/setup.md#5-posturographic-analysis-and-reporting).

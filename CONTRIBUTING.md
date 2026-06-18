@@ -20,12 +20,12 @@ Thank you for taking the time to contribute. This document covers everything you
 
 ## Getting Set Up
 
-Follow the full developer setup in [Docs/DEV.md](Docs/DEV.md). In short:
+Follow the full developer setup in [docs/dev/setup.md](docs/dev/setup.md). In short:
 
 ```powershell
 git clone https://github.com/NeuroRehack/WIIBBLE.git
 cd WIIBBLE
-uv sync --extra dev
+just sync
 cd WiiBalanceBoardLibrary && dotnet build && cd ..
 uv run wiibble --mock --mock-scenario sway # verify it runs without hardware
 ```
@@ -40,7 +40,7 @@ uv run wiibble --mock --mock-scenario sway # verify it runs without hardware
 | `develop` | Integration branch — all PRs target here |
 | `feature/<name>` | New features and non-urgent improvements |
 | `fix/<name>` | Bug fixes |
-| `Docs/<name>` | Documentation-only changes |
+| `docs/<name>` | Documentation-only changes |
 
 Always branch from `develop`, never from `main`.
 
@@ -74,10 +74,11 @@ docs(architecture): update module guide with `wiibble/analysis/analysis.py` chan
 WIIBBLE uses [Ruff](https://github.com/astral-sh/ruff) for both linting and formatting, configured in `pyproject.toml`. Before pushing:
 
 ```powershell
-uv run ruff check .              # lint
-uv run ruff check . --fix        # auto-fix safe issues
-uv run ruff format --check .     # verify formatting
-uv run ruff format .             # apply formatting
+just lint
+just format
+# or directly:
+uv run ruff check .
+uv run ruff format .
 ```
 
 CI will reject PRs that fail either check.
@@ -96,7 +97,8 @@ A few conventions to follow beyond what Ruff enforces:
 Tests live in `tests/` and run with `pytest`. A coverage gate of **≥ 80%** is enforced for the testable modules (`wiibble/features/data_processing.py`, `wiibble/utils/state.py`, `wiibble/board/recording.py`). Hardware-dependent and UI code is excluded from the gate.
 
 ```powershell
-uv run pytest -v                 # run all tests with coverage report
+just test
+# or: uv run pytest -v
 ```
 
 When adding a new feature:
@@ -108,11 +110,11 @@ When adding a new feature:
 
 ## Pull Request Process
 
-1. Make sure `ruff check` and `pytest` both pass locally before opening a PR.
+1. Make sure `just lint` and `just test` both pass locally before opening a PR.
 2. Target `develop`, not `main`.
 3. Keep PRs focused — one logical change per PR makes review faster.
 4. Fill in the PR description: what changed, why, and how to test it.
-5. If the change affects the data pipeline, recording format, or analysis output, update the relevant doc in `Docs/`.
+5. If the change affects the data pipeline, recording format, or analysis output, update the relevant doc in `docs/dev/`.
 6. At least one approving review is required before merging.
 
 ---

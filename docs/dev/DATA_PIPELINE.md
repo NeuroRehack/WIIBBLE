@@ -2,8 +2,8 @@
 
 This document is the canonical reference for the full data processing pipeline — from raw sensor acquisition through CSV recording, posturographic feature extraction, and HTML report generation.
 
-For user-facing analysis commands, see [USER_MANUAL.md — Posturographic Analysis](USER_MANUAL.md#posturographic-analysis--reports).  
-For developer setup (installing analysis extras, running scripts), see [DEV.md — Posturographic Analysis and Reporting](DEV.md#5-posturographic-analysis-and-reporting).
+For user-facing analysis commands, see [User Manual — Posturographic Analysis](../user/manual.md#posturographic-analysis--reports).
+For developer setup (installing analysis extras, running scripts), see [setup.md — Posturographic Analysis and Reporting](setup.md#5-posturographic-analysis-and-reporting).
 
 ---
 

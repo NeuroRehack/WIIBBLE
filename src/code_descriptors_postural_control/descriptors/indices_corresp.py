@@ -73,8 +73,3 @@ def get_corresp(df):
             "dic_groups":dic_group,
             "dic_axis":dic_axis
             }
-
-
-
-
-

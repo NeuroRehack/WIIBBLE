@@ -89,4 +89,3 @@ features = compute_all_features(stato, params_dic=params_dic)
 
 
 print(features)
-

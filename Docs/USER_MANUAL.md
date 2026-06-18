@@ -17,13 +17,23 @@ The interface has three areas:
 
 **Stats Bar** — Bottom of the window. Shows left/right weight distribution percentage and total weight in kg. Colour reflects the amount of weight currently detected on the board.
 
+**Quick Access** — Always-visible buttons on the canvas (after the session starts): **Clear Screen** (eraser icon, top-left next to the gear) and a red **record** button (top-right, same position as the recording indicator). These mirror the settings panel recording control and clear the canvas without opening settings.
+
+---
+
+## Quick Access Buttons
+
+**Clear Screen** (top-left) — Removes all targets and the sway trail from the canvas. Shortcut: **Ctrl+Shift+C**. When the settings panel is open, the clear button moves to the canvas edge beside the panel.
+
+**Record / Stop** (top-right) — Round red button when idle; turns square while recording or during the countdown. The configured duration limit (e.g. `00:10`, or `∞` for indefinite) is shown to the right of the button at all times; elapsed time appears on the left in a larger font while recording. Shortcut: **Ctrl+Space**.
+
 ---
 
 ## Settings Panel
 
 ### Gear Button
 
-Opens and closes the settings panel. When collapsed, a floating gear button remains visible in the top-left corner of the screen.
+Opens and closes the settings panel. When collapsed, a floating gear button remains visible in the top-left corner of the screen, beside the Clear Screen button.
 
 ### Calibration
 
@@ -73,8 +83,6 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 **Target Jelly Effect** — Animates targets with a wobble when hit.
 
-**Clear Screen** — Removes all targets and the sway trail from the canvas.
-
 ---
 
 ## Mouse & Keyboard Controls
@@ -95,6 +103,8 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 | Key | Context | Effect |
 |---|---|---|
 | Enter | Connection failed screen | Retry board connection |
+| Ctrl+Shift+C | Main session | Clear Screen (remove targets and sway trail) |
+| Ctrl+Space | Main session | Start / Stop Recording |
 
 ---
 

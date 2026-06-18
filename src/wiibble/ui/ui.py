@@ -47,6 +47,16 @@ from wiibble.utils.constants import (
     PANEL_SLIDER_W,
     PANEL_TOGGLE_BTN_SIZE,
     PANEL_W,
+    QUICK_ACCESS_GAP,
+    QUICK_ACCESS_MARGIN,
+    RECORDING_INDICATOR_DOT_RADIUS,
+    RECORDING_INDICATOR_ELAPSED_CHAR_WIDTH,
+    RECORDING_INDICATOR_LIMIT_FONT_SIZE,
+    RECORDING_INDICATOR_LIMIT_WIDTH,
+    RECORDING_INDICATOR_RIGHT_MARGIN,
+    RECORDING_INDICATOR_SPACING,
+    RECORDING_INDICATOR_TIMER_FONT_SIZE,
+    RECORDING_INDICATOR_Y,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
@@ -93,6 +103,21 @@ def _crisp_text(pos, text: str, color: tuple, size: int, parent) -> int:
     tag = dpg.draw_text(pos, text, color=color, size=size, parent=parent)
     bind_text_font(tag)
     return tag
+
+
+def _crisp_icon_text(pos, text: str, color: tuple, size: int, parent) -> int:
+    """Like _crisp_text but binds the 100px FontAwesome atlas for icon glyphs."""
+    tag = dpg.draw_text(pos, text, color=color, size=size, parent=parent)
+    if _theme_module.FA_ICON_FONT_DRAW is not None and dpg.does_item_exist(tag):
+        dpg.bind_item_font(tag, _theme_module.FA_ICON_FONT_DRAW)
+    elif _theme_module.FA_ICON_FONT is not None and dpg.does_item_exist(tag):
+        dpg.bind_item_font(tag, _theme_module.FA_ICON_FONT)
+    return tag
+
+
+def _estimate_text_width(text: str, font_size: int) -> int:
+    """Approximate pixel width for draw_text labels (monospace-ish digits)."""
+    return int(len(text) * font_size * RECORDING_INDICATOR_ELAPSED_CHAR_WIDTH)
 
 
 # ---------------------------------------------------------------------------
@@ -298,34 +323,152 @@ def build_panel_window(
         dpg.bind_item_font("panel_close_btn", _theme_module.FA_ICON_FONT)
 
 
-def build_panel_toggle_btn(toggle_label: str, toggle_callback) -> None:
-    """Create the floating toggle button shown when the panel is collapsed."""
-    if dpg.does_item_exist("panel_toggle_window"):
-        dpg.delete_item("panel_toggle_window")
+def build_left_quick_access(gear_label: str, toggle_callback, session_state: dict) -> None:
+    """Create the top-left quick-access bar (gear + clear screen)."""
+    if dpg.does_item_exist("left_quick_access_window"):
+        dpg.delete_item("left_quick_access_window")
+
+    clear_label = (
+        _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
+    )
+    btn = PANEL_TOGGLE_BTN_SIZE
+    gap = QUICK_ACCESS_GAP
+    margin = QUICK_ACCESS_MARGIN
+    window_w = 2 * btn + gap + 4
 
     with dpg.window(
-        tag="panel_toggle_window",
+        tag="left_quick_access_window",
         no_title_bar=True,
         no_resize=True,
         no_move=True,
         no_scrollbar=True,
         no_collapse=True,
         no_background=True,
-        pos=(4, 4),
-        width=PANEL_TOGGLE_BTN_SIZE + 4,
-        height=PANEL_TOGGLE_BTN_SIZE + 4,
+        pos=(margin, margin),
+        width=window_w,
+        height=btn + 4,
         show=False,
     ):
-        dpg.add_button(
-            tag="panel_float_btn",
-            label=toggle_label,
-            callback=toggle_callback,
-            width=PANEL_TOGGLE_BTN_SIZE,
-            height=PANEL_TOGGLE_BTN_SIZE,
-        )
+        with dpg.group(horizontal=True):
+            dpg.add_button(
+                tag="panel_float_btn",
+                label=gear_label,
+                callback=toggle_callback,
+                width=btn,
+                height=btn,
+            )
+            dpg.add_button(
+                tag="clear_screen_quick_btn",
+                label=clear_label,
+                callback=lambda: session_state.update({"action": "clear"}),
+                width=btn,
+                height=btn,
+            )
 
     if _theme_module.FA_ICON_FONT is not None:
         dpg.bind_item_font("panel_float_btn", _theme_module.FA_ICON_FONT)
+        dpg.bind_item_font("clear_screen_quick_btn", _theme_module.FA_ICON_FONT)
+
+    with dpg.tooltip(parent="clear_screen_quick_btn"):
+        dpg.add_text("Clear Screen — remove targets and sway trail.\nShortcut: Ctrl+Shift+C")
+
+
+def build_recording_quick_btn(app_state, settings) -> None:
+    """Create the top-right recording toggle quick-access button."""
+    if dpg.does_item_exist("recording_quick_window"):
+        dpg.delete_item("recording_quick_window")
+
+    btn = RECORDING_INDICATOR_DOT_RADIUS * 2
+    vw = dpg.get_viewport_width()
+    layout = _recording_indicator_layout(vw)
+    x = int(layout["dot_cx"] - layout["dot_radius"])
+    y = int(layout["dot_cy"] - layout["dot_radius"])
+
+    with dpg.window(
+        tag="recording_quick_window",
+        no_title_bar=True,
+        no_resize=True,
+        no_move=True,
+        no_scrollbar=True,
+        no_collapse=True,
+        no_background=True,
+        pos=(x, y),
+        width=btn + 4,
+        height=btn + 4,
+        show=False,
+    ):
+        dpg.add_button(
+            tag="recording_quick_btn",
+            label="",
+            callback=lambda: _on_start_recording(app_state, settings),
+            width=btn,
+            height=btn,
+        )
+
+    dpg.bind_item_theme("recording_quick_btn", _get_recording_quick_idle_theme())
+
+    with dpg.tooltip(parent="recording_quick_btn"):
+        dpg.add_text("Start / Stop Recording.\nShortcut: Ctrl+Space")
+
+
+def update_left_quick_access_layout(toolbar_visible: bool, toolbar_enabled: bool) -> None:
+    """Reposition and show/hide left quick-access buttons based on panel state."""
+    if not dpg.does_item_exist("left_quick_access_window"):
+        return
+
+    btn = PANEL_TOGGLE_BTN_SIZE
+    gap = QUICK_ACCESS_GAP
+    margin = QUICK_ACCESS_MARGIN
+
+    if toolbar_visible:
+        dpg.configure_item("panel_float_btn", show=False)
+        dpg.configure_item("clear_screen_quick_btn", show=True)
+        dpg.set_item_pos("left_quick_access_window", (PANEL_W + 8, margin))
+        window_w = btn + 4
+    else:
+        dpg.configure_item("panel_float_btn", show=True)
+        dpg.configure_item("clear_screen_quick_btn", show=True)
+        dpg.set_item_pos("left_quick_access_window", (margin, margin))
+        window_w = 2 * btn + gap + 4
+
+    dpg.configure_item("left_quick_access_window", width=window_w, show=toolbar_enabled)
+
+
+def update_recording_quick_access_position(viewport_width: int) -> None:
+    """Anchor the recording quick-access button over the recording-indicator dot."""
+    if not dpg.does_item_exist("recording_quick_window"):
+        return
+    layout = _recording_indicator_layout(viewport_width)
+    btn = layout["dot_radius"] * 2
+    x = int(layout["dot_cx"] - layout["dot_radius"])
+    y = int(layout["dot_cy"] - layout["dot_radius"])
+    dpg.set_item_pos("recording_quick_window", (x, y))
+    dpg.configure_item("recording_quick_window", width=btn + 4, height=btn + 4)
+    if dpg.does_item_exist("recording_quick_btn"):
+        dpg.configure_item("recording_quick_btn", width=btn, height=btn)
+
+
+def set_quick_access_visible(visible: bool, session_state: dict) -> None:
+    """Show or hide all canvas quick-access controls."""
+    toolbar_visible = session_state.get("toolbar_visible", False)
+    toolbar_enabled = session_state.get("toolbar_enabled", False)
+    if visible:
+        update_left_quick_access_layout(toolbar_visible, toolbar_enabled)
+        if dpg.does_item_exist("recording_quick_window"):
+            dpg.configure_item("recording_quick_window", show=toolbar_enabled)
+    else:
+        if dpg.does_item_exist("left_quick_access_window"):
+            dpg.configure_item("left_quick_access_window", show=False)
+        if dpg.does_item_exist("recording_quick_window"):
+            dpg.configure_item("recording_quick_window", show=False)
+
+
+def is_mouse_over_quick_access() -> bool:
+    """Return True if the mouse is over a quick-access button."""
+    for tag in ("panel_float_btn", "clear_screen_quick_btn", "recording_quick_btn"):
+        if dpg.does_item_exist(tag) and dpg.is_item_shown(tag) and dpg.is_item_hovered(tag):
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +476,114 @@ def build_panel_toggle_btn(toggle_label: str, toggle_callback) -> None:
 # ---------------------------------------------------------------------------
 _trail_active_theme = None
 _recording_active_theme = None
+_recording_quick_idle_theme = None
+_recording_quick_active_theme = None
+
+
+def _format_record_limit(seconds: int | float) -> str:
+    """Format the configured recording duration for the indicator cluster."""
+    total = int(seconds)
+    if total <= 0:
+        return ICON_INFINITY
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
+def _draw_recording_limit_text(
+    limit_seconds: int | float,
+    *,
+    x_limit: float,
+    dot_cy: float,
+    font_size: int,
+    color: tuple,
+    parent,
+) -> None:
+    """Draw the duration limit to the right of the record button."""
+    y = _recording_indicator_text_y(font_size, dot_cy)
+    label = _format_record_limit(limit_seconds)
+    if label == ICON_INFINITY:
+        _crisp_icon_text((x_limit, y), label, color, font_size, parent)
+    else:
+        _crisp_text((x_limit, y), label, color, font_size, parent)
+
+
+def _recording_indicator_text_y(font_size: int, dot_cy: float) -> float:
+    """Return a y coordinate that vertically centres text on the record button."""
+    return dot_cy - font_size // 2
+
+
+def _recording_indicator_layout(sw: int) -> dict:
+    """Return shared layout metrics for the timer, record button, and limit label."""
+    dot_radius = RECORDING_INDICATOR_DOT_RADIUS
+    dot_diameter = dot_radius * 2
+    # Anchor button + limit from the right; elapsed timer grows left from the button.
+    dot_cx = (
+        sw
+        - RECORDING_INDICATOR_RIGHT_MARGIN
+        - RECORDING_INDICATOR_LIMIT_WIDTH
+        - RECORDING_INDICATOR_SPACING
+        - dot_radius
+    )
+    dot_cy = RECORDING_INDICATOR_Y + dot_radius
+    x_limit = dot_cx + dot_radius + RECORDING_INDICATOR_SPACING
+    return {
+        "x_limit": x_limit,
+        "dot_cx": dot_cx,
+        "dot_cy": dot_cy,
+        "dot_radius": dot_radius,
+        "timer_font_size": RECORDING_INDICATOR_TIMER_FONT_SIZE,
+        "limit_font_size": RECORDING_INDICATOR_LIMIT_FONT_SIZE,
+    }
+
+
+def _elapsed_timer_x(timer_str: str, font_size: int, dot_cx: float, dot_radius: float) -> float:
+    """Right-align the elapsed timer immediately left of the record button."""
+    width = _estimate_text_width(timer_str, font_size)
+    return dot_cx - dot_radius - RECORDING_INDICATOR_SPACING - width
+
+
+def _get_recording_quick_idle_theme():
+    """Round red record button shown when idle."""
+    global _recording_quick_idle_theme
+    radius = RECORDING_INDICATOR_DOT_RADIUS
+    if _recording_quick_idle_theme is None or not dpg.does_item_exist(_recording_quick_idle_theme):
+        with dpg.theme() as t:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Button, (220, 40, 40, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonHovered, (240, 60, 60, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonActive, (255, 80, 80, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_style(
+                    dpg.mvStyleVar_FrameRounding, radius, category=dpg.mvThemeCat_Core
+                )
+        _recording_quick_idle_theme = t
+    return _recording_quick_idle_theme
+
+
+def _get_recording_quick_active_theme():
+    """Square red stop button shown while recording or during countdown."""
+    global _recording_quick_active_theme
+    if _recording_quick_active_theme is None or not dpg.does_item_exist(
+        _recording_quick_active_theme
+    ):
+        with dpg.theme() as t:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_Button, (180, 50, 50, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonHovered, (200, 70, 70, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_color(
+                    dpg.mvThemeCol_ButtonActive, (220, 90, 90, 255), category=dpg.mvThemeCat_Core
+                )
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+        _recording_quick_active_theme = t
+    return _recording_quick_active_theme
 
 
 def _get_trail_active_theme():
@@ -374,7 +625,25 @@ def _get_recording_theme():
                     dpg.mvThemeCol_ButtonActive, (220, 90, 90, 255), category=dpg.mvThemeCat_Core
                 )
         _recording_active_theme = t
-    return _recording_active_theme
+        return _recording_active_theme
+
+
+def sync_recording_buttons(*, recording_active: bool) -> None:
+    """Keep panel and quick-access recording buttons in sync."""
+    panel_label = "Stop Recording" if recording_active else "Start Recording"
+    panel_theme = _get_recording_theme() if recording_active else 0
+    if dpg.does_item_exist("start_recording_btn"):
+        dpg.set_item_label("start_recording_btn", panel_label)
+        dpg.bind_item_theme("start_recording_btn", panel_theme)
+
+    if dpg.does_item_exist("recording_quick_btn"):
+        dpg.set_item_label("recording_quick_btn", "")
+        dpg.bind_item_theme(
+            "recording_quick_btn",
+            _get_recording_quick_active_theme()
+            if recording_active
+            else _get_recording_quick_idle_theme(),
+        )
 
 
 def _update_trail_buttons(active_label: str) -> None:
@@ -467,8 +736,8 @@ def _on_start_recording(app_state, settings) -> None:
     """Start or stop a recording session from the controls toolbar."""
     if app_state.is_recording or app_state.is_countdown:
         app_state.is_recording = False
-        dpg.set_item_label("start_recording_btn", "Start Recording")
-        dpg.bind_item_theme("start_recording_btn", 0)
+        app_state.is_countdown = False
+        sync_recording_buttons(recording_active=False)
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
         return  # Prevent double start
@@ -479,23 +748,7 @@ def _on_start_recording(app_state, settings) -> None:
     app_state.record_buffer = []
     app_state.recording_indicator = False
     app_state.stopwatch_elapsed = 0.0
-    # change label of start button to "Stop Recording"
-    dpg.set_item_label("start_recording_btn", "Stop Recording")
-    dpg.bind_item_theme("start_recording_btn", _get_recording_theme())
-
-
-def _build_clear_screen_button(session_state: dict) -> None:
-    """Add clear-screen control at the top of the settings panel."""
-    _clear_btn = dpg.add_button(
-        tag="clear_screen_btn",
-        label="Clear Screen",
-        callback=lambda: session_state.update({"action": "clear"}),
-        width=PANEL_BTN_W,
-        height=PANEL_BTN_H,
-    )
-    with dpg.tooltip(parent="clear_screen_btn"):
-        dpg.add_text("Remove all targets and the sway trail\nfrom the canvas.")
-    dpg.add_spacer(height=8)
+    sync_recording_buttons(recording_active=True)
 
 
 def _clamp_body_weight(value: float) -> float:
@@ -1002,8 +1255,6 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
 
 def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
-    _build_clear_screen_button(session_state)
-
     _build_section_header("CALIBRATION", accent_color=_theme_module.C_ACCENT_SESSION)
     _build_calibration_controls(app_state, settings, session_state)
 
@@ -1308,6 +1559,7 @@ def draw_main_screen(
     pan_offset_x: float = 0.0,
     pan_offset_y: float = 0.0,
     toolbar_visible: bool = False,
+    toolbar_enabled: bool = False,
 ) -> None:
     """
     Draw one frame of the main balance display onto drawlist dl.
@@ -1476,42 +1728,44 @@ def draw_main_screen(
             parent=dl,
         )
 
-    # Draw recording indicator group (timer, dot, REC) anchored to right edge
-    if getattr(app_state, "recording_indicator", False):
-        right_margin = 20
-        dot_radius = 18
-        dot_diameter = dot_radius * 2
-        spacing = 12
-        font_size = 32
-
-        # Stopwatch timer (mm:ss.t)
-        elapsed = getattr(app_state, "stopwatch_elapsed", 0.0)
-        mins = int(elapsed // 60)
-        secs = elapsed % 60
-        timer_str = f"{mins:02d}:{secs:04.1f}"
-
-        # Estimate text widths (approximate, since DPG doesn't provide get_text_size)
-        timer_width = font_size * 3  # e.g., "00:00.0"
-        rec_width = font_size * 2  # e.g., "REC"
-
-        # Recording indicator sits at the top-right of the canvas
-        y = 8
-        # Compute starting x position for timer (leftmost)
-        x_timer = sw - right_margin - (timer_width + spacing + dot_diameter + spacing + rec_width)
-
-        # Draw timer
-        _crisp_text((x_timer, y), timer_str, color=(255, 0, 0, 255), size=font_size, parent=dl)
-
-        # Draw dot (centered vertically with text)
-        x_dot = x_timer + timer_width + spacing + dot_radius
-        y_dot = y + font_size // 2
-        dpg.draw_circle(
-            (x_dot, y_dot), dot_radius, color=(255, 0, 0, 255), fill=(255, 0, 0, 200), parent=dl
+    # Recording indicator cluster: elapsed timer (while recording) + limit (always).
+    if toolbar_enabled:
+        layout = _recording_indicator_layout(sw)
+        limit_seconds = (
+            app_state.record_duration
+            if getattr(app_state, "recording_indicator", False)
+            else settings.record_duration
+        )
+        limit_color = (255, 0, 0, 255)
+        _draw_recording_limit_text(
+            limit_seconds,
+            x_limit=layout["x_limit"],
+            dot_cy=layout["dot_cy"],
+            font_size=layout["limit_font_size"],
+            color=limit_color,
+            parent=dl,
         )
 
-        # Draw "REC"
-        x_rec = x_dot + dot_radius + spacing
-        _crisp_text((x_rec, y), "REC", color=(255, 0, 0, 255), size=font_size, parent=dl)
+        if getattr(app_state, "recording_indicator", False):
+            elapsed = getattr(app_state, "stopwatch_elapsed", 0.0)
+            mins = int(elapsed // 60)
+            secs = elapsed % 60
+            timer_str = f"{mins:02d}:{secs:04.1f}"
+            _crisp_text(
+                (
+                    _elapsed_timer_x(
+                        timer_str,
+                        layout["timer_font_size"],
+                        layout["dot_cx"],
+                        layout["dot_radius"],
+                    ),
+                    _recording_indicator_text_y(layout["timer_font_size"], layout["dot_cy"]),
+                ),
+                timer_str,
+                color=(255, 0, 0, 255),
+                size=layout["timer_font_size"],
+                parent=dl,
+            )
 
     # Toast overlay — shown briefly after a recording is saved
     if time.time() < getattr(app_state, "toast_until", 0.0):

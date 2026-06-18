@@ -9,19 +9,58 @@ import math
 import dearpygui.dearpygui as dpg
 
 from wiibble.features.data_processing import logical_to_viewport, viewport_to_logical
-from wiibble.ui.ui import _on_zoom_change
+from wiibble.ui.ui import _on_start_recording, _on_zoom_change, is_mouse_over_quick_access
 from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
     CURSOR_HIT_FRACTION,
     CURSOR_SIZE_MAX,
     CURSOR_SIZE_MIN,
-    PANEL_TOGGLE_BTN_SIZE,
     PANEL_W,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
     ZOOM_SPEED,
 )
+
+_SETTINGS_INPUT_TAGS = (
+    "body_weight_input",
+    "record_duration_input",
+    "board_cal_reference_input",
+)
+
+
+def _settings_input_active() -> bool:
+    """Return True when focus is in a settings text field."""
+    return any(
+        dpg.does_item_exist(tag) and dpg.is_item_active(tag) for tag in _SETTINGS_INPUT_TAGS
+    )
+
+
+def _keyboard_shortcuts_allowed(session_state: dict) -> bool:
+    """Return True when canvas keyboard shortcuts should fire."""
+    if not session_state.get("toolbar_enabled"):
+        return False
+    if _settings_input_active():
+        return False
+    return True
+
+
+def _handle_clear_shortcut(session_state: dict) -> None:
+    """Clear the canvas when Ctrl+Shift+C is pressed."""
+    if not _keyboard_shortcuts_allowed(session_state):
+        return
+    if not dpg.is_key_down(dpg.mvKey_LControl) or not dpg.is_key_down(dpg.mvKey_LShift):
+        return
+    session_state["action"] = "clear"
+
+
+def _handle_record_shortcut(app_state, settings, session_state: dict) -> None:
+    """Toggle recording when Ctrl+Space is pressed."""
+    if not _keyboard_shortcuts_allowed(session_state):
+        return
+    if not dpg.is_key_down(dpg.mvKey_LControl):
+        return
+    _on_start_recording(app_state, settings)
 
 
 def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:
@@ -74,7 +113,7 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
     """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
     # Suppress canvas click if mouse is over any UI element (e.g., settings panel, dialogs)
     if (
-        (mx <= PANEL_TOGGLE_BTN_SIZE + 8 and my <= PANEL_TOGGLE_BTN_SIZE + 8)
+        is_mouse_over_quick_access()
         or (mx <= PANEL_W and session_state.get("toolbar_visible", False))
         or dpg.is_key_down(dpg.mvKey_LControl)
         or (
@@ -286,4 +325,12 @@ def register_input_handlers(app_state, settings, session_state):
                     else _handle_target_release(app_state)
                 )
             ),
+        )
+        dpg.add_key_press_handler(
+            key=dpg.mvKey_C,
+            callback=lambda: _handle_clear_shortcut(session_state),
+        )
+        dpg.add_key_press_handler(
+            key=dpg.mvKey_Spacebar,
+            callback=lambda: _handle_record_shortcut(app_state, settings, session_state),
         )

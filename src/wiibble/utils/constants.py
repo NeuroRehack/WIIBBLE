@@ -102,6 +102,21 @@ PANEL_COMBO_W = 290  # combo width inside panel (wider)
 PANEL_TOGGLE_BTN_SIZE = 40  # floating toggle button size
 PANEL_SECTION_SPACING = 6  # vertical padding between sections
 
+# Canvas quick-access floating toolbar (clear screen, recording toggle)
+QUICK_ACCESS_MARGIN = 4  # px from viewport edge
+QUICK_ACCESS_GAP = 4  # px between adjacent quick-access buttons
+
+# Top-right recording indicator cluster (timer + quick-access record button + limit)
+RECORDING_INDICATOR_RIGHT_MARGIN = 20
+RECORDING_INDICATOR_DOT_RADIUS = 18
+RECORDING_INDICATOR_SPACING = 12
+RECORDING_INDICATOR_Y = 8
+RECORDING_INDICATOR_TIMER_FONT_SIZE = 48  # elapsed time while recording
+RECORDING_INDICATOR_LIMIT_FONT_SIZE = 48  # configured duration limit (always visible)
+# Approximate text widths — used only to anchor labels beside the record button.
+RECORDING_INDICATOR_LIMIT_WIDTH = int(RECORDING_INDICATOR_LIMIT_FONT_SIZE * 0.58 * 5)
+RECORDING_INDICATOR_ELAPSED_CHAR_WIDTH = 0.58  # em width per character (digits / punctuation)
+
 # Click detection radii
 CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius (fallback)
 CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor

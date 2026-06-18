@@ -33,15 +33,20 @@ from wiibble.features.data_processing import (
 from wiibble.ui.input import register_input_handlers
 from wiibble.ui.theme import ICON_COG
 from wiibble.ui.ui import (
+    build_left_quick_access,
     build_panel_controls,
-    build_panel_toggle_btn,
     build_panel_window,
+    build_recording_quick_btn,
     build_stats_bar,
     draw_connection_failed_screen,
     draw_connection_screen,
     draw_main_screen,
     ensure_textures_loaded,
+    set_quick_access_visible,
     set_stats_bar_visible,
+    sync_recording_buttons,
+    update_left_quick_access_layout,
+    update_recording_quick_access_position,
     update_scale_factor_label,
     update_stats_bar,
 )
@@ -139,28 +144,25 @@ def _toggle_toolbar(session_state: dict) -> None:
     visible = not session_state.get("toolbar_visible", False)
     session_state["toolbar_visible"] = visible
     if visible:
-        # Show full panel, hide floating toggle button
         if dpg.does_item_exist("control_panel"):
             dpg.configure_item("control_panel", show=True)
-        if dpg.does_item_exist("panel_toggle_window"):
-            dpg.configure_item("panel_toggle_window", show=False)
     else:
-        # Hide panel, show floating toggle button
         if dpg.does_item_exist("control_panel"):
             dpg.configure_item("control_panel", show=False)
-        if dpg.does_item_exist("panel_toggle_window"):
-            dpg.configure_item("panel_toggle_window", show=True)
+    update_left_quick_access_layout(
+        visible,
+        session_state.get("toolbar_enabled", False),
+    )
     session_state["action"] = "toolbar_toggled"
 
 
 def _collapse_ui_for_calibration(session_state: dict) -> bool:
-    """Hide settings panel, gear button, and stats bar during calibration."""
+    """Hide settings panel, quick-access controls, and stats bar during calibration."""
     was_visible = session_state.get("toolbar_visible", False)
     session_state["toolbar_visible"] = False
     if dpg.does_item_exist("control_panel"):
         dpg.configure_item("control_panel", show=False)
-    if dpg.does_item_exist("panel_toggle_window"):
-        dpg.configure_item("panel_toggle_window", show=False)
+    set_quick_access_visible(False, session_state)
     set_stats_bar_visible(False)
     return was_visible
 
@@ -171,26 +173,27 @@ def _restore_ui_after_calibration(session_state: dict, was_toolbar_visible: bool
     toolbar_enabled = session_state.get("toolbar_enabled", False)
     if dpg.does_item_exist("control_panel"):
         dpg.configure_item("control_panel", show=was_toolbar_visible)
-    if dpg.does_item_exist("panel_toggle_window"):
-        dpg.configure_item(
-            "panel_toggle_window",
-            show=toolbar_enabled and not was_toolbar_visible,
-        )
+    if toolbar_enabled:
+        update_left_quick_access_layout(was_toolbar_visible, toolbar_enabled)
+        if dpg.does_item_exist("recording_quick_window"):
+            dpg.configure_item("recording_quick_window", show=True)
     set_stats_bar_visible(True)
 
 
 def _build_control_panel(app_state, settings, session_state: dict) -> None:
-    """Build the left-side settings panel and the collapsed floating toggle button."""
+    """Build the left-side settings panel and canvas quick-access controls."""
     build_panel_window(
         app_state.screen_height,
         _get_gear_label(),
         lambda: _toggle_toolbar(session_state),
         lambda: build_panel_controls(app_state, settings, session_state),
     )
-    build_panel_toggle_btn(
+    build_left_quick_access(
         _get_gear_label(),
         lambda: _toggle_toolbar(session_state),
+        session_state,
     )
+    build_recording_quick_btn(app_state, settings)
 
 
 def _update_recording_frame(
@@ -221,8 +224,7 @@ def _update_recording_frame(
             app_state.is_recording = False
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
-            dpg.set_item_label("start_recording_btn", "Start Recording")
-            dpg.bind_item_theme("start_recording_btn", 0)
+            sync_recording_buttons(recording_active=False)
             _save_recording_csv(
                 app_state.record_buffer,
                 app_state.weight,
@@ -253,6 +255,7 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
         app_state.record_buffer = []
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
+        sync_recording_buttons(recording_active=False)
         app_state.toast_message = "Recording saved"
         app_state.toast_until = time.time() + 2.5
 
@@ -307,11 +310,9 @@ def _handle_viewport_resize(app_state, session_state):
     toolbar_currently_visible = session_state.get("toolbar_visible", False)
     toolbar_enabled = session_state.get("toolbar_enabled", False)
     dpg.configure_item("control_panel", height=vh, show=toolbar_currently_visible)
-    if dpg.does_item_exist("panel_toggle_window"):
-        dpg.configure_item(
-            "panel_toggle_window",
-            show=toolbar_enabled and not toolbar_currently_visible,
-        )
+    if toolbar_enabled:
+        update_left_quick_access_layout(toolbar_currently_visible, toolbar_enabled)
+        update_recording_quick_access_position(vw)
     # stats_dl redraws itself at correct position on next value change
 
 
@@ -461,8 +462,13 @@ def _prepare_session(dl, app_state, settings, session_state, args):
 
     app_state.weight = settings.body_weight_kg
     session_state["toolbar_enabled"] = True
-    if dpg.does_item_exist("panel_toggle_window"):
-        dpg.configure_item("panel_toggle_window", show=True)
+    update_left_quick_access_layout(
+        session_state.get("toolbar_visible", False),
+        True,
+    )
+    if dpg.does_item_exist("recording_quick_window"):
+        dpg.configure_item("recording_quick_window", show=True)
+        update_recording_quick_access_position(dpg.get_viewport_width())
     if hasattr(device, "enter_running_mode"):
         device.enter_running_mode()
 
@@ -512,6 +518,7 @@ def _render_main_screen_frame(
         pan_offset_x=app_state.pan_offset_x,
         pan_offset_y=app_state.pan_offset_y,
         toolbar_visible=session_state.get("toolbar_visible", False),
+        toolbar_enabled=session_state.get("toolbar_enabled", False),
     )
 
     update_stats_bar(
@@ -739,7 +746,7 @@ def _run_session(app_state, settings, args) -> int:
     session_state = {"action": None, "toolbar_visible": False, "toolbar_enabled": False}
 
     # Clean up previous session widgets
-    for _tag in ("control_panel", "panel_toggle_window"):
+    for _tag in ("control_panel", "left_quick_access_window", "recording_quick_window"):
         if dpg.does_item_exist(_tag):
             dpg.delete_item(_tag)
 
@@ -747,8 +754,7 @@ def _run_session(app_state, settings, args) -> int:
     # Panel is created at startup but remains hidden until the main session
     # begins. Connection/calibration screens should not show settings controls.
     dpg.configure_item("control_panel", show=False)
-    if dpg.does_item_exist("panel_toggle_window"):
-        dpg.configure_item("panel_toggle_window", show=False)
+    set_quick_access_visible(False, session_state)
 
     build_stats_bar(app_state)
 

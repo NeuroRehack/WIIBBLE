@@ -36,6 +36,7 @@ def test_handle_canvas_click_toggles_cursor_when_ball_hit(monkeypatch):
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
 
     # Click starts the drag; a tiny release (no drag) should toggle the mode
     input_module._handle_canvas_click(100, 50, app_state, settings, session_state)
@@ -57,6 +58,7 @@ def test_handle_canvas_click_starts_target_when_click_off_cursor(monkeypatch):
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
     monkeypatch.setattr(input_module.dpg, "is_item_shown", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
 
     input_module._handle_canvas_click(150, 75, app_state, settings, session_state)
 
@@ -169,6 +171,11 @@ def test_register_input_handlers_registers_mouse_handlers(monkeypatch):
         "add_mouse_release_handler",
         lambda **kwargs: calls.append(("release", kwargs)),
     )
+    monkeypatch.setattr(
+        input_module.dpg,
+        "add_key_press_handler",
+        lambda **kwargs: calls.append(("key", kwargs)),
+    )
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
     monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (0, 0))
 
@@ -178,3 +185,86 @@ def test_register_input_handlers_registers_mouse_handlers(monkeypatch):
     assert any(call[0] == "wheel" for call in calls)
     assert any(call[0] == "drag" for call in calls)
     assert any(call[0] == "release" for call in calls)
+    assert any(call[0] == "key" for call in calls)
+
+
+def test_handle_canvas_click_suppressed_over_quick_access(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
+    settings = DummySettings()
+    session_state = {"toolbar_visible": False}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module.dpg, "is_item_shown", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: True)
+
+    input_module._handle_canvas_click(10, 10, app_state, settings, session_state)
+
+    assert app_state.target_in_progress is None
+    assert app_state.cursor_drag_in_progress is False
+
+
+def test_clear_shortcut_sets_action_when_allowed(monkeypatch):
+    session_state = {"toolbar_enabled": True, "action": None}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: True)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
+
+    input_module._handle_clear_shortcut(session_state)
+
+    assert session_state["action"] == "clear"
+
+
+def test_clear_shortcut_ignored_when_toolbar_disabled(monkeypatch):
+    session_state = {"toolbar_enabled": False, "action": None}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: True)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
+
+    input_module._handle_clear_shortcut(session_state)
+
+    assert session_state["action"] is None
+
+
+def test_clear_shortcut_ignored_when_settings_input_active(monkeypatch):
+    session_state = {"toolbar_enabled": True, "action": None}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: True)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: tag == "body_weight_input")
+    monkeypatch.setattr(input_module.dpg, "is_item_active", lambda tag: tag == "body_weight_input")
+
+    input_module._handle_clear_shortcut(session_state)
+
+    assert session_state["action"] is None
+
+
+def test_record_shortcut_calls_start_recording_when_allowed(monkeypatch):
+    app_state = AppState()
+    settings = DummySettings()
+    session_state = {"toolbar_enabled": True}
+    called = {"value": False}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: key == input_module.dpg.mvKey_LControl)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
+    monkeypatch.setattr(
+        input_module,
+        "_on_start_recording",
+        lambda a, s: called.update({"value": True}),
+    )
+
+    input_module._handle_record_shortcut(app_state, settings, session_state)
+
+    assert called["value"] is True
+
+
+def test_record_shortcut_ignored_without_ctrl(monkeypatch):
+    app_state = AppState()
+    settings = DummySettings()
+    session_state = {"toolbar_enabled": True}
+    called = {"value": False}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda tag: False)
+    monkeypatch.setattr(
+        input_module,
+        "_on_start_recording",
+        lambda a, s: called.update({"value": True}),
+    )
+
+    input_module._handle_record_shortcut(app_state, settings, session_state)
+
+    assert called["value"] is False

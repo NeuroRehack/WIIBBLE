@@ -15,12 +15,15 @@ log = logging.getLogger(__name__)
 # FontAwesome 5 Solid icon codepoints used in the UI
 # ---------------------------------------------------------------------------
 ICON_COG = ""  # fa-cog (gear / settings)
+ICON_ERASER = "\uf12d"  # fa-eraser (clear screen)
+ICON_RECORD = "\uf111"  # fa-circle (recording)
 ICON_INFINITY = "\uf534"  # fa-infinity
 ICON_FLIP_VERTICAL = "\uf338"  # fa-arrows-alt-v
 ICON_FLIP_HORIZONTAL = "\uf337"  # fa-arrows-alt-h
 # Module-level handles — set by load_fonts(), used by callers
 FA_ICON_FONT = None
 FA_ICON_FONT_SMALL = None  # 13px variant for inline buttons
+FA_ICON_FONT_DRAW = None  # 100px variant for crisp draw_text icons
 # ---------------------------------------------------------------------------
 # Crisp text font
 # ---------------------------------------------------------------------------
@@ -142,7 +145,7 @@ def load_fonts() -> None:
 
     MUST be called before dpg.setup_dearpygui().
     """
-    global FA_ICON_FONT, FA_ICON_FONT_SMALL, TEXT_FONT
+    global FA_ICON_FONT, FA_ICON_FONT_SMALL, FA_ICON_FONT_DRAW, TEXT_FONT
 
     text_font_path = _find_text_font()
 
@@ -155,6 +158,9 @@ def load_fonts() -> None:
             with dpg.font(FA_SOLID_FONT_PATH, 13) as fa_font_small:
                 dpg.add_font_range(0xF000, 0xF8FF)
             FA_ICON_FONT_SMALL = fa_font_small
+            with dpg.font(FA_SOLID_FONT_PATH, 100) as fa_font_draw:
+                dpg.add_font_range(0xF000, 0xF8FF)
+            FA_ICON_FONT_DRAW = fa_font_draw
             log.debug("FontAwesome loaded from %s", FA_SOLID_FONT_PATH)
         else:
             log.warning("FontAwesome not found at %s — using ASCII fallback", FA_SOLID_FONT_PATH)

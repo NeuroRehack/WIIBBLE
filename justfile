@@ -17,7 +17,12 @@ test:
     uv run pytest
 
 coverage:
-    uv run pytest --cov=src --cov-report=term-missing
+    # Uses scoped modules and 80% gate from pyproject.toml [tool.pytest.ini_options]
+    uv run pytest -v
+
+coverage-full:
+    # Informational report across all of src/ (no fail-under gate)
+    uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=0
 
 test-unit:
     uv run pytest -m "not integration"

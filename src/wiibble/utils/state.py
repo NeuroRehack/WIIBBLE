@@ -113,6 +113,8 @@ class AppState:
     clicked_locations: list = field(default_factory=list)
     # Temporary state for a target being created (None or dict with 'center' and 'radius')
     target_in_progress: dict = None
+    # Target reposition drag — {"index": int, "grab_offset": (dx, dy)} in logical coords
+    target_move_in_progress: dict = None
     # Cursor drag-to-resize state
     cursor_drag_in_progress: bool = False
     cursor_drag_start_size: int = 20
@@ -218,6 +220,8 @@ class AppState:
         self.recording_indicator = False
         self.cursor_drag_in_progress = False
         self.cursor_drag_start_size = 20
+        self.target_in_progress = None
+        self.target_move_in_progress = None
         self.toast_message = ""
         self.toast_until = 0.0
         self._jelly_ages = {}

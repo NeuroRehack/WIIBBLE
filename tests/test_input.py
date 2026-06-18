@@ -67,6 +67,65 @@ def test_handle_canvas_click_starts_target_when_click_off_cursor(monkeypatch):
     assert app_state.target_in_progress["radius"] == 20.0
 
 
+def _click_suppression_monkeypatch(monkeypatch):
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module.dpg, "is_item_shown", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
+
+
+def test_handle_canvas_click_starts_target_move_when_click_on_target(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
+    app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
+    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    session_state = {"toolbar_visible": False}
+    _click_suppression_monkeypatch(monkeypatch)
+
+    input_module._handle_canvas_click(150, 75, app_state, settings, session_state)
+
+    assert app_state.target_move_in_progress is not None
+    assert app_state.target_move_in_progress["index"] == 0
+    assert app_state.target_move_in_progress["grab_offset"] == (0.0, 0.0)
+    assert app_state.target_in_progress is None
+
+
+def test_handle_target_move_drag_updates_target_center(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
+    app_state.target_move_in_progress = {"index": 0, "grab_offset": (0.0, 0.0)}
+    settings = DummySettings(zoom_factor=1.0)
+    monkeypatch.setattr(input_module.dpg, "get_mouse_pos", lambda local=False: (160, 85))
+
+    input_module._handle_target_move_drag(app_state, settings)
+
+    assert app_state.clicked_locations[0]["center"] == (60.0, 35.0)
+
+
+def test_handle_target_move_release_clears_move_state():
+    app_state = AppState()
+    app_state.clicked_locations = [{"center": (60.0, 35.0), "radius": 20.0}]
+    app_state.target_move_in_progress = {"index": 0, "grab_offset": (0.0, 0.0)}
+
+    input_module._handle_target_move_release(app_state)
+
+    assert app_state.target_move_in_progress is None
+    assert app_state.clicked_locations[0]["center"] == (60.0, 35.0)
+
+
+def test_handle_target_move_click_without_drag_leaves_center_unchanged(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
+    app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
+    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    session_state = {"toolbar_visible": False}
+    _click_suppression_monkeypatch(monkeypatch)
+
+    input_module._handle_canvas_click(150, 75, app_state, settings, session_state)
+    input_module._handle_target_move_release(app_state)
+
+    assert app_state.target_move_in_progress is None
+    assert app_state.clicked_locations[0]["center"] == (50.0, 25.0)
+
+
 def test_handle_target_drag_updates_target_radius(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100)
     app_state.target_in_progress = {"center": (0.0, 0.0), "radius": 5.0, "drag_started": True}

@@ -109,6 +109,33 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
     session_state["action"] = "pan_changed"
 
 
+def _find_target_at(mx: float, my: float, app_state, settings):
+    """Return (index, target) for the first target hit at viewport coords, or None."""
+    cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    for idx, target in enumerate(app_state.clicked_locations):
+        if isinstance(target, dict):
+            lx, ly = target["center"]
+            logical_radius = target.get("radius", 5.0)
+        else:
+            lx, ly = target
+            logical_radius = 5.0
+        vx, vy = logical_to_viewport(
+            lx,
+            ly,
+            cx,
+            cy,
+            settings.zoom_factor,
+            settings.flip_horizontal,
+            settings.flip_vertical,
+        )
+        scaled_radius = logical_radius * settings.zoom_factor
+        dist = math.sqrt((mx - vx) ** 2 + (my - vy) ** 2)
+        if dist <= scaled_radius:
+            return idx, target
+    return None
+
+
 def _handle_canvas_click(mx: float, my: float, app_state, settings, session_state) -> None:
     """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
     # Suppress canvas click if mouse is over any UI element (e.g., settings panel, dialogs)
@@ -146,6 +173,20 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
         settings.flip_horizontal,
         settings.flip_vertical,
     )
+
+    hit = _find_target_at(mx, my, app_state, settings)
+    if hit is not None:
+        idx, target = hit
+        if isinstance(target, dict):
+            lx, ly = target["center"]
+        else:
+            lx, ly = target
+        app_state.target_move_in_progress = {
+            "index": idx,
+            "grab_offset": (logical_x - lx, logical_y - ly),
+        }
+        return
+
     # cursor_size is in logical units; no division needed — target matches cursor at any zoom
     default_radius = float(settings.cursor_size)
     app_state.target_in_progress = {
@@ -216,6 +257,41 @@ def _handle_target_drag(app_state, settings):
     tip["radius"] = max(1.0, new_radius)
 
 
+def _handle_target_move_drag(app_state, settings) -> None:
+    """Reposition an existing target while the mouse is dragged."""
+    move = app_state.target_move_in_progress
+    if move is None:
+        return
+    idx = move["index"]
+    if idx >= len(app_state.clicked_locations):
+        app_state.target_move_in_progress = None
+        return
+    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+    cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    logical_x, logical_y = viewport_to_logical(
+        mouse_x,
+        mouse_y,
+        cx,
+        cy,
+        settings.zoom_factor,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
+    grab_dx, grab_dy = move["grab_offset"]
+    new_center = (logical_x - grab_dx, logical_y - grab_dy)
+    target = app_state.clicked_locations[idx]
+    if isinstance(target, dict):
+        target["center"] = new_center
+    else:
+        app_state.clicked_locations[idx] = {"center": new_center, "radius": 5.0}
+
+
+def _handle_target_move_release(app_state) -> None:
+    """Finalize target reposition when the mouse button is released."""
+    app_state.target_move_in_progress = None
+
+
 def _handle_target_release(app_state):
     """Finalize the current target when the mouse button is released."""
     if app_state.target_in_progress is not None:
@@ -251,29 +327,10 @@ def _handle_pan_release(app_state):
 
 def _handle_right_click(mx: float, my: float, app_state, settings) -> None:
     """Remove a target when right-clicking inside it."""
-    cx = app_state.screen_width // 2 + app_state.pan_offset_x
-    cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    for target in list(app_state.clicked_locations):
-        if isinstance(target, dict):
-            lx, ly = target["center"]
-            logical_radius = target.get("radius", 5.0)
-        else:
-            lx, ly = target
-            logical_radius = 5.0
-        vx, vy = logical_to_viewport(
-            lx,
-            ly,
-            cx,
-            cy,
-            settings.zoom_factor,
-            settings.flip_horizontal,
-            settings.flip_vertical,
-        )
-        scaled_radius = logical_radius * settings.zoom_factor
-        dist = math.sqrt((mx - vx) ** 2 + (my - vy) ** 2)
-        if dist <= scaled_radius:
-            app_state.clicked_locations.remove(target)
-            break
+    hit = _find_target_at(mx, my, app_state, settings)
+    if hit is not None:
+        _, target = hit
+        app_state.clicked_locations.remove(target)
 
 
 def register_input_handlers(app_state, settings, session_state):
@@ -310,7 +367,11 @@ def register_input_handlers(app_state, settings, session_state):
                 else (
                     _handle_cursor_drag(app_state, settings)
                     if getattr(app_state, "cursor_drag_in_progress", False)
-                    else _handle_target_drag(app_state, settings)
+                    else (
+                        _handle_target_move_drag(app_state, settings)
+                        if getattr(app_state, "target_move_in_progress", None) is not None
+                        else _handle_target_drag(app_state, settings)
+                    )
                 )
             ),
         )
@@ -322,7 +383,11 @@ def register_input_handlers(app_state, settings, session_state):
                 else (
                     _handle_cursor_release(app_state, settings)
                     if getattr(app_state, "cursor_drag_in_progress", False)
-                    else _handle_target_release(app_state)
+                    else (
+                        _handle_target_move_release(app_state)
+                        if getattr(app_state, "target_move_in_progress", None) is not None
+                        else _handle_target_release(app_state)
+                    )
                 )
             ),
         )

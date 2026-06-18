@@ -336,6 +336,8 @@ def _reset_session_state(app_state, settings) -> None:
 def _clear_screen_state(app_state, settings) -> None:
     """Clear targets and sway trail without touching pan or zoom."""
     app_state.clicked_locations = []
+    app_state.target_in_progress = None
+    app_state.target_move_in_progress = None
     app_state.historical_coords = [(0, 0)] * settings.trail_length
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
     app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0

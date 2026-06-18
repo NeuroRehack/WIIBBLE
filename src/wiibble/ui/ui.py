@@ -484,17 +484,18 @@ def _on_start_recording(app_state, settings) -> None:
     dpg.bind_item_theme("start_recording_btn", _get_recording_theme())
 
 
-def _build_session_buttons(session_state: dict) -> None:
-    """Add session-level panel button: Restart."""
-    _restart_btn = dpg.add_button(
-        tag="restart_session_btn",
-        label="Restart Session",
-        callback=lambda: session_state.update({"action": "restart"}),
+def _build_clear_screen_button(session_state: dict) -> None:
+    """Add clear-screen control at the top of the settings panel."""
+    _clear_btn = dpg.add_button(
+        tag="clear_screen_btn",
+        label="Clear Screen",
+        callback=lambda: session_state.update({"action": "clear"}),
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
-    with dpg.tooltip(parent="restart_session_btn"):
-        dpg.add_text("Reconnect and re-tare the board.")
+    with dpg.tooltip(parent="clear_screen_btn"):
+        dpg.add_text("Remove all targets and the sway trail\nfrom the canvas.")
+    dpg.add_spacer(height=8)
 
 
 def _clamp_body_weight(value: float) -> float:
@@ -997,25 +998,14 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     with dpg.tooltip(parent="flip_horizontal_btn"):
         dpg.add_text("Invert left-right mapping on screen and in recordings.")
     _update_flip_buttons(settings)
-    dpg.add_spacer(height=8)
-    _clear_btn = dpg.add_button(
-        tag="clear_screen_btn",
-        label="Clear Screen",
-        callback=lambda: session_state.update({"action": "clear"}),
-        width=PANEL_BTN_W,
-        height=PANEL_BTN_H,
-    )
-    with dpg.tooltip(parent="clear_screen_btn"):
-        dpg.add_text("Remove all targets and the sway trail\nfrom the canvas.")
 
 
 def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
+    _build_clear_screen_button(session_state)
+
     _build_section_header("CALIBRATION", accent_color=_theme_module.C_ACCENT_SESSION)
     _build_calibration_controls(app_state, settings, session_state)
-
-    _build_section_header("SESSION", accent_color=_theme_module.C_ACCENT_SESSION)
-    _build_session_buttons(session_state)
 
     _build_section_header("RECORDING", accent_color=_theme_module.C_ACCENT_RECORDING)
     _build_recording_controls(app_state, settings)

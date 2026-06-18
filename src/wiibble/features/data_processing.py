@@ -28,6 +28,53 @@ def calculate_force_deviation_kg(
     return x, y
 
 
+def axis_sign(flipped: bool) -> int:
+    """Return -1 when flipped, else 1."""
+    return -1 if flipped else 1
+
+
+def apply_axis_flip(
+    x: float, y: float, flip_horizontal: bool, flip_vertical: bool
+) -> tuple[float, float]:
+    """Negate x and/or y when the corresponding flip toggle is enabled."""
+    return (
+        -x if flip_horizontal else x,
+        -y if flip_vertical else y,
+    )
+
+
+def viewport_to_logical(
+    vx: float,
+    vy: float,
+    cx: float,
+    cy: float,
+    zoom: float,
+    flip_horizontal: bool,
+    flip_vertical: bool,
+) -> tuple[float, float]:
+    """Convert viewport pixels to native logical coordinates."""
+    return (
+        axis_sign(flip_horizontal) * (vx - cx) / zoom,
+        axis_sign(flip_vertical) * (vy - cy) / zoom,
+    )
+
+
+def logical_to_viewport(
+    lx: float,
+    ly: float,
+    cx: float,
+    cy: float,
+    zoom: float,
+    flip_horizontal: bool,
+    flip_vertical: bool,
+) -> tuple[float, float]:
+    """Convert native logical coordinates to viewport pixels."""
+    return (
+        cx + axis_sign(flip_horizontal) * lx * zoom,
+        cy + axis_sign(flip_vertical) * ly * zoom,
+    )
+
+
 def read_data(device):
     """Read a raw 32-byte HID report from the device."""
     try:

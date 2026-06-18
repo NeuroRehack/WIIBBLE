@@ -4,13 +4,17 @@
 import pytest
 
 from wiibble.features.data_processing import (
+    apply_axis_flip,
     apply_filter,
+    axis_sign,
     calculate_coordinates,
     calculate_force_deviation_kg,
     compute_scale_factor,
+    logical_to_viewport,
     measure_raw_load,
     parse_data,
     read_latest_data,
+    viewport_to_logical,
 )
 from wiibble.utils.constants import COORD_SCALE, SCALE_FACTOR, SCALE_FACTOR_MAX, SCALE_FACTOR_MIN
 
@@ -277,6 +281,47 @@ class TestCalculateForceDeviationKg:
         x, y = calculate_force_deviation_kg(-5, 5, -5, 5)
         assert x == pytest.approx(20.0)
         assert y == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# Axis flip helpers
+# ---------------------------------------------------------------------------
+
+
+class TestAxisFlipHelpers:
+    def test_axis_sign_false(self):
+        assert axis_sign(False) == 1
+
+    def test_axis_sign_true(self):
+        assert axis_sign(True) == -1
+
+    def test_apply_axis_flip_none(self):
+        assert apply_axis_flip(3.0, -4.0, False, False) == (3.0, -4.0)
+
+    def test_apply_axis_flip_horizontal(self):
+        assert apply_axis_flip(3.0, -4.0, True, False) == (-3.0, -4.0)
+
+    def test_apply_axis_flip_vertical(self):
+        assert apply_axis_flip(3.0, -4.0, False, True) == (3.0, 4.0)
+
+    def test_apply_axis_flip_both(self):
+        assert apply_axis_flip(3.0, -4.0, True, True) == (-3.0, 4.0)
+
+    def test_viewport_logical_round_trip_no_flip(self):
+        cx, cy, zoom = 640.0, 360.0, 2.0
+        vx, vy = 700.0, 400.0
+        lx, ly = viewport_to_logical(vx, vy, cx, cy, zoom, False, False)
+        assert logical_to_viewport(lx, ly, cx, cy, zoom, False, False) == pytest.approx(
+            (vx, vy)
+        )
+
+    def test_viewport_logical_round_trip_with_flip(self):
+        cx, cy, zoom = 640.0, 360.0, 2.0
+        vx, vy = 700.0, 400.0
+        lx, ly = viewport_to_logical(vx, vy, cx, cy, zoom, True, True)
+        assert logical_to_viewport(lx, ly, cx, cy, zoom, True, True) == pytest.approx(
+            (vx, vy)
+        )
 
 
 # ---------------------------------------------------------------------------

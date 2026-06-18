@@ -19,6 +19,8 @@ def _save_recording_csv(
     total_weight_kg: float = None,
     ui_filter_window: int = 1,
     out_dir: str = "",
+    flip_horizontal: bool = False,
+    flip_vertical: bool = False,
 ) -> str:
     """Save the provided recording buffer to a timestamped CSV file.
 
@@ -45,6 +47,8 @@ def _save_recording_csv(
         if total_weight_kg is not None:
             f.write(f"# total_weight_kg={total_weight_kg:.4f}\n")
         f.write(f"# ui_filter_window={ui_filter_window}\n")
+        f.write(f"# flip_horizontal={str(flip_horizontal).lower()}\n")
+        f.write(f"# flip_vertical={str(flip_vertical).lower()}\n")
         writer = csv.writer(f)
         writer.writerow(["time (s)", "x (kg)", "y (kg)"])
         for row in record_buffer:

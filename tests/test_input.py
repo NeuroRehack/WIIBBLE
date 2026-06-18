@@ -9,6 +9,8 @@ class DummySettings:
         self.cursor_mode = cursor_mode
         self.zoom_factor = zoom_factor
         self.cursor_size = cursor_size
+        self.flip_horizontal = False
+        self.flip_vertical = False
         self.toggled = False
 
     def toggle_cursor_mode(self):

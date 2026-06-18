@@ -8,6 +8,7 @@ import math
 
 import dearpygui.dearpygui as dpg
 
+from wiibble.features.data_processing import logical_to_viewport, viewport_to_logical
 from wiibble.ui.ui import _on_zoom_change
 from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
@@ -32,8 +33,15 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
 
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    logical_x = (mouse_x - cx) / settings.zoom_factor
-    logical_y = (mouse_y - cy) / settings.zoom_factor
+    logical_x, logical_y = viewport_to_logical(
+        mouse_x,
+        mouse_y,
+        cx,
+        cy,
+        settings.zoom_factor,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
 
     try:
         slider_value = math.log(settings.zoom_factor) / math.log(ZOOM_SCALE)
@@ -43,8 +51,17 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
     slider_value = max(ZOOM_MIN, min(ZOOM_MAX, slider_value))
     new_zoom = ZOOM_SCALE**slider_value
 
-    new_pan_offset_x = mouse_x - (logical_x * new_zoom + app_state.screen_width // 2)
-    new_pan_offset_y = mouse_y - (logical_y * new_zoom + app_state.screen_height // 2)
+    vx, vy = logical_to_viewport(
+        logical_x,
+        logical_y,
+        app_state.screen_width // 2,
+        app_state.screen_height // 2,
+        new_zoom,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
+    new_pan_offset_x = mouse_x - vx
+    new_pan_offset_y = mouse_y - vy
     app_state.pan_offset_x = new_pan_offset_x
     app_state.pan_offset_y = new_pan_offset_y
 
@@ -81,8 +98,15 @@ def _handle_canvas_click(mx: float, my: float, app_state, settings, session_stat
 
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    logical_x = (mx - cx) / settings.zoom_factor
-    logical_y = (my - cy) / settings.zoom_factor
+    logical_x, logical_y = viewport_to_logical(
+        mx,
+        my,
+        cx,
+        cy,
+        settings.zoom_factor,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
     # cursor_size is in logical units; no division needed — target matches cursor at any zoom
     default_radius = float(settings.cursor_size)
     app_state.target_in_progress = {
@@ -139,8 +163,15 @@ def _handle_target_drag(app_state, settings):
         tip["drag_started"] = True
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
-    logical_x = (mouse_x - cx) / settings.zoom_factor
-    logical_y = (mouse_y - cy) / settings.zoom_factor
+    logical_x, logical_y = viewport_to_logical(
+        mouse_x,
+        mouse_y,
+        cx,
+        cy,
+        settings.zoom_factor,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
     x0, y0 = tip["center"]
     new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
     tip["radius"] = max(1.0, new_radius)
@@ -190,8 +221,15 @@ def _handle_right_click(mx: float, my: float, app_state, settings) -> None:
         else:
             lx, ly = target
             logical_radius = 5.0
-        vx = cx + lx * settings.zoom_factor
-        vy = cy + ly * settings.zoom_factor
+        vx, vy = logical_to_viewport(
+            lx,
+            ly,
+            cx,
+            cy,
+            settings.zoom_factor,
+            settings.flip_horizontal,
+            settings.flip_vertical,
+        )
         scaled_radius = logical_radius * settings.zoom_factor
         dist = math.sqrt((mx - vx) ** 2 + (my - vy) ** 2)
         if dist <= scaled_radius:

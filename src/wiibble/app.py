@@ -22,6 +22,7 @@ from wiibble.analysis.calibration import (
 from wiibble.board.mock_board import MockHIDDevice
 from wiibble.board.recording import _save_recording_csv
 from wiibble.features.data_processing import (
+    apply_axis_flip,
     apply_filter,
     calculate_coordinates,
     calculate_force_deviation_kg,
@@ -212,6 +213,9 @@ def _update_recording_frame(
         x_kg, y_kg = calculate_force_deviation_kg(
             rc["top_left"], rc["top_right"], rc["bottom_left"], rc["bottom_right"]
         )
+        x_kg, y_kg = apply_axis_flip(
+            x_kg, y_kg, settings.flip_horizontal, settings.flip_vertical
+        )
         app_state.record_buffer.append((elapsed, x_kg, y_kg))
         if app_state.record_duration > 0 and elapsed >= app_state.record_duration:
             app_state.is_recording = False
@@ -224,6 +228,8 @@ def _update_recording_frame(
                 app_state.weight,
                 settings.filter_window,
                 out_dir=settings.recording_dir,
+                flip_horizontal=settings.flip_horizontal,
+                flip_vertical=settings.flip_vertical,
             )
             app_state.record_buffer = []
             app_state.toast_message = "Recording saved"
@@ -236,7 +242,14 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
     if not app_state.is_recording and app_state.record_buffer:
         fw = settings.filter_window if settings is not None else 1
         rd = settings.recording_dir if settings is not None else ""
-        _save_recording_csv(app_state.record_buffer, app_state.weight, fw, out_dir=rd)
+        _save_recording_csv(
+            app_state.record_buffer,
+            app_state.weight,
+            fw,
+            out_dir=rd,
+            flip_horizontal=settings.flip_horizontal if settings is not None else False,
+            flip_vertical=settings.flip_vertical if settings is not None else False,
+        )
         app_state.record_buffer = []
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
@@ -547,6 +560,9 @@ def _process_frame_data(
         screen_width=app_state.screen_width,
         screen_height=app_state.screen_height,
         zoom=1.0,
+    )
+    raw_x, raw_y = apply_axis_flip(
+        raw_x, raw_y, settings.flip_horizontal, settings.flip_vertical
     )
 
     app_state.raw_max_x = max(app_state.raw_max_x, raw_x)

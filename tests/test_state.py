@@ -58,6 +58,12 @@ class TestSettingsDefaults:
     def test_board_cal_reference_kg_default(self):
         assert Settings().board_cal_reference_kg == 20.0
 
+    def test_flip_horizontal_default(self):
+        assert Settings().flip_horizontal is False
+
+    def test_flip_vertical_default(self):
+        assert Settings().flip_vertical is False
+
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file
@@ -94,6 +100,8 @@ class TestSettingsRoundTrip:
             body_weight_kg=82.5,
             scale_factor=2.8,
             board_cal_reference_kg=25.0,
+            flip_horizontal=True,
+            flip_vertical=True,
         )
         original.save()
         loaded = Settings.load()
@@ -106,6 +114,8 @@ class TestSettingsRoundTrip:
         assert loaded.body_weight_kg == 82.5
         assert loaded.scale_factor == 2.8
         assert loaded.board_cal_reference_kg == 25.0
+        assert loaded.flip_horizontal is True
+        assert loaded.flip_vertical is True
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -242,3 +252,25 @@ class TestAppStateReset:
         s.reset()
         assert s.pan_offset_x == 0.0
         assert s.pan_offset_y == 0.0
+
+
+class TestAppStateResetSwayExtents:
+    def test_reset_sway_extents_clears_trail_and_bbox(self):
+        s = AppState()
+        s.historical_coords = [(10, 20), (30, 40)]
+        s.raw_max_x = 100.0
+        s.raw_min_x = -50.0
+        s.zoomed_max_y = 80.0
+        s.zoomed_min_y = -20.0
+        s.reset_sway_extents(30)
+        assert s.historical_coords == [(0, 0)] * 30
+        assert s.raw_max_x == s.raw_max_y == 0.0
+        assert s.raw_min_x == s.raw_min_y == 0.0
+        assert s.zoomed_max_x == s.zoomed_max_y == 0.0
+        assert s.zoomed_min_x == s.zoomed_min_y == 0.0
+
+    def test_reset_sway_extents_preserves_targets(self):
+        s = AppState()
+        s.clicked_locations = [{"center": (10, 20), "radius": 5}]
+        s.reset_sway_extents(100)
+        assert s.clicked_locations == [{"center": (10, 20), "radius": 5}]

@@ -37,6 +37,8 @@ class Settings:
     cursor_size: int = 20  # S1: circle cursor radius in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
+    flip_horizontal: bool = False  # invert left-right display and recording mapping
+    flip_vertical: bool = False  # invert forward-back display and recording mapping
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
     body_weight_kg: float = 70.0  # reference body weight for cursor normalization and recordings
     scale_factor: float = SCALE_FACTOR_DEFAULT  # HID raw → kg conversion for this board
@@ -178,6 +180,14 @@ class AppState:
     _jelly_ages: dict = field(default_factory=dict)
     # Previous per-target hit states for edge detection — keyed by target index
     _prev_hit_states: dict = field(default_factory=dict)
+
+    def reset_sway_extents(self, trail_length: int) -> None:
+        """Clear sway trail and bounding-box extents (e.g. after axis flip)."""
+        self.historical_coords = [(0, 0)] * trail_length
+        self.raw_max_x = self.raw_max_y = 0.0
+        self.raw_min_x = self.raw_min_y = 0.0
+        self.zoomed_max_x = self.zoomed_max_y = 0.0
+        self.zoomed_min_x = self.zoomed_min_y = 0.0
 
     def reset(self):
         """Called on RESTART — resets session data but preserves calibration."""

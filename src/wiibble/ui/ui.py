@@ -10,6 +10,7 @@ import time
 import dearpygui.dearpygui as dpg
 
 import wiibble.ui.theme as _theme_module
+from wiibble.features.data_processing import logical_to_viewport
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -22,6 +23,8 @@ from wiibble.ui.theme import (
     CANVAS_LINE_W,
     CURSOR_COLOR,
     ICON_INFINITY,
+    ICON_FLIP_HORIZONTAL,
+    ICON_FLIP_VERTICAL,
     STATS_TEXT_COLOR,
     TRAIL_COLOR_BASE,
     bind_text_font,
@@ -378,6 +381,19 @@ def _update_trail_buttons(active_label: str) -> None:
         tag = f"trail_btn_{lbl.lower()}"
         if dpg.does_item_exist(tag):
             if lbl == active_label:
+                dpg.bind_item_theme(tag, _get_trail_active_theme())
+            else:
+                dpg.bind_item_theme(tag, 0)
+
+
+def _update_flip_buttons(settings) -> None:
+    """Highlight flip-axis toggle buttons when their setting is active."""
+    for tag, active in (
+        ("flip_vertical_btn", settings.flip_vertical),
+        ("flip_horizontal_btn", settings.flip_horizontal),
+    ):
+        if dpg.does_item_exist(tag):
+            if active:
                 dpg.bind_item_theme(tag, _get_trail_active_theme())
             else:
                 dpg.bind_item_theme(tag, 0)
@@ -927,6 +943,39 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     with dpg.tooltip(parent="target_jelly_checkbox"):
         dpg.add_text("Animate targets with a jelly wobble when hit.")
     dpg.add_spacer(height=8)
+    dpg.add_text("Flip axis")
+    _flip_icon_w = PANEL_BTN_H
+    _flip_v_label = ICON_FLIP_VERTICAL if _theme_module.FA_ICON_FONT_SMALL else "V"
+    _flip_h_label = ICON_FLIP_HORIZONTAL if _theme_module.FA_ICON_FONT_SMALL else "H"
+    with dpg.group(horizontal=True):
+        flip_v_btn = dpg.add_button(
+            tag="flip_vertical_btn",
+            label=_flip_v_label,
+            width=_flip_icon_w,
+            height=PANEL_BTN_H,
+            callback=lambda: _on_flip_vertical_toggle(settings, app_state),
+        )
+        if _theme_module.FA_ICON_FONT_SMALL is not None:
+            dpg.bind_item_font(flip_v_btn, _theme_module.FA_ICON_FONT_SMALL)
+        dpg.add_text("Flip Vertical")
+    with dpg.tooltip(parent="flip_vertical_btn"):
+        dpg.add_text("Invert forward-back mapping on screen and in recordings.")
+    dpg.add_spacer(height=4)
+    with dpg.group(horizontal=True):
+        flip_h_btn = dpg.add_button(
+            tag="flip_horizontal_btn",
+            label=_flip_h_label,
+            width=_flip_icon_w,
+            height=PANEL_BTN_H,
+            callback=lambda: _on_flip_horizontal_toggle(settings, app_state),
+        )
+        if _theme_module.FA_ICON_FONT_SMALL is not None:
+            dpg.bind_item_font(flip_h_btn, _theme_module.FA_ICON_FONT_SMALL)
+        dpg.add_text("Flip Horizontal")
+    with dpg.tooltip(parent="flip_horizontal_btn"):
+        dpg.add_text("Invert left-right mapping on screen and in recordings.")
+    _update_flip_buttons(settings)
+    dpg.add_spacer(height=8)
     _clear_btn = dpg.add_button(
         tag="clear_screen_btn",
         label="Clear Screen",
@@ -982,6 +1031,22 @@ def _on_target_jelly_change(value: bool, settings) -> None:
     """Toggle target jelly animation on hit."""
     settings.target_jelly = value
     settings.save()
+
+
+def _on_flip_vertical_toggle(settings, app_state) -> None:
+    """Toggle vertical axis flip and reset sway trail/bbox extents."""
+    settings.flip_vertical = not settings.flip_vertical
+    settings.save()
+    app_state.reset_sway_extents(settings.trail_length)
+    _update_flip_buttons(settings)
+
+
+def _on_flip_horizontal_toggle(settings, app_state) -> None:
+    """Toggle horizontal axis flip and reset sway trail/bbox extents."""
+    settings.flip_horizontal = not settings.flip_horizontal
+    settings.save()
+    app_state.reset_sway_extents(settings.trail_length)
+    _update_flip_buttons(settings)
 
 
 def _on_zoom_change(value: float, settings, app_state) -> None:
@@ -1230,8 +1295,15 @@ def draw_main_screen(
         else:
             (lx, ly) = target
             logical_radius = 5.0
-        vx = cx + lx * settings.zoom_factor
-        vy = cy + ly * settings.zoom_factor
+        vx, vy = logical_to_viewport(
+            lx,
+            ly,
+            cx,
+            cy,
+            settings.zoom_factor,
+            settings.flip_horizontal,
+            settings.flip_vertical,
+        )
         scaled_radius = logical_radius * settings.zoom_factor
         dist = math.sqrt((vx - ball_x) ** 2 + (vy - ball_y) ** 2)
         hit = dist < scaled_radius
@@ -1261,8 +1333,15 @@ def draw_main_screen(
     if tip is not None:
         (lx, ly) = tip["center"]
         logical_radius = tip.get("radius", 5.0)
-        vx = cx + lx * settings.zoom_factor
-        vy = cy + ly * settings.zoom_factor
+        vx, vy = logical_to_viewport(
+            lx,
+            ly,
+            cx,
+            cy,
+            settings.zoom_factor,
+            settings.flip_horizontal,
+            settings.flip_vertical,
+        )
         scaled_radius = logical_radius * settings.zoom_factor
         dpg.draw_circle(
             (vx, vy), scaled_radius, color=(0, 200, 255, 180), fill=(0, 200, 255, 60), parent=dl

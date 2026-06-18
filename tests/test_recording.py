@@ -23,6 +23,20 @@ def _read_csv(path) -> list:
         return [row for row in csv.reader(f) if not (row and row[0].startswith("#"))]
 
 
+def _read_metadata(path) -> dict:
+    """Return metadata comment lines as key/value pairs."""
+    metadata = {}
+    with open(path) as f:
+        for line in f:
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                content = stripped[1:].strip()
+                key, _, val = content.partition("=")
+                if val:
+                    metadata[key.strip()] = val.strip()
+    return metadata
+
+
 @pytest.fixture(autouse=True)
 def use_tmp_dir(tmp_path, monkeypatch):
     """All tests run with cwd set to a temp directory so recordings/ stays isolated."""
@@ -132,3 +146,29 @@ class TestRowContent:
         rows = _read_csv(path)
         for idx, row in enumerate(rows[1:]):
             assert row[0] == f"{float(idx):.3f}"
+
+
+# ---------------------------------------------------------------------------
+# Metadata
+# ---------------------------------------------------------------------------
+
+
+class TestMetadata:
+    def test_flip_metadata_defaults_false(self, tmp_path):
+        recordings_dir = os.path.join(tmp_path, "recordings")
+        path = _save_recording_csv([], out_dir=recordings_dir)
+        metadata = _read_metadata(path)
+        assert metadata["flip_horizontal"] == "false"
+        assert metadata["flip_vertical"] == "false"
+
+    def test_flip_metadata_true_when_enabled(self, tmp_path):
+        recordings_dir = os.path.join(tmp_path, "recordings")
+        path = _save_recording_csv(
+            [],
+            out_dir=recordings_dir,
+            flip_horizontal=True,
+            flip_vertical=True,
+        )
+        metadata = _read_metadata(path)
+        assert metadata["flip_horizontal"] == "true"
+        assert metadata["flip_vertical"] == "true"

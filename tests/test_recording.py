@@ -2,12 +2,17 @@
 # Unit tests for _save_recording_csv in recording.py.
 # Uses tmp_path + monkeypatch.chdir so no files are written to the real workspace.
 import csv
+import datetime
 import os
 import re
 
 import pytest
 
-from wiibble.board.recording import _save_recording_csv
+from wiibble.board.recording import (
+    _save_recording_csv,
+    build_recording_filename,
+    normalize_recording_prefix,
+)
 
 
 def _find_csv(recordings_dir) -> str:
@@ -73,7 +78,72 @@ class TestFilenaming:
         _save_recording_csv([], out_dir=recordings_dir)
         files = os.listdir(recordings_dir)
         assert len(files) == 1
-        assert re.fullmatch(r"recording_\d{8}_\d{6}\.csv", files[0])
+        assert re.fullmatch(r"recording_\d{12}\.csv", files[0])
+
+    def test_blank_prefix_uses_default(self, tmp_path):
+        recordings_dir = os.path.join(tmp_path, "recordings")
+        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
+        _save_recording_csv([], out_dir=recordings_dir, prefix="", start_time=start)
+        assert os.listdir(recordings_dir) == ["recording_261101174543.csv"]
+
+    def test_custom_prefix(self, tmp_path):
+        recordings_dir = os.path.join(tmp_path, "recordings")
+        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
+        _save_recording_csv(
+            [], out_dir=recordings_dir, prefix="SPI001_SitStand", start_time=start
+        )
+        assert os.listdir(recordings_dir) == ["SPI001_SitStand_261101174543.csv"]
+
+    def test_unsafe_prefix_chars_removed(self):
+        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
+        filename = build_recording_filename("SPI001/Sit:Stand", start)
+        assert filename == "SPI001SitStand_261101174543.csv"
+
+    def test_spaces_replaced_with_underscores(self):
+        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
+        assert (
+            build_recording_filename("SPI001 SitStand", start)
+            == "SPI001_SitStand_261101174543.csv"
+        )
+
+    def test_build_recording_filename_strips_whitespace(self):
+        start = datetime.datetime(2026, 1, 2, 3, 4, 5)
+        assert build_recording_filename("  myprefix  ", start) == "myprefix_260102030405.csv"
+
+    def test_prefix_truncated_to_max_length(self):
+        long_prefix = "A" * 50
+        assert len(normalize_recording_prefix(long_prefix)) == 40
+
+    def test_prefix_only_special_chars_falls_back_to_default(self):
+        start = datetime.datetime(2026, 1, 2, 3, 4, 5)
+        assert build_recording_filename("!!!", start) == "recording_260102030405.csv"
+
+    def test_normalize_collapses_repeated_underscores(self):
+        assert normalize_recording_prefix("SPI001  SitStand") == "SPI001_SitStand"
+
+    def test_leading_dots_stripped(self):
+        assert normalize_recording_prefix(".hidden") == "hidden"
+        assert normalize_recording_prefix("...SPI001") == "SPI001"
+
+    def test_windows_reserved_name_escaped(self):
+        assert normalize_recording_prefix("CON") == "CON_file"
+        assert normalize_recording_prefix("com1") == "com1_file"
+        assert normalize_recording_prefix("LPT9") == "LPT9_file"
+
+    def test_windows_reserved_name_in_filename(self):
+        start = datetime.datetime(2026, 1, 2, 3, 4, 5)
+        assert build_recording_filename("CON", start) == "CON_file_260102030405.csv"
+
+    def test_collision_appends_numeric_suffix(self, tmp_path):
+        recordings_dir = os.path.join(tmp_path, "recordings")
+        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
+        kwargs = dict(out_dir=recordings_dir, prefix="SPI001", start_time=start)
+        _save_recording_csv([], **kwargs)
+        _save_recording_csv([], **kwargs)
+        assert sorted(os.listdir(recordings_dir)) == [
+            "SPI001_261101174543.csv",
+            "SPI001_261101174543_2.csv",
+        ]
 
 
 # ---------------------------------------------------------------------------

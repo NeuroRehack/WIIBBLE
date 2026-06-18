@@ -64,6 +64,9 @@ class TestSettingsDefaults:
     def test_flip_vertical_default(self):
         assert Settings().flip_vertical is False
 
+    def test_recording_prefix_default(self):
+        assert Settings().recording_prefix == ""
+
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file
@@ -102,6 +105,7 @@ class TestSettingsRoundTrip:
             board_cal_reference_kg=25.0,
             flip_horizontal=True,
             flip_vertical=True,
+            recording_prefix="SPI001_SitStand",
             show_global_axes=False,
             show_local_axes=True,
         )
@@ -118,6 +122,7 @@ class TestSettingsRoundTrip:
         assert loaded.board_cal_reference_kg == 25.0
         assert loaded.flip_horizontal is True
         assert loaded.flip_vertical is True
+        assert loaded.recording_prefix == "SPI001_SitStand"
         assert loaded.show_global_axes is False
         assert loaded.show_local_axes is True
 
@@ -133,6 +138,34 @@ class TestSettingsRoundTrip:
             data = json.load(f)
         assert "trail_length" in data
         assert "zoom_factor" in data
+
+
+class TestSettingsRecordingPrefix:
+    def test_load_normalizes_invalid_prefix(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        path = env_settings_path()
+        with open(path, "w") as f:
+            json.dump({"recording_prefix": "SPI001/Sit Stand!!!"}, f)
+        loaded = Settings.load()
+        assert loaded.recording_prefix == "SPI001Sit_Stand"
+
+    def test_load_persists_normalized_prefix(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        path = env_settings_path()
+        with open(path, "w") as f:
+            json.dump({"recording_prefix": " bad prefix "}, f)
+        Settings.load()
+        with open(path) as f:
+            data = json.load(f)
+        assert data["recording_prefix"] == "bad_prefix"
+
+    def test_load_normalizes_windows_reserved_prefix(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        path = env_settings_path()
+        with open(path, "w") as f:
+            json.dump({"recording_prefix": "CON"}, f)
+        loaded = Settings.load()
+        assert loaded.recording_prefix == "CON_file"
 
 
 # ---------------------------------------------------------------------------

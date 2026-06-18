@@ -10,6 +10,7 @@ import time
 import dearpygui.dearpygui as dpg
 
 import wiibble.ui.theme as _theme_module
+from wiibble.board.recording import normalize_recording_prefix
 from wiibble.features.data_processing import logical_to_viewport
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
@@ -891,6 +892,17 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
     )
 
 
+def _on_recording_prefix_change(value: str, settings) -> None:
+    """Persist a custom recording filename prefix."""
+    normalized = normalize_recording_prefix(value or "")
+    settings.recording_prefix = normalized
+    settings.save()
+    if dpg.does_item_exist("recording_prefix_input") and dpg.get_value(
+        "recording_prefix_input"
+    ) != normalized:
+        dpg.set_value("recording_prefix_input", normalized)
+
+
 def _open_recording_dir_picker(settings) -> None:
     """Open the Dear PyGui file dialog in directory mode (light theme override)."""
     documents = os.path.join(os.path.expanduser("~"), "Documents")
@@ -1112,6 +1124,22 @@ def _build_recording_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="recording_dir_btn"):
         dpg.add_text("Choose the folder where recordings are saved.")
+    dpg.add_spacer(height=8)
+    dpg.add_text("Prefix")
+    dpg.add_input_text(
+        tag="recording_prefix_input",
+        default_value=normalize_recording_prefix(settings.recording_prefix),
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_recording_prefix_change(v, settings),
+    )
+    with dpg.tooltip(parent="recording_prefix_input"):
+        dpg.add_text(
+            "Filename prefix for recordings (max 40 characters).\n"
+            "Letters, digits, underscores, and hyphens only.\n"
+            "Spaces become underscores; other special characters are removed.\n"
+            "Leave blank for the default (recording).\n"
+            "Example: SPI001_SitStand → SPI001_SitStand_261101174543.csv"
+        )
 
 
 def _build_cursor_controls(app_state, settings) -> None:

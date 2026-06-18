@@ -6,6 +6,7 @@ DearPyGui UI glue code, and the primary render + recording loop.
 
 from __future__ import annotations
 
+import datetime
 import logging
 import math
 import time
@@ -196,6 +197,19 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
     build_recording_quick_btn(app_state, settings)
 
 
+def _recording_save_kwargs(app_state, settings) -> dict:
+    """Build keyword args for _save_recording_csv from runtime state."""
+    kwargs = {
+        "prefix": settings.recording_prefix,
+        "out_dir": settings.recording_dir,
+        "flip_horizontal": settings.flip_horizontal,
+        "flip_vertical": settings.flip_vertical,
+    }
+    if app_state.record_start > 0:
+        kwargs["start_time"] = datetime.datetime.fromtimestamp(app_state.record_start)
+    return kwargs
+
+
 def _update_recording_frame(
     now: float,
     record_start_time,
@@ -229,9 +243,7 @@ def _update_recording_frame(
                 app_state.record_buffer,
                 app_state.weight,
                 settings.filter_window,
-                out_dir=settings.recording_dir,
-                flip_horizontal=settings.flip_horizontal,
-                flip_vertical=settings.flip_vertical,
+                **_recording_save_kwargs(app_state, settings),
             )
             app_state.record_buffer = []
             app_state.toast_message = "Recording saved"
@@ -248,9 +260,15 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
             app_state.record_buffer,
             app_state.weight,
             fw,
-            out_dir=rd,
             flip_horizontal=settings.flip_horizontal if settings is not None else False,
             flip_vertical=settings.flip_vertical if settings is not None else False,
+            prefix=settings.recording_prefix if settings is not None else "",
+            out_dir=rd,
+            start_time=(
+                datetime.datetime.fromtimestamp(app_state.record_start)
+                if app_state.record_start > 0
+                else None
+            ),
         )
         app_state.record_buffer = []
         app_state.recording_indicator = False

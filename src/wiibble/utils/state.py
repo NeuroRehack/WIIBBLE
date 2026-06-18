@@ -6,6 +6,7 @@ import os
 import platform
 from dataclasses import asdict, dataclass, field
 
+from wiibble.board.recording import normalize_recording_prefix
 from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
 
 log = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class Settings:
     flip_horizontal: bool = False  # invert left-right display and recording mapping
     flip_vertical: bool = False  # invert forward-back display and recording mapping
     recording_dir: str = ""  # output folder for CSV recordings ("" = use default)
+    recording_prefix: str = ""  # filename prefix ("" = use default "recording")
     body_weight_kg: float = 70.0  # reference body weight for cursor normalization and recordings
     scale_factor: float = SCALE_FACTOR_DEFAULT  # HID raw → kg conversion for this board
     board_cal_reference_kg: float = 20.0  # known mass used for board scale calibration
@@ -83,6 +85,10 @@ class Settings:
             merged = defaults.__dict__.copy()
             merged.update({k: v for k, v in data.items() if k in valid_fields})
             loaded = cls(**merged)
+            raw_prefix = loaded.recording_prefix
+            loaded.recording_prefix = normalize_recording_prefix(raw_prefix)
+            if loaded.recording_prefix != raw_prefix:
+                loaded.save()
             log.info("Settings loaded from %s", path)
             return loaded
         except Exception as e:

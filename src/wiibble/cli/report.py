@@ -962,14 +962,23 @@ _HTML_TEMPLATE = """\
 
 def _find_features_json(csv_path: str) -> str | None:
     """Locate the features JSON that matches the CSV timestamp, if it exists."""
-    basename = os.path.basename(csv_path)
-    # Extract YYYYMMDD_HHMMSS from recording_YYYYMMDD_HHMMSS.csv
-    m = re.search(r"(\d{8}_\d{6})", basename)
-    if not m:
-        return None
-    timestamp = m.group(1)
-    candidate = os.path.join(os.path.dirname(csv_path), f"features_{timestamp}.json")
-    return candidate if os.path.isfile(candidate) else None
+    dirname = os.path.dirname(csv_path)
+    stem = os.path.splitext(os.path.basename(csv_path))[0]
+
+    candidates = [os.path.join(dirname, f"features_{stem}.json")]
+    if stem.startswith("recording_"):
+        candidates.append(os.path.join(dirname, f"features_{stem[len('recording_'):]}.json"))
+    m = re.search(r"(\d{12})$", stem)
+    if m:
+        candidates.append(os.path.join(dirname, f"features_{m.group(1)}.json"))
+    m = re.search(r"(\d{8}_\d{6})", stem)
+    if m:
+        candidates.append(os.path.join(dirname, f"features_{m.group(1)}.json"))
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
 
 
 def generate_report(
@@ -1072,8 +1081,11 @@ def generate_report(
     # ── Write output ─────────────────────────────────────────────────────────
     log.info("Writing HTML report to disk…")
     if out_path is None:
-        # Extract timestamp from CSV filename (recording_YYYYMMDD_HHMMSS.csv)
-        m = re.search(r"(\d{8}_\d{6})", os.path.basename(csv_path))
+        basename = os.path.basename(csv_path)
+        stem = os.path.splitext(basename)[0]
+        m = re.search(r"(\d{12})$", stem)
+        if not m:
+            m = re.search(r"(\d{8}_\d{6})", basename)
         if m:
             ts = m.group(1)
             out_path = os.path.join(os.path.dirname(csv_path), f"report_{ts}.html")

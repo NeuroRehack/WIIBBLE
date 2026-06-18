@@ -49,8 +49,10 @@ _RECORDINGS_DIR = "recordings"
 
 def _json_path_for(csv_path: str) -> str:
     """Return the JSON sidecar path that corresponds to *csv_path*."""
-    stem = os.path.splitext(csv_path)[0]
-    return stem.replace("recording_", "features_") + ".json"
+    stem = os.path.splitext(os.path.basename(csv_path))[0]
+    if stem.startswith("recording_"):
+        return stem.replace("recording_", "features_", 1) + ".json"
+    return f"features_{stem}.json"
 
 
 def _read_duration(csv_path: str) -> float:
@@ -138,7 +140,7 @@ def _collect_all_csvs() -> list[str]:
     paths = [
         os.path.join(_RECORDINGS_DIR, f)
         for f in sorted(os.listdir(_RECORDINGS_DIR))
-        if f.startswith("recording_") and f.endswith(".csv")
+        if f.endswith(".csv")
     ]
     return paths
 

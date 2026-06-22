@@ -389,17 +389,17 @@ def _reset_pan(app_state) -> None:
 
 
 def _pause_acquisition(session_state: dict) -> None:
-    """Pause background HID reads when calibration needs exclusive device access."""
+    """Stop background HID reads so calibration owns the device exclusively."""
     acquisition = session_state.get("acquisition")
     if acquisition is not None:
-        acquisition.pause()
+        acquisition.stop()
 
 
 def _resume_acquisition(session_state: dict) -> None:
-    """Resume background HID reads after calibration completes."""
+    """Restart background HID reads after calibration completes."""
     acquisition = session_state.get("acquisition")
     if acquisition is not None:
-        acquisition.resume()
+        acquisition.start()
 
 
 def _handle_session_action(action, device, dl, app_state, settings, session_state):
@@ -549,7 +549,11 @@ def _render_main_screen_frame(
     if diagnostics is not None:
         diagnostics.tick_frame(frame_state is not None, reports_drained)
     if frame_state is None:
-        return top_left, top_right, bottom_left, bottom_right
+        frame_state = session_state.get("last_frame")
+        if frame_state is None:
+            return top_left, top_right, bottom_left, bottom_right
+    else:
+        session_state["last_frame"] = frame_state
 
     dpg.delete_item(dl, children_only=True)
     draw_main_screen(
@@ -831,6 +835,9 @@ def _run_session(app_state, settings, args) -> int:
 
 def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     """Execute the main session render loop and return a session result."""
+    with contextlib.suppress(Exception):
+        device.set_nonblocking(1)
+
     acquisition = SensorAcquisition(device)
     acquisition.start()
     session_state["acquisition"] = acquisition
@@ -839,9 +846,6 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     # app_state.reset() already zeroes these — nothing else needed here.
     app_state.zoomed_max_x = app_state.zoomed_max_y = 0.0
     app_state.zoomed_min_x = app_state.zoomed_min_y = 0.0
-
-    with contextlib.suppress(Exception):
-        device.set_nonblocking(1)
 
     last_countdown_tick = time.time()
     record_start_time = None

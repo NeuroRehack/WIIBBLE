@@ -19,6 +19,15 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.2] — 2026-06-22
+
+### Fixed
+- HID acquisition thread race during on-demand calibration (exclusive `stop()`/`start()` instead of `pause()`/`resume()`)
+- Windows cursor stutter after background acquisition refactor (non-blocking mode before thread start, latest-frame slot, redraw last frame when queue empty)
+- Documentation: Windows settings path (`%APPDATA%\WIIBBLE\settings.json`), Nuitka output path (`dist_nuitka\wiibble.dist`), and troubleshooting `del` command
+
+---
+
 ## [2.x.0] — current
 
 ### Added

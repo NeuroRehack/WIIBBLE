@@ -267,7 +267,7 @@ uv sync --extra analysis
 
 ### Analyse recordings
 
-Both offline CLIs scan the **configured recordings folder** — the same path as **Save Location** in the app (`recording_dir` in `~/.wiibble/settings.json`). When unset, the default is `~/Documents/WIIBBLE/recordings`.
+Both offline CLIs scan the **configured recordings folder** — the same path as **Save Location** in the app (`recording_dir` in the user settings file). When unset, the default is `~/Documents/WIIBBLE/recordings`.
 
 Process all new (unanalysed) recordings in that folder:
 
@@ -339,12 +339,12 @@ Requires `uv sync --extra dev`:
 .\compiler.bat
 ```
 
-Output: `dist_nuitka/main.dist/WIIBBLE.exe`
+Output: `dist_nuitka/wiibble.dist/WIIBBLE.exe`
 
 Test the build in mock mode before distributing:
 
 ```powershell
-dist_nuitka\main.dist\WIIBBLE.exe --mock --mock-scenario sway
+dist_nuitka\wiibble.dist\WIIBBLE.exe --mock --mock-scenario sway
 ```
 
 ### Create the installer (for clinic distribution)
@@ -366,7 +366,7 @@ Supports `/SILENT` and `/VERYSILENT` flags for managed deployment.
 - **Windows only.** DearPyGui's `viewport_drawlist`, `ctypes.windll`, and the C# DLL are all Windows-specific.
 - **.NET Framework 4.8** must be present to build and run the C# DLL. Pre-installed on Windows 10/11; may be absent on server SKUs.
 - **Bluetooth pairing is separate from the app.** The board must be paired in Windows Bluetooth settings before launching.
-- **Settings are per-user**, stored at `~/.wiibble/settings.json`. The recording save location (`recording_dir`) is shared by the app and offline CLI batch commands; default is `~/Documents/WIIBBLE/recordings`.
+- **Settings are per-user.** On Windows: `%APPDATA%\WIIBBLE\settings.json`; on Linux/macOS: `~/.wiibble/settings.json`. The recording save location (`recording_dir`) is shared by the app and offline CLI batch commands; default is `~/Documents/WIIBBLE/recordings`.
 
 ---
 
@@ -378,7 +378,7 @@ Supports `/SILENT` and `/VERYSILENT` flags for managed deployment.
 | `uv sync` fails | Ensure Python 3.11 or 3.12 is installed and on PATH. Try `uv python install 3.11`. |
 | Board not found | Bluetooth must be on, board paired, LED blinking blue. Try re-pairing. Check battery. |
 | Black screen / no canvas | Restart the app. Update graphics drivers if persistent. |
-| Settings reset needed | Delete `~/.wiibble/settings.json`, recreated automatically on next launch. |
+| Settings reset needed | Delete `%APPDATA%\WIIBBLE\settings.json` (Windows) or `~/.wiibble/settings.json` (Linux/macOS); recreated automatically on next launch. |
 | Analysis error (missing packages) | Run `uv sync --extra analysis`. |
 
 ---
@@ -448,6 +448,6 @@ uv run wiibble-report --new
 just sync
 uv sync --extra analysis
 
-# Reset user preferences
-del %USERPROFILE%\.wiibble\settings.json
+# Reset user preferences (Windows)
+del "%APPDATA%\WIIBBLE\settings.json"
 ```

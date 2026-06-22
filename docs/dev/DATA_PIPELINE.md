@@ -49,7 +49,7 @@ flowchart TD
   - Extracts sensor values for each corner from the raw byte array.
   - Applies tare (baseline) correction using values in `data_struct`.
   - Formula: `(data[i] + data[i+1] / 255 - tare) * scale_factor`
-- **`scale_factor`:** Persisted in `~/.wiibble/settings.json` (default factory value in `SCALE_FACTOR_DEFAULT`). Calibrated via **Settings → Cal scale** using a known reference mass on the board.
+- **`scale_factor`:** Persisted in the user settings file (`get_settings_path()`; Windows: `%APPDATA%\WIIBBLE\settings.json`). Calibrated via **Settings → Cal scale** using a known reference mass on the board.
 - **Output:** `{top_left, top_right, bottom_left, bottom_right}` — corner weights in kg
 
 ---
@@ -103,7 +103,7 @@ After parsing, the pipeline splits into two independent paths.
 
 - **Function:** `_save_recording_csv(record_buffer, total_weight_kg, ui_filter_window, out_dir=...)`
 - Writes the buffer to a timestamped CSV in the configured recordings folder after recording ends.
-- **Save location:** `settings.recording_dir` from `~/.wiibble/settings.json` (set via **Save Location** in the app). When empty, defaults to `~/Documents/WIIBBLE/recordings`.
+- **Save location:** `settings.recording_dir` from the user settings file (set via **Save Location** in the app). When empty, defaults to `~/Documents/WIIBBLE/recordings`.
 - **Filename:** `recording_YYMMDDHHMMSS.csv` (or `{prefix}_YYMMDDHHMMSS.csv` when a prefix is set).
 - File structure:
   ```

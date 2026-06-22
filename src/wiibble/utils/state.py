@@ -34,7 +34,8 @@ def get_settings_path() -> Path:
 class Settings:
     """
     User-adjustable values. Start as defaults, can change during a session.
-    Persisted to ~/.wiibble/settings.json between sessions.
+    Persisted to the platform settings file between sessions (see
+    :func:`get_settings_path`; on Windows ``%APPDATA%\\WIIBBLE\\settings.json``).
     """
 
     trail_length: int = 100  # S2: number of historical positions shown

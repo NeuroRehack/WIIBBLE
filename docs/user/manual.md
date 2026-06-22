@@ -213,7 +213,7 @@ The settings panel (gear button) is available as soon as the main canvas appears
 | Black screen / no canvas | Restart the app. Update graphics drivers if persistent. |
 | Cursor very jittery | Increase the Smoothing Filter slider. |
 | Gear icon missing | Check `assets/fonts/fa-solid-900.ttf` is present. |
-| Settings lost | Delete `~/.wiibble/settings.json` to reset to defaults. |
+| Settings lost | Delete `%APPDATA%\WIIBBLE\settings.json` (Windows) or `~/.wiibble/settings.json` (Linux/macOS) to reset to defaults. |
 | Library error on startup | Run `uv sync` — see [setup.md](../dev/setup.md). |
 
 For developer and build issues see [setup.md](../dev/setup.md).

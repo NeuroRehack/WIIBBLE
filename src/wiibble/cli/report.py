@@ -15,8 +15,8 @@ If ``--features`` is omitted the script looks for a ``features_*.json`` file
 whose timestamp matches the CSV filename.  If none is found the feature-based
 sections (radar chart and feature table) are omitted from the report.
 
-Batch mode (``--new`` / ``--all``) scans the recordings folder from
-``~/.wiibble/settings.json`` (same as **Save Location** in the app).
+Batch mode (``--new`` / ``--all``) scans the recordings folder from the user
+settings file (``get_settings_path()``; same as **Save Location** in the app).
 
 Output
 ------

@@ -178,7 +178,7 @@ Offline posturographic analysis and HTML reports are **not** triggered by the ap
 | `wiibble/ui/input.py` | Mouse click/drag/release/wheel handlers; target creation; Ctrl+pan; Ctrl+zoom | Communicates back to `app.py` only via `session_state["action"]` |
 | `wiibble/features/data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
 | `wiibble/ui/calibration_flow.py` | Tare detection and body-weight calibration blocking loops | Renders calibration screens inline; calls `dpg.render_dearpygui_frame()` directly |
-| `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved to `~/.wiibble/settings.json`; unknown fields silently ignored on load |
+| `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved via `get_settings_path()` (`%APPDATA%\WIIBBLE\settings.json` on Windows); unknown fields silently ignored on load |
 | `wiibble/utils/constants.py` | Hardware IDs, byte offsets, `SCALE_FACTOR_DEFAULT`, thresholds, UI sizes | Factory default scale factor; runtime value lives in settings |
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
 | `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata; `resolve_recording_dir()` for default save location | Extracted from `app.py` specifically for testability |

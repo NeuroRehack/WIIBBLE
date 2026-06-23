@@ -267,6 +267,23 @@ uv sync --extra analysis
 
 For development (lint, tests, Nuitka), use `just sync`, which installs `dev` and `analysis` extras together.
 
+### End-of-session report (in-app)
+
+When **Open report after recording** is enabled in the settings panel (default on), WIIBBLE launches a companion process after each recording:
+
+- **Development:** `python -m wiibble.cli.session_report`
+- **Installed build:** `WIIBBLE-SessionReport.exe` next to `WIIBBLE.exe`
+
+The companion analyses recordings of at least 20 s, writes `features_*.json` and `report_*.html` next to the CSV, and opens the HTML in the default browser (optional). The main app stays responsive while the report generates (~2–4 s for a 30 s recording).
+
+Manual CLI (same pipeline):
+
+```powershell
+uv run wiibble-session-report path\to\recording.csv --open
+```
+
+The companion is built by `compiler_session_report.bat` (called automatically from `compiler.bat`).
+
 ### Analyse recordings
 
 Both offline CLIs scan the **configured recordings folder** — the same path as **Save Location** in the app (`recording_dir` in the user settings file). When unset, the default is `~/Documents/WIIBBLE/recordings`.

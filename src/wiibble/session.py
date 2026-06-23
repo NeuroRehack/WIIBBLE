@@ -23,6 +23,7 @@ from wiibble.features.data_processing import (
     parse_data,
     tare,
 )
+from wiibble.session_report.launcher import launch_session_report_async
 from wiibble.ui.calibration_flow import (
     run_board_scale_calibration,
     run_board_weight_calibration,
@@ -200,15 +201,72 @@ def _build_control_panel(app_state, settings, session_state: dict) -> None:
 
 def _recording_save_kwargs(app_state, settings) -> dict:
     """Build keyword args for _save_recording_csv from runtime state."""
-    kwargs = {
+    return {
         "prefix": settings.recording_prefix,
         "out_dir": settings.recording_dir,
         "flip_horizontal": settings.flip_horizontal,
         "flip_vertical": settings.flip_vertical,
+        "start_time": (
+            datetime.datetime.fromtimestamp(app_state.record_start)
+            if app_state.record_start > 0
+            else None
+        ),
     }
-    if app_state.record_start > 0:
-        kwargs["start_time"] = datetime.datetime.fromtimestamp(app_state.record_start)
-    return kwargs
+
+
+def _on_recording_saved(csv_path: str, app_state, settings) -> None:
+    """Toast after save and optionally launch end-of-session report generation."""
+    if not settings.auto_report_after_recording:
+        app_state.toast_message = "Recording saved"
+        app_state.toast_until = time.time() + 2.5
+        return
+
+    process = launch_session_report_async(
+        csv_path,
+        open_browser=settings.open_report_in_browser,
+    )
+    if process is None:
+        app_state.toast_message = "Recording saved — report tool not found"
+        app_state.toast_until = time.time() + 4.0
+        return
+
+    app_state.report_job = {"process": process, "csv_path": csv_path}
+    app_state.toast_message = "Generating report…"
+    app_state.toast_until = time.time() + 120.0
+
+
+def _poll_report_job(app_state, settings) -> None:
+    """Check async session-report subprocess; update toast when complete."""
+    job = app_state.report_job
+    if not job:
+        return
+
+    process = job["process"]
+    if process.poll() is None:
+        return
+
+    app_state.report_job = None
+    stdout, stderr = process.communicate()
+    if process.returncode == 0:
+        report_path = (stdout or "").strip()
+        if report_path:
+            app_state.last_report_path = report_path
+        if settings.open_report_in_browser:
+            app_state.toast_message = "Report ready — opened in browser"
+        else:
+            app_state.toast_message = "Report saved"
+        app_state.toast_until = time.time() + 4.0
+        log.info("Session report completed: %s", report_path or "(no path)")
+        return
+
+    log.error(
+        "Session report failed for %s (exit %s): %s",
+        job.get("csv_path"),
+        process.returncode,
+        (stderr or stdout or "").strip(),
+    )
+    app_state.toast_message = "Report generation failed"
+    app_state.toast_until = time.time() + 4.0
 
 
 def _update_recording_frame(
@@ -242,15 +300,14 @@ def _update_recording_frame(
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
             sync_recording_buttons(recording_active=False)
-            _save_recording_csv(
+            csv_path = _save_recording_csv(
                 app_state.record_buffer,
                 app_state.weight,
                 settings.filter_window,
                 **_recording_save_kwargs(app_state, settings),
             )
             app_state.record_buffer = []
-            app_state.toast_message = "Recording saved"
-            app_state.toast_until = time.time() + 2.5
+            _on_recording_saved(csv_path, app_state, settings)
     return record_start_time
 
 
@@ -259,7 +316,7 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
     if not app_state.is_recording and app_state.record_buffer:
         fw = settings.filter_window if settings is not None else 1
         rd = settings.recording_dir if settings is not None else ""
-        _save_recording_csv(
+        csv_path = _save_recording_csv(
             app_state.record_buffer,
             app_state.weight,
             fw,
@@ -277,8 +334,11 @@ def _flush_record_buffer_if_complete(app_state, settings=None) -> None:
         app_state.recording_indicator = False
         app_state.stopwatch_elapsed = 0.0
         sync_recording_buttons(recording_active=False)
-        app_state.toast_message = "Recording saved"
-        app_state.toast_until = time.time() + 2.5
+        if settings is not None:
+            _on_recording_saved(csv_path, app_state, settings)
+        else:
+            app_state.toast_message = "Recording saved"
+            app_state.toast_until = time.time() + 2.5
 
 
 def _update_countdown_and_recording(
@@ -871,6 +931,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
                 bottom_right,
             )
             _flush_record_buffer_if_complete(app_state, settings)
+            _poll_report_job(app_state, settings)
 
             action = session_state.get("action")
             result = _handle_session_action(

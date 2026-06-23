@@ -182,7 +182,10 @@ Offline posturographic analysis and HTML reports are **not** triggered by the ap
 | `wiibble/utils/constants.py` | Hardware IDs, byte offsets, `SCALE_FACTOR_DEFAULT`, thresholds, UI sizes | Factory default scale factor; runtime value lives in settings |
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto 100px) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
 | `wiibble/board/recording.py` | `_save_recording_csv()` — write buffer to timestamped CSV with body-weight + ui_filter_window metadata; `resolve_recording_dir()` for default save location | Extracted from `app.py` specifically for testability |
-| `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; invoked offline via `wiibble-process-recordings` |
+| `wiibble/analysis/analysis.py` | End-to-end posturographic pipeline: `load_recording()` → `to_cop_array()` → `Stabilogram` → `compute_all_features()` | Imports `code_descriptors_postural_control`; invoked offline via `wiibble-process-recordings` or session-report companion |
+| `wiibble/session_report/runner.py` | `run_session_report()` — analyse (if ≥ 20 s) + HTML report | Used by CLI and `WIIBBLE-SessionReport.exe` companion |
+| `wiibble/session_report/launcher.py` | Spawns companion exe or dev module after recording | Called from `session.py`; keeps plotly/scipy out of main exe |
+| `wiibble/cli/session_report.py` | `wiibble-session-report` — single-recording analyse + report CLI | Entry point for Nuitka companion build |
 | `wiibble/cli/process_recordings.py` | `wiibble-process-recordings` — batch feature extraction (`--new`, `--all`) | Scans `settings.recording_dir`; optional HTML report per file |
 | `wiibble/cli/report.py` | `wiibble-report` — batch or single-file HTML reports (`--new`, `--all`) | Auto-detects features JSON; writes `report_<timestamp>.html` next to CSV |
 | `wiibble/cli/recordings_dir.py` | Shared helper to resolve the configured recordings folder for offline CLIs | Reads `settings.recording_dir` via `Settings.load()` |

@@ -41,7 +41,7 @@ class Settings:
     trail_length: int = 100  # S2: number of historical positions shown
     zoom_factor: float = 1.0  # S3: display scale multiplier
     filter_window: int = 1  # S4: moving average window (1 = no smoothing)
-    record_duration: int = 10  # S5: CSV recording duration in seconds (0 = indefinite)
+    record_duration: int = 30  # S5: CSV recording duration in seconds (0 = indefinite)
     cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
     cursor_size: int = 20  # S1: circle cursor radius in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
@@ -61,6 +61,8 @@ class Settings:
     )
     scale_factor: float = SCALE_FACTOR_DEFAULT  # HID raw → kg conversion for this board
     board_cal_reference_kg: float = 20.0  # known mass used for board scale calibration
+    auto_report_after_recording: bool = True  # HTML report when recording ends
+    open_report_in_browser: bool = True  # open report in browser after generation
 
     def toggle_cursor_mode(self):
         """S1: Switch between avatar and circle cursor."""
@@ -161,7 +163,7 @@ class AppState:
     # S5: Timed Data Recording to CSV — countdown and status
     is_countdown: bool = False  # True if countdown is active
     countdown_value: int = 0  # 3, 2, 1, 0 (seconds left)
-    record_duration: float = 10.0  # Duration in seconds (copied from settings at start)
+    record_duration: float = 30.0  # Duration in seconds (copied from settings at start)
     recording_indicator: bool = False  # For UI (e.g. red dot/REC)
 
     # Moving average filter buffer — stores last N raw corner kg dicts.
@@ -204,6 +206,10 @@ class AppState:
     # Toast overlay — brief canvas banner shown after a recording is saved.
     toast_message: str = ""
     toast_until: float = 0.0
+
+    # End-of-session report — path to last HTML report; async companion job while set.
+    last_report_path: str = ""
+    report_job: dict | None = None
 
     # Ripple animations — per-target jelly oscillation ages, keyed by target index.
     # Value is the frame age since the hit; absent/removed when animation ends.
@@ -260,8 +266,10 @@ class AppState:
         self.pan_offset_y = 0.0
         self.is_countdown = False
         self.countdown_value = 0
-        self.record_duration = 10.0
+        self.record_duration = 30.0
         self.recording_indicator = False
+        self.last_report_path = ""
+        self.report_job = None
         self.cursor_drag_in_progress = False
         self.cursor_drag_start_size = 20
         self.target_in_progress = None

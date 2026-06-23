@@ -42,7 +42,7 @@ class TestSettingsDefaults:
         assert Settings().filter_window == 1
 
     def test_record_duration_default(self):
-        assert Settings().record_duration == 10
+        assert Settings().record_duration == 30
 
     def test_cursor_mode_default(self):
         assert Settings().cursor_mode == "avatar"
@@ -118,6 +118,8 @@ class TestSettingsRoundTrip:
             show_local_axes=True,
             target_dwell_seconds=2,
             show_target_counter=False,
+            auto_report_after_recording=False,
+            open_report_in_browser=False,
         )
         original.save()
         loaded = Settings.load()
@@ -137,6 +139,13 @@ class TestSettingsRoundTrip:
         assert loaded.show_local_axes is True
         assert loaded.target_dwell_seconds == 2
         assert loaded.show_target_counter is False
+        assert loaded.auto_report_after_recording is False
+        assert loaded.open_report_in_browser is False
+
+    def test_report_settings_defaults(self):
+        settings = Settings()
+        assert settings.auto_report_after_recording is True
+        assert settings.open_report_in_browser is True
 
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

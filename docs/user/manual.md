@@ -131,7 +131,11 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 ## Recording Data
 
-Starting a recording triggers a 3-second countdown, then captures data until the set duration elapses or you press Stop. Recordings are saved as CSV files to the selected folder:
+Starting a recording triggers a 3-second countdown, then captures data until the set duration elapses or you press Stop. The default recording duration is **30 seconds** (configurable in the settings panel). Recordings are saved as CSV files to the selected folder:
+
+**Session report (installed build):** When **Open report after recording** is enabled in settings (default on), WIIBBLE generates an interactive HTML report automatically when a recording ends and opens it in your web browser. This usually takes a few seconds. Recordings of at least **20 seconds** include the full posturographic feature table; shorter recordings still show sway charts.
+
+Use **View last report** in settings to reopen the most recent report during the session.
 
 **CSV format:**
 ```
@@ -237,6 +241,6 @@ These flags work with both `python -m wiibble` (`wiibble`) and the compiled `WII
 
 ## Posturographic Analysis & Reports
 
-After recording, sessions can be analysed to extract clinical posturographic features, and an interactive HTML report can be generated for clinical records.
+When **Open report after recording** is enabled (default), WIIBBLE generates an HTML report automatically at the end of each recording and opens it in your browser for review with the patient.
 
-These steps require technical setup and are intended for **administrators or developers**. If you need analysis or reports and do not see them generated automatically, ask your clinic IT administrator or the project technical lead, and point them to the [Developer Setup](../dev/setup.md#5-posturographic-analysis-and-reporting).
+For batch analysis of older recordings, or custom report paths, administrators can use the offline tools documented in [Developer Setup](../dev/setup.md#5-posturographic-analysis-and-reporting).

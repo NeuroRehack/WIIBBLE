@@ -151,6 +151,29 @@ By default, `wiibble-process-recordings` also generates an HTML report after eac
 
 ---
 
+## 7b. In-session report (companion executable)
+
+For immediate clinician–patient review at the end of a recording, WIIBBLE can launch a **companion process** without loading scipy/plotly into the main app.
+
+| Component | Role |
+|---|---|
+| [`src/wiibble/session.py`](src/wiibble/session.py) | After `_save_recording_csv`, calls `launch_session_report_async` when `settings.auto_report_after_recording` |
+| [`src/wiibble/session_report/runner.py`](src/wiibble/session_report/runner.py) | `run_session_report()` — analyse (if ≥ 20 s) + `generate_report()` |
+| [`src/wiibble/session_report/launcher.py`](src/wiibble/session_report/launcher.py) | Resolves `WIIBBLE-SessionReport.exe` (standalone) or `python -m wiibble.cli.session_report` (dev) |
+| `WIIBBLE-SessionReport.exe` | Nuitka standalone built by `compiler_session_report.bat` |
+
+Flow:
+
+1. Recording ends → CSV path returned from `_save_recording_csv`
+2. Main app shows toast **Generating report…** and spawns companion (non-blocking)
+3. Companion writes `features_*.json` (when duration ≥ 20 s) and `report_*.html`
+4. Companion opens HTML in default browser (when **Open in browser** is enabled)
+5. Main app polls subprocess; toast updates to **Report ready** or **Report generation failed**
+
+Settings (gear panel): **Open report after recording**, **Open in browser**, **View last report**.
+
+---
+
 ## 8. Sampling Rate
 
 - **Target:** 100 Hz maximum (capped in main loop)

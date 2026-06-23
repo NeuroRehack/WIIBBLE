@@ -10,6 +10,11 @@ from pathlib import Path
 import typer
 
 from wiibble.analysis.analysis import analyse_recording
+from wiibble.analysis.recording_meta import (
+    MIN_ANALYSIS_DURATION_S,
+    json_path_for,
+    read_recording_duration_s,
+)
 from wiibble.cli.recordings_dir import collect_recording_csvs, get_recordings_dir
 from wiibble.utils.logging_config import configure_logging
 
@@ -23,7 +28,7 @@ app = typer.Typer(
     rich_markup_mode=None,
 )
 
-_MIN_ANALYSIS_DURATION_S = 20.0
+_MIN_ANALYSIS_DURATION_S = MIN_ANALYSIS_DURATION_S
 
 
 def _recordings_dir() -> Path:
@@ -33,32 +38,12 @@ def _recordings_dir() -> Path:
 
 def _json_path_for(csv_path: Path) -> Path:
     """Return the JSON sidecar path that corresponds to *csv_path*."""
-    stem = csv_path.stem
-    if stem.startswith("recording_"):
-        return csv_path.with_name(stem.replace("recording_", "features_", 1) + ".json")
-    return csv_path.with_name(f"features_{stem}.json")
+    return json_path_for(csv_path)
 
 
 def _read_duration(csv_path: Path) -> float:
     """Return recording duration in seconds without loading the whole file."""
-    first_ts: float | None = None
-    last_ts: float | None = None
-    with csv_path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split(",")
-            try:
-                ts = float(parts[0])
-            except ValueError:
-                continue
-            if first_ts is None:
-                first_ts = ts
-            last_ts = ts
-    if first_ts is None or last_ts is None:
-        return 0.0
-    return last_ts - first_ts
+    return read_recording_duration_s(csv_path)
 
 
 def _process_file(

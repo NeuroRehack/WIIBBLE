@@ -35,6 +35,8 @@ python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --nofollow-import-to=wiibble.analysis.analysis ^
     --nofollow-import-to=wiibble.cli.report ^
     --nofollow-import-to=wiibble.cli.process_recordings ^
+    --nofollow-import-to=wiibble.cli.session_report ^
+    --nofollow-import-to=wiibble.session_report ^
     --nofollow-import-to=code_descriptors_postural_control ^
     --nofollow-import-to=scipy ^
     --nofollow-import-to=pandas ^
@@ -54,6 +56,12 @@ if errorlevel 1 (
 @REM if exist outputBuild\WIIBBLE rmdir /s /q outputBuild\WIIBBLE
 @REM move dist_nuitka\main.dist outputBuild\WIIBBLE
 echo [compiler] Build complete. Output: dist_nuitka\wiibble.dist\WIIBBLE.exe
+
+call compiler_session_report.bat
+if errorlevel 1 (
+    echo [compiler] SESSION REPORT COMPANION BUILD FAILED.
+    exit /b 1
+)
 
 echo.
 where iscc >nul 2>&1

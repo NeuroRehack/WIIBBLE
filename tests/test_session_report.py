@@ -1,0 +1,127 @@
+"""Tests for end-of-session report orchestration."""
+
+from __future__ import annotations
+
+import json
+import shutil
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from tests.test_analysis import (
+    GOLDEN_JSON,
+    RECORDING_CSV,
+    _assert_matches_golden,
+)
+from wiibble.analysis.recording_meta import json_path_for
+from wiibble.session_report.launcher import resolve_session_report_command
+from wiibble.session_report.runner import run_session_report
+
+pytestmark = pytest.mark.analysis
+
+
+def test_run_session_report_matches_golden(tmp_path):
+    """Full session report writes features JSON and HTML for the fixture."""
+    csv_path = tmp_path / "analysis_recording.csv"
+    shutil.copy(RECORDING_CSV, csv_path)
+
+    report_path = run_session_report(csv_path, open_browser=False)
+
+    assert report_path.is_file()
+    assert report_path.suffix == ".html"
+
+    features_path = json_path_for(csv_path)
+    assert features_path.is_file()
+    golden = json.loads(GOLDEN_JSON.read_text(encoding="utf-8"))
+    actual = json.loads(features_path.read_text(encoding="utf-8"))
+    _assert_matches_golden(golden, actual)
+
+
+def test_run_session_report_skips_analysis_for_short_recording(tmp_path):
+    """Recordings shorter than 20 s still get a chart-only HTML report."""
+    csv_path = tmp_path / "short_recording.csv"
+    csv_path.write_text(
+        "# total_weight_kg=70.0\n"
+        "time (s),x (kg),y (kg)\n"
+        + "\n".join(f"{i * 0.1:.1f},0.1,0.2" for i in range(150)),
+        encoding="utf-8",
+    )
+
+    report_path = run_session_report(csv_path, open_browser=False)
+
+    assert report_path.is_file()
+    assert not json_path_for(csv_path).exists()
+
+
+def test_resolve_session_report_command_dev_mode():
+    """Development builds invoke the Python module entrypoint."""
+    with patch(
+        "wiibble.session_report.launcher._is_standalone_app",
+        return_value=False,
+    ):
+        command = resolve_session_report_command()
+    assert command is not None
+    assert command[-1] == "wiibble.cli.session_report"
+
+
+def test_launch_session_report_puts_flags_before_csv_path():
+    """Typer requires options before the CSV positional argument."""
+    from wiibble.session_report.launcher import launch_session_report_async
+
+    with (
+        patch(
+            "wiibble.session_report.launcher.resolve_session_report_command",
+            return_value=["python", "-m", "wiibble.cli.session_report"],
+        ),
+        patch("wiibble.session_report.launcher.subprocess.Popen") as popen,
+    ):
+        launch_session_report_async("/tmp/recording.csv", open_browser=True)
+
+    args = popen.call_args[0][0]
+    assert args == [
+        "python",
+        "-m",
+        "wiibble.cli.session_report",
+        "--open",
+        "/tmp/recording.csv",
+    ]
+
+
+def test_on_recording_saved_schedules_job():
+    """Saving a recording launches the async session-report companion."""
+    from wiibble.session import _on_recording_saved
+    from wiibble.utils.state import AppState, Settings
+
+    app_state = AppState()
+    settings = Settings(auto_report_after_recording=True, open_report_in_browser=True)
+    mock_process = MagicMock()
+
+    with patch(
+        "wiibble.session.launch_session_report_async",
+        return_value=mock_process,
+    ) as launch:
+        _on_recording_saved("/tmp/recording_test.csv", app_state, settings)
+
+    launch.assert_called_once_with(
+        "/tmp/recording_test.csv",
+        open_browser=True,
+    )
+    assert app_state.report_job is not None
+    assert app_state.report_job["process"] is mock_process
+    assert app_state.toast_message == "Generating report…"
+
+
+def test_on_recording_saved_skips_when_disabled():
+    """Auto-report can be turned off in settings."""
+    from wiibble.session import _on_recording_saved
+    from wiibble.utils.state import AppState, Settings
+
+    app_state = AppState()
+    settings = Settings(auto_report_after_recording=False)
+
+    with patch("wiibble.session.launch_session_report_async") as launch:
+        _on_recording_saved("/tmp/recording_test.csv", app_state, settings)
+
+    launch.assert_not_called()
+    assert app_state.report_job is None
+    assert app_state.toast_message == "Recording saved"

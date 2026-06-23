@@ -5,6 +5,7 @@
 
 import math
 import time
+from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
@@ -29,6 +30,7 @@ from wiibble.session_actions import (
     toggle_cursor_mode,
     toggle_recording,
 )
+from wiibble.session_report.runner import open_report_in_browser
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -1193,6 +1195,30 @@ def _on_manual_duration_change(val: int, settings, app_state) -> None:
     _update_duration_preset_buttons(val if val in preset_vals else -1)
 
 
+def _sync_open_report_browser_checkbox(settings) -> None:
+    """Enable browser checkbox only when auto-report is on."""
+    if dpg.does_item_exist("open_report_in_browser_cb"):
+        dpg.configure_item(
+            "open_report_in_browser_cb",
+            enabled=settings.auto_report_after_recording,
+        )
+
+
+def _on_auto_report_after_recording_change(value: bool, settings) -> None:
+    apply_setting_bool(settings, "auto_report_after_recording", value)
+    _sync_open_report_browser_checkbox(settings)
+
+
+def _on_open_report_in_browser_change(value: bool, settings) -> None:
+    apply_setting_bool(settings, "open_report_in_browser", value)
+
+
+def _on_view_last_report(app_state) -> None:
+    path = getattr(app_state, "last_report_path", "")
+    if path and Path(path).is_file():
+        open_report_in_browser(Path(path))
+
+
 def _build_recording_controls(app_state, settings) -> None:
     """Add recording duration presets, manual input, and start/stop button."""
     dpg.add_text("Duration (s)")
@@ -1277,6 +1303,38 @@ def _build_recording_controls(app_state, settings) -> None:
             "Leave blank for the default (recording).\n"
             "Example: SPI001_SitStand → SPI001_SitStand_261101174543.csv"
         )
+    dpg.add_spacer(height=8)
+    dpg.add_text("Session report")
+    dpg.add_checkbox(
+        tag="auto_report_after_recording_cb",
+        label="Open report after recording",
+        default_value=settings.auto_report_after_recording,
+        callback=lambda s, v: _on_auto_report_after_recording_change(v, settings),
+    )
+    with dpg.tooltip(parent="auto_report_after_recording_cb"):
+        dpg.add_text(
+            "Generate an HTML posturographic report when a recording ends.\n"
+            "Full metrics require at least 20 seconds of data."
+        )
+    dpg.add_checkbox(
+        tag="open_report_in_browser_cb",
+        label="Open in browser",
+        default_value=settings.open_report_in_browser,
+        callback=lambda s, v: _on_open_report_in_browser_change(v, settings),
+    )
+    with dpg.tooltip(parent="open_report_in_browser_cb"):
+        dpg.add_text("Open the report in your default web browser when ready.")
+    _sync_open_report_browser_checkbox(settings)
+    dpg.add_spacer(height=4)
+    dpg.add_button(
+        tag="view_last_report_btn",
+        label="View last report",
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
+        callback=lambda: _on_view_last_report(app_state),
+    )
+    with dpg.tooltip(parent="view_last_report_btn"):
+        dpg.add_text("Re-open the most recent session report in your browser.")
 
 
 def _build_cursor_controls(app_state, settings) -> None:

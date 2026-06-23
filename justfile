@@ -41,3 +41,6 @@ audit:
 
 mock:
     uv run python -m wiibble --mock
+
+session-report PATH:
+    uv run wiibble-session-report {{PATH}} --open

@@ -4,7 +4,7 @@ default:
     @just --list
 
 sync:
-    uv sync --extra dev
+    uv sync --extra dev --extra analysis
     uv pip install -e .
 
 lint:
@@ -31,7 +31,7 @@ test-integration:
     uv run pytest -m integration
 
 check:
-    pre-commit run --all-files
+    uv run pre-commit run --all-files
 
 secrets:
     detect-secrets scan --exclude-files '\.venv/.*|src/code_descriptors_postural_control/.*' > .secrets.baseline

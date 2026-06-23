@@ -255,15 +255,17 @@ Pending CI additions: `dotnet build` job, Nuitka executable artifact, see [TODO.
 
 ## 5. Posturographic Analysis and Reporting
 
-Analysis and reporting run **offline**, outside the compiled app. This keeps the Nuitka build fast and free of heavy dependencies (pandas, sklearn, statsmodels).
-
-**Note:** The first time you run the analysis, it may look like nothing is happening for a minute or two. This is because the dependency-heavy libraries (especially `statsmodels`) are being imported and cached by Python. Subsequent runs will be much faster.
+Analysis and reporting run **offline**, outside the compiled app. This keeps the Nuitka build fast and free of heavy dependencies.
 
 ### Install analysis dependencies
+
+The `analysis` extra provides scipy (signal processing for the vendored descriptor library), plotly, and jinja2 (HTML reports):
 
 ```powershell
 uv sync --extra analysis
 ```
+
+For development (lint, tests, Nuitka), use `just sync`, which installs `dev` and `analysis` extras together.
 
 ### Analyse recordings
 

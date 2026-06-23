@@ -55,3 +55,32 @@ IndexError: index 1 is out of bounds for axis 0 with size 1
 
 **Fix:** Changed `self.mean_value = mean` to `self.mean_value = mean[0]` to match the
 shape expected by the rest of the library.
+
+### 3. `descriptors/stochastic.py` — replace statsmodels OLS with NumPy
+
+**File:** `descriptors/stochastic.py`
+**Problem:** `statsmodels` is a heavy dependency (slow import, poor Nuitka compile time)
+used only for ordinary least-squares fits in the SDA (Stabilogram Diffusion Analysis)
+descriptor.
+
+**Fix:** Added `_ols_fit()` using `numpy.linalg.lstsq` with the same design matrix
+(`sm.add_constant` equivalent). Numerical output is unchanged (verified against a
+golden-features fixture).
+
+### 4. `descriptors/positional.py` — replace sklearn PCA with NumPy
+
+**File:** `descriptors/positional.py`
+**Problem:** `sklearn` is only used for `PCA(n_components=2)` in
+`principal_sway_direction`.
+
+**Fix:** Replaced with `numpy.linalg.eigh` on the 2×2 covariance matrix. The feature
+uses `np.abs` on the direction component, so eigenvector sign is immaterial.
+
+### 5. `stabilogram/swarii.py` — replace scipy.interpolate with NumPy
+
+**File:** `stabilogram/swarii.py`
+**Problem:** `scipy.interpolate.interp1d` is only used for linear gap-filling after
+SWARII resampling when empty windows occur.
+
+**Fix:** Replaced with column-wise `numpy.interp` (WIIBBLE always uses linear
+interpolation). Reduces scipy surface area to `scipy.signal` and `scipy.stats` only.

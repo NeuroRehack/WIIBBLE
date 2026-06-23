@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import stats
-from sklearn.decomposition import PCA
 
 from code_descriptors_postural_control.constants import labels
 
@@ -179,9 +178,8 @@ def principal_sway_direction(signal, axis = labels.MLAP):
 
     sig = signal.get_signal(axis)
 
-    pca = PCA(n_components= 2)
-    pca.fit(sig)
-    main_direction = pca.components_[0]
+    _, eigvecs = np.linalg.eigh(np.cov(sig.T))
+    main_direction = eigvecs[:, -1]
 
     angle_rad = np.arccos(np.abs(main_direction[1])/np.linalg.norm(main_direction))
 

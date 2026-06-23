@@ -6,7 +6,6 @@ Created on Fri Apr 15 10:25:45 2016
 """
 
 import numpy as np
-from scipy.interpolate import interp1d
 
 #´from parsers import parse_wbb_acq_data
 
@@ -122,12 +121,17 @@ class Local_SWARII:
             if self.verbose>0:
                     print("There was {} empty windows".format(missing_windows))
             if interpolate>=0:
-                interpolation_kind = "linear" if interpolate ==1 else 'previous'
                 if self.verbose>0:
                     print("interpolating")
                 desired_times = np.arange(output_time[0],output_time[-1],1. / self.desired_frequency)
-                func = interp1d(output_time,output_signal,kind=interpolation_kind,axis=0,bounds_error=False)
-                desired_signal = func(desired_times)
+                output_arr = np.asarray(output_signal)
+                if output_arr.ndim == 1:
+                    desired_signal = np.interp(desired_times, output_time, output_arr)
+                else:
+                    desired_signal = np.column_stack([
+                        np.interp(desired_times, output_time, output_arr[:, col])
+                        for col in range(output_arr.shape[1])
+                    ])
                 output_time, output_signal = desired_times, desired_signal
             else :
                 if self.verbose>0 :

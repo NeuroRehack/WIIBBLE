@@ -1577,7 +1577,7 @@ def draw_step_instruction(
         (0, 0), (sw, sh), fill=CALIB_BG_COLOR, color=CALIB_BG_COLOR, parent=dl
     )
 
-    tag = _wii_texture_tags[2 if step == "on" else 0]
+    tag = _wii_texture_tags[1 if step == "on" else 0]
     cfg = dpg.get_item_configuration(tag)
     iw_orig, ih_orig = cfg["width"], cfg["height"]
     scaled_h = int(CALIB_IMG_HEIGHT * sh)

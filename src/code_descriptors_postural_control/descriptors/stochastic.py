@@ -1,8 +1,15 @@
 
 import numpy as np
-import statsmodels.api as sm
 
 from code_descriptors_postural_control.constants import labels
+
+
+def _ols_fit(y: np.ndarray, x: np.ndarray) -> tuple[np.ndarray, float]:
+    X = np.column_stack([np.ones(len(x)), x])
+    params, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+    resid = y - X @ params
+    rmse = float(np.sqrt(np.mean(resid**2)))
+    return params, rmse
 
 
 def SDA(signal, axis=labels.DIFF_ML):
@@ -26,16 +33,13 @@ def SDA(signal, axis=labels.DIFF_ML):
     for i in range(ind_start, ind_stop+1):
 
         Y_s = log_msd[:i]
-        X_s = sm.add_constant(log_time[:i])
+        X_s = log_time[:i]
 
-        model_s = sm.OLS(Y_s,X_s)
-        result_s = model_s.fit()
-
-        rmse = np.sqrt( np.mean((result_s.resid)**2) )
+        params, rmse = _ols_fit(Y_s, X_s)
 
         if rmse <= best_rmse:
             best_rmse = rmse
-            best_params = result_s.params
+            best_params = params
             best_ind = i
 
     ind_end_first_region = best_ind
@@ -48,16 +52,13 @@ def SDA(signal, axis=labels.DIFF_ML):
     for i in range(ind_start, ind_stop+1):
 
         Y_l = log_msd[i-1:]
-        X_l = sm.add_constant(log_time[i-1:])
+        X_l = log_time[i-1:]
 
-        model_l = sm.OLS(Y_l,X_l)
-        result_l = model_l.fit()
-
-        rmse = np.sqrt( np.mean((result_l.resid)**2) )
+        params, rmse = _ols_fit(Y_l, X_l)
 
         if rmse <= best_rmse:
             best_rmse = rmse
-            best_params = result_l.params
+            best_params = params
             best_ind = i
 
 

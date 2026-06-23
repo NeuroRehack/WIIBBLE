@@ -120,7 +120,7 @@ After parsing, the pipeline splits into two independent paths.
 
 ## 7. Posturographic Analysis (Offline)
 
-Analysis runs offline via `wiibble-process-recordings`, **not** inside the compiled app. This keeps the Nuitka build fast and free of pandas, sklearn, and statsmodels, which cannot be compiled efficiently.
+Analysis runs offline via `wiibble-process-recordings`, **not** inside the compiled app. This keeps the Nuitka build fast; scipy (signal processing) is excluded from the compiled app and only required for offline analysis.
 
 - **Script:** `wiibble-process-recordings` — CLI entry point (`src/wiibble/cli/process_recordings.py`)
 - **Recordings folder:** read from `settings.recording_dir` (same as **Save Location** in the app; default `~/Documents/WIIBBLE/recordings`)

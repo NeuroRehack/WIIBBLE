@@ -30,7 +30,7 @@ from wiibble.session_actions import (
     toggle_cursor_mode,
     toggle_recording,
 )
-from wiibble.session_report.runner import open_report_in_browser
+from wiibble.session_report.launcher import open_report_in_browser
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -1307,7 +1307,7 @@ def _build_recording_controls(app_state, settings) -> None:
     dpg.add_text("Session report")
     dpg.add_checkbox(
         tag="auto_report_after_recording_cb",
-        label="Open report after recording",
+        label="generate report after recording",
         default_value=settings.auto_report_after_recording,
         callback=lambda s, v: _on_auto_report_after_recording_change(v, settings),
     )

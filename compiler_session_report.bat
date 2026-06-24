@@ -12,6 +12,8 @@ python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --windows-console-mode=disable ^
     --output-filename=WIIBBLE-SessionReport.exe ^
     --output-dir=dist_nuitka_session_report ^
+    --include-package=plotly ^
+    --include-package-data=plotly ^
     --nofollow-import-to=dearpygui ^
     --nofollow-import-to=hid ^
     --nofollow-import-to=pythonnet ^
@@ -32,11 +34,18 @@ if not exist "%MAIN_DIST%" (
     exit /b 1
 )
 
-echo [compiler] Merging session-report companion into %MAIN_DIST%...
-xcopy /E /Y /I "%COMPANION_DIST%\*" "%MAIN_DIST%\"
+set COMPANION_INSTALL=%MAIN_DIST%\session_report
+if exist "%COMPANION_INSTALL%" rmdir /s /q "%COMPANION_INSTALL%"
+
+echo [compiler] Installing session-report companion into %COMPANION_INSTALL%...
+@REM Keep companion DLLs separate from the main app — merging both Nuitka
+@REM standalone dists into one folder overwrites shared runtime files and
+@REM breaks WIIBBLE.exe at startup.
+mkdir "%COMPANION_INSTALL%"
+xcopy /E /Y /I "%COMPANION_DIST%\*" "%COMPANION_INSTALL%\"
 if errorlevel 1 (
-    echo [compiler] FAILED to merge companion dist into main dist.
+    echo [compiler] FAILED to install companion dist.
     exit /b 1
 )
 
-echo [compiler] Session report companion ready: %MAIN_DIST%\WIIBBLE-SessionReport.exe
+echo [compiler] Session report companion ready: %COMPANION_INSTALL%\WIIBBLE-SessionReport.exe

@@ -170,7 +170,7 @@ Flow:
 4. Companion opens HTML in default browser (when **Open in browser** is enabled)
 5. Main app polls subprocess; toast updates to **Report ready** or **Report generation failed**
 
-Settings (gear panel): **Open report after recording**, **Open in browser**, **View last report**.
+Settings (gear panel): **generate report after recording**, **Open in browser**, **View last report**.
 
 ---
 

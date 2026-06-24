@@ -34,7 +34,7 @@ check:
     uv run pre-commit run --all-files
 
 secrets:
-    detect-secrets scan --exclude-files '\.venv/.*|src/code_descriptors_postural_control/.*' > .secrets.baseline
+    detect-secrets scan --exclude-files '\.venv/.*|src[/\\]code_descriptors_postural_control/.*' > .secrets.baseline
 
 audit:
     uv run pip-audit

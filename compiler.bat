@@ -36,7 +36,7 @@ python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --nofollow-import-to=wiibble.cli.report ^
     --nofollow-import-to=wiibble.cli.process_recordings ^
     --nofollow-import-to=wiibble.cli.session_report ^
-    --nofollow-import-to=wiibble.session_report ^
+    --nofollow-import-to=wiibble.session_report.runner ^
     --nofollow-import-to=code_descriptors_postural_control ^
     --nofollow-import-to=scipy ^
     --nofollow-import-to=pandas ^

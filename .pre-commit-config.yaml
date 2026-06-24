@@ -10,7 +10,12 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        args: [--baseline, .secrets.baseline]
+        exclude: ^src/code_descriptors_postural_control/
+        args:
+          - --baseline
+          - .secrets.baseline
+          - --exclude-files
+          - '\.venv/.*|src[/\\]code_descriptors_postural_control/.*'
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import platform
-import webbrowser
 from pathlib import Path
 
 from wiibble.analysis.analysis import analyse_recording
@@ -16,17 +13,9 @@ from wiibble.analysis.recording_meta import (
     read_recording_duration_s,
 )
 from wiibble.cli.report import generate_report
+from wiibble.session_report.launcher import open_report_in_browser
 
 log = logging.getLogger(__name__)
-
-
-def open_report_in_browser(report_path: Path) -> None:
-    """Open an HTML report in the system default browser."""
-    path = report_path.resolve()
-    if platform.system() == "Windows":
-        os.startfile(path)  # noqa: S606
-    else:
-        webbrowser.open(path.as_uri())
 
 
 def run_session_report(

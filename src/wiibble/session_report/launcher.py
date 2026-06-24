@@ -3,13 +3,30 @@
 from __future__ import annotations
 
 import logging
+import os
+import platform
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+
+def open_report_in_browser(report_path: Path) -> None:
+    """Open an HTML report in the system default browser.
+
+    Lives here (not in ``runner``) so the main app can open reports without
+    importing the heavy analysis/plotly stack that ``runner`` depends on.
+    """
+    path = report_path.resolve()
+    if platform.system() == "Windows":
+        os.startfile(path)  # noqa: S606
+    else:
+        webbrowser.open(path.as_uri())
+
 SESSION_REPORT_EXE_NAME = "WIIBBLE-SessionReport.exe"
+SESSION_REPORT_SUBDIR = "session_report"
 
 try:
     _compiled = bool(__compiled__)  # type: ignore[name-defined]  # noqa: F821
@@ -25,7 +42,7 @@ def resolve_session_report_command() -> list[str] | None:
     """Return argv prefix to run session report, or None if unavailable."""
     if _is_standalone_app():
         exe_dir = Path(sys.executable).resolve().parent
-        companion = exe_dir / SESSION_REPORT_EXE_NAME
+        companion = exe_dir / SESSION_REPORT_SUBDIR / SESSION_REPORT_EXE_NAME
         if not companion.is_file():
             log.error(
                 "Session report companion not found: %s (expected next to %s)",

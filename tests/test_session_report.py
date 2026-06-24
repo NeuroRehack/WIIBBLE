@@ -64,6 +64,28 @@ def test_resolve_session_report_command_dev_mode():
     assert command[-1] == "wiibble.cli.session_report"
 
 
+def test_resolve_session_report_command_standalone_layout(tmp_path):
+    """Installed builds use the companion exe in session_report/."""
+    companion_dir = tmp_path / "session_report"
+    companion_dir.mkdir()
+    companion = companion_dir / "WIIBBLE-SessionReport.exe"
+    companion.write_text("", encoding="utf-8")
+
+    with (
+        patch(
+            "wiibble.session_report.launcher._is_standalone_app",
+            return_value=True,
+        ),
+        patch(
+            "wiibble.session_report.launcher.sys.executable",
+            str(tmp_path / "WIIBBLE.exe"),
+        ),
+    ):
+        command = resolve_session_report_command()
+
+    assert command == [str(companion)]
+
+
 def test_launch_session_report_puts_flags_before_csv_path():
     """Typer requires options before the CSV positional argument."""
     from wiibble.session_report.launcher import launch_session_report_async

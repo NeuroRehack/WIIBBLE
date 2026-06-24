@@ -269,10 +269,10 @@ For development (lint, tests, Nuitka), use `just sync`, which installs `dev` and
 
 ### End-of-session report (in-app)
 
-When **Open report after recording** is enabled in the settings panel (default on), WIIBBLE launches a companion process after each recording:
+When **generate report after recording** is enabled in the settings panel (default on), WIIBBLE launches a companion process after each recording:
 
 - **Development:** `python -m wiibble.cli.session_report`
-- **Installed build:** `WIIBBLE-SessionReport.exe` next to `WIIBBLE.exe`
+- **Installed build:** `session_report\WIIBBLE-SessionReport.exe` (subfolder next to `WIIBBLE.exe`)
 
 The companion analyses recordings of at least 20 s, writes `features_*.json` and `report_*.html` next to the CSV, and opens the HTML in the default browser (optional). The main app stays responsive while the report generates (~2–4 s for a 30 s recording).
 

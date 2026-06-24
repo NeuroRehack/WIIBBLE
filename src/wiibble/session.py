@@ -231,8 +231,8 @@ def _on_recording_saved(csv_path: str, app_state, settings) -> None:
         return
 
     app_state.report_job = {"process": process, "csv_path": csv_path}
-    app_state.toast_message = "Generating report…"
-    app_state.toast_until = time.time() + 120.0
+    app_state.toast_message = "Generating report..."
+    app_state.toast_until = time.time() + 5.0
 
 
 def _poll_report_job(app_state, settings) -> None:

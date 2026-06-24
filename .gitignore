@@ -20,5 +20,5 @@
 .ruff_cache/
 *.egg-info/
 Backup/
-dist_nuitka/
+dist_nuitka*/
 installer_output/

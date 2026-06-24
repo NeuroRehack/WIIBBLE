@@ -9,6 +9,7 @@ from wiibble.utils.constants import (
     BODY_WEIGHT_MIN,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
+    TARGET_DWELL_STEP,
     ZOOM_SCALE,
 )
 from wiibble.utils.recording_names import normalize_recording_prefix
@@ -146,9 +147,10 @@ def apply_setting_bool(settings: Settings, field: str, value: bool) -> None:
     settings.save()
 
 
-def apply_target_dwell_seconds(settings: Settings, value: int) -> int:
+def apply_target_dwell_seconds(settings: Settings, value: float) -> float:
     """Clamp and persist target dwell time."""
-    clamped = max(TARGET_DWELL_MIN, min(TARGET_DWELL_MAX, int(value)))
+    stepped = round(float(value) / TARGET_DWELL_STEP) * TARGET_DWELL_STEP
+    clamped = max(TARGET_DWELL_MIN, min(TARGET_DWELL_MAX, stepped))
     settings.target_dwell_seconds = clamped
     settings.save()
     return clamped

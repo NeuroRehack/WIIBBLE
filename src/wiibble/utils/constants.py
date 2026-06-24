@@ -82,7 +82,7 @@ ZOOM_SPEED = 10
 # Moving average filter range
 # ---------------------------------------------------------------------------
 FILTER_MIN = 1  # no smoothing (pass-through)
-FILTER_MAX = 100  # maximum smoothing window in frames (~500ms at 60fps)
+FILTER_MAX = 20  # maximum smoothing window in frames (~500ms at 60fps)
 
 # ---------------------------------------------------------------------------
 # Coordinate scaling factor — fraction of screen used for the movement range.
@@ -127,10 +127,11 @@ CURSOR_DRAG_THRESHOLD = (
     5  # px size-delta below which a cursor press is treated as a click
 )
 
-# Target dwell counter — hold time required to increment hit count (whole seconds)
-TARGET_DWELL_MIN = 0
-TARGET_DWELL_MAX = 10
-TARGET_DWELL_DEFAULT = 1
+# Target dwell counter — hold time required to increment hit count (seconds)
+TARGET_DWELL_MIN = 0.0
+TARGET_DWELL_MAX = 5.0
+TARGET_DWELL_STEP = 0.1
+TARGET_DWELL_DEFAULT = 0.5
 
 # ---------------------------------------------------------------------------
 # Wii Balance Board platform geometry

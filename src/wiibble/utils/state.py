@@ -11,6 +11,7 @@ from wiibble.utils.constants import (
     TARGET_DWELL_DEFAULT,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
+    TARGET_DWELL_STEP,
 )
 from wiibble.utils.recording_names import normalize_recording_prefix
 
@@ -48,7 +49,7 @@ class Settings:
     show_global_axes: bool = True  # solid crosshairs at screen centre
     show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre
     target_jelly: bool = True  # whether targets animate with jelly effect on hit
-    target_dwell_seconds: int = (
+    target_dwell_seconds: float = (
         TARGET_DWELL_DEFAULT  # hold time to increment hit counter
     )
     show_target_counter: bool = True  # whether to show the on-screen hit counter
@@ -99,11 +100,10 @@ class Settings:
             merged = defaults.__dict__.copy()
             merged.update({k: v for k, v in data.items() if k in valid_fields})
             loaded = cls(**merged)
-            if isinstance(loaded.target_dwell_seconds, float):
-                loaded.target_dwell_seconds = int(round(loaded.target_dwell_seconds))
+            stepped = round(float(loaded.target_dwell_seconds) / TARGET_DWELL_STEP)
             loaded.target_dwell_seconds = max(
                 TARGET_DWELL_MIN,
-                min(TARGET_DWELL_MAX, int(loaded.target_dwell_seconds)),
+                min(TARGET_DWELL_MAX, stepped * TARGET_DWELL_STEP),
             )
             raw_prefix = loaded.recording_prefix
             loaded.recording_prefix = normalize_recording_prefix(raw_prefix)

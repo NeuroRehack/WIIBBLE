@@ -79,6 +79,7 @@ from wiibble.utils.constants import (
     RECORDING_INDICATOR_Y,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
+    TARGET_DWELL_STEP,
     ZOOM_MAX,
     ZOOM_MIN,
 )
@@ -1470,19 +1471,22 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
         dpg.add_text("Animate targets with a jelly wobble when hit.")
     dpg.add_spacer(height=8)
     dpg.add_text("Targets")
-    dpg.add_slider_int(
-        tag="target_dwell_slider",
-        default_value=int(settings.target_dwell_seconds),
+    dpg.add_text("Dwell time (s)")
+    dpg.add_input_float(
+        tag="target_dwell_input",
+        default_value=settings.target_dwell_seconds,
         min_value=TARGET_DWELL_MIN,
         max_value=TARGET_DWELL_MAX,
-        width=PANEL_SLIDER_W,
-        format="%d s",
+        step=TARGET_DWELL_STEP,
+        format="%.1f",
+        width=PANEL_BTN_W,
         callback=lambda s, v: _on_target_dwell_change(v, settings),
     )
-    with dpg.tooltip(parent="target_dwell_slider"):
+    with dpg.tooltip(parent="target_dwell_input"):
         dpg.add_text(
             "Time the cursor must stay inside a target\n"
-            "before the hit counter increases by one."
+            "before the hit counter increases by one.\n"
+            "Range 0–5 s in 0.1 s steps (0 = instant count)."
         )
     dpg.add_spacer(height=4)
     dpg.add_checkbox(
@@ -1587,9 +1591,11 @@ def _on_target_jelly_change(value: bool, settings) -> None:
     apply_setting_bool(settings, "target_jelly", value)
 
 
-def _on_target_dwell_change(value: int, settings) -> None:
+def _on_target_dwell_change(value: float, settings) -> None:
     """Update the dwell time required to increment the hit counter."""
-    apply_target_dwell_seconds(settings, value)
+    clamped = apply_target_dwell_seconds(settings, value)
+    if dpg.does_item_exist("target_dwell_input"):
+        dpg.set_value("target_dwell_input", clamped)
 
 
 def _on_show_target_counter_change(value: bool, settings) -> None:

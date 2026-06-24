@@ -8,7 +8,7 @@
 # WIIBBLE — Wii Balance Board Live Environment
 
 <div align="center">
-  <img src="./images/logo.png" alt="WIIBBLE Logo" width="400">
+  <img src="./images/logoPerson.png" alt="WIIBBLE Logo" width="400">
 </div>
 
 ---

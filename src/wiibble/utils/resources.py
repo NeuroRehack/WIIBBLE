@@ -41,7 +41,7 @@ def resource_path(relative_path: str) -> str:
 
 
 FA_SOLID_FONT_PATH = resource_path("assets/fonts/fa-solid-900.ttf")
-ICON_PATH = resource_path("images/logo.png")
+ICON_PATH = resource_path("images/logoPerson.png")
 PERSON_IMAGE_PATH = resource_path("images/logoPerson.png")
 IMAGE_PATHS = [resource_path(f"images/wii{i}.png") for i in range(3)]
 CONNECTION_PATH = resource_path("images/connection.png")

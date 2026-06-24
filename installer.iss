@@ -34,7 +34,7 @@ DefaultGroupName={#AppName}
 ; Output
 OutputDir=installer_output
 OutputBaseFilename=WIIBBLE-{#AppVersion}-Setup
-SetupIconFile=images\logo.ico
+SetupIconFile=images\logoPerson.ico
 
 ; Compression
 Compression=lzma2/ultra64

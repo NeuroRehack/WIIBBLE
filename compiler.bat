@@ -23,7 +23,7 @@ set NUITKA_OPTS=
 if defined CI set NUITKA_OPTS=--assume-yes-for-downloads
 python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --jobs=%NUMBER_OF_PROCESSORS% ^
-    --windows-icon-from-ico=images\logo.ico ^
+    --windows-icon-from-ico=images\logoPerson.ico ^
     --output-filename=WIIBBLE.exe ^
     --output-dir=dist_nuitka ^
     --windows-console-mode=disable ^

@@ -378,6 +378,50 @@ def test_handle_canvas_click_suppressed_over_quick_access(monkeypatch):
     assert app_state.cursor_drag_in_progress is False
 
 
+def test_handle_canvas_click_collapses_panel_on_canvas_click(monkeypatch):
+    app_state = AppState(screen_width=800, screen_height=600, ball_x=100, ball_y=50)
+    settings = DummySettings()
+    session_state = {"toolbar_visible": True, "toolbar_enabled": True, "action": None}
+    collapsed = {"called": False}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
+    monkeypatch.setattr(
+        input_module,
+        "collapse_settings_panel",
+        lambda state: collapsed.update({"called": True}) or state.update(
+            {"toolbar_visible": False, "action": "toolbar_toggled"}
+        )
+        or True,
+    )
+
+    input_module._handle_canvas_click(500, 300, app_state, settings, session_state)
+
+    assert collapsed["called"] is True
+    assert session_state["toolbar_visible"] is False
+    assert app_state.target_in_progress is None
+    assert app_state.cursor_drag_in_progress is False
+
+
+def test_handle_canvas_click_ignores_panel_area_when_open(monkeypatch):
+    app_state = AppState(screen_width=800, screen_height=600, ball_x=100, ball_y=50)
+    settings = DummySettings()
+    session_state = {"toolbar_visible": True, "toolbar_enabled": True}
+    collapsed = {"called": False}
+    monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
+    monkeypatch.setattr(
+        input_module,
+        "collapse_settings_panel",
+        lambda _state: collapsed.update({"called": True}) or True,
+    )
+
+    input_module._handle_canvas_click(100, 300, app_state, settings, session_state)
+
+    assert collapsed["called"] is False
+
+
 def test_clear_shortcut_sets_action_when_allowed(monkeypatch):
     session_state = {"toolbar_enabled": True, "action": None}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda key: True)

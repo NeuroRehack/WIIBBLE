@@ -12,6 +12,7 @@ from wiibble.features.data_processing import logical_to_viewport, viewport_to_lo
 from wiibble.ui.ui import (
     _on_start_recording,
     _on_zoom_change,
+    collapse_settings_panel,
     is_mouse_over_quick_access,
 )
 from wiibble.utils.constants import (
@@ -203,16 +204,19 @@ def _handle_canvas_click(
     mx: float, my: float, app_state, settings, session_state
 ) -> None:
     """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
-    # Suppress canvas click if mouse is over UI (settings panel, dialogs)
     if (
-        is_mouse_over_quick_access()
-        or (mx <= PANEL_W and session_state.get("toolbar_visible", False))
-        or dpg.is_key_down(dpg.mvKey_LControl)
-        or (
-            dpg.does_item_exist("recording_dir_dialog")
-            and dpg.is_item_shown("recording_dir_dialog")
-        )
+        dpg.does_item_exist("recording_dir_dialog")
+        and dpg.is_item_shown("recording_dir_dialog")
     ):
+        return
+
+    if session_state.get("toolbar_visible", False):
+        if mx <= PANEL_W or is_mouse_over_quick_access():
+            return
+        collapse_settings_panel(session_state)
+        return
+
+    if is_mouse_over_quick_access() or dpg.is_key_down(dpg.mvKey_LControl):
         return
 
     cursor_radius = (

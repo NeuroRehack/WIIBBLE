@@ -571,6 +571,33 @@ def is_mouse_over_quick_access() -> bool:
     return False
 
 
+def collapse_settings_panel(session_state: dict) -> bool:
+    """Hide the settings panel when it is open. Returns True if it was collapsed."""
+    if not session_state.get("toolbar_visible", False):
+        return False
+    session_state["toolbar_visible"] = False
+    if dpg.does_item_exist("control_panel"):
+        dpg.configure_item("control_panel", show=False)
+    update_left_quick_access_layout(
+        False,
+        session_state.get("toolbar_enabled", False),
+    )
+    session_state["action"] = "toolbar_toggled"
+    return True
+
+
+def show_settings_panel(session_state: dict) -> None:
+    """Show the settings panel."""
+    session_state["toolbar_visible"] = True
+    if dpg.does_item_exist("control_panel"):
+        dpg.configure_item("control_panel", show=True)
+    update_left_quick_access_layout(
+        True,
+        session_state.get("toolbar_enabled", False),
+    )
+    session_state["action"] = "toolbar_toggled"
+
+
 # ---------------------------------------------------------------------------
 # Per-widget theme caches — created lazily on first use
 # ---------------------------------------------------------------------------

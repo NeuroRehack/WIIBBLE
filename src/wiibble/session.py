@@ -37,12 +37,14 @@ from wiibble.ui.ui import (
     build_panel_window,
     build_recording_quick_btn,
     build_stats_bar,
+    collapse_settings_panel,
     draw_connection_failed_screen,
     draw_connection_screen,
     draw_main_screen,
     ensure_textures_loaded,
     set_quick_access_visible,
     set_stats_bar_visible,
+    show_settings_panel,
     sync_recording_buttons,
     update_left_quick_access_layout,
     update_recording_quick_access_position,
@@ -142,19 +144,10 @@ def _get_gear_label() -> str:
 
 def _toggle_toolbar(session_state: dict) -> None:
     """Toggle the settings panel visibility state for the session."""
-    visible = not session_state.get("toolbar_visible", False)
-    session_state["toolbar_visible"] = visible
-    if visible:
-        if dpg.does_item_exist("control_panel"):
-            dpg.configure_item("control_panel", show=True)
+    if session_state.get("toolbar_visible", False):
+        collapse_settings_panel(session_state)
     else:
-        if dpg.does_item_exist("control_panel"):
-            dpg.configure_item("control_panel", show=False)
-    update_left_quick_access_layout(
-        visible,
-        session_state.get("toolbar_enabled", False),
-    )
-    session_state["action"] = "toolbar_toggled"
+        show_settings_panel(session_state)
 
 
 def _collapse_ui_for_calibration(session_state: dict) -> bool:

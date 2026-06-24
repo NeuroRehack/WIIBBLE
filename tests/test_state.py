@@ -44,8 +44,8 @@ class TestSettingsDefaults:
     def test_record_duration_default(self):
         assert Settings().record_duration == 30
 
-    def test_cursor_mode_default(self):
-        assert Settings().cursor_mode == "avatar"
+    def test_cursor_size_default(self):
+        assert Settings().cursor_size == 20
 
     def test_body_weight_kg_default(self):
         assert Settings().body_weight_kg == 70.0
@@ -87,7 +87,7 @@ class TestSettingsLoadNoFile:
         s = Settings.load()
         assert s.trail_length == 100
         assert s.zoom_factor == 1.0
-        assert s.cursor_mode == "avatar"
+        assert s.cursor_size == 20
 
     def test_load_with_no_file_does_not_raise(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -107,7 +107,7 @@ class TestSettingsRoundTrip:
             zoom_factor=2.5,
             filter_window=10,
             record_duration=30,
-            cursor_mode="circle",
+            cursor_size=25,
             body_weight_kg=82.5,
             scale_factor=2.8,
             board_cal_reference_kg=25.0,
@@ -128,7 +128,7 @@ class TestSettingsRoundTrip:
         assert loaded.zoom_factor == 2.5
         assert loaded.filter_window == 10
         assert loaded.record_duration == 30
-        assert loaded.cursor_mode == "circle"
+        assert loaded.cursor_size == 25
         assert loaded.body_weight_kg == 82.5
         assert loaded.scale_factor == 2.8
         assert loaded.board_cal_reference_kg == 25.0
@@ -207,7 +207,7 @@ class TestSettingsLoadFallback:
         assert loaded.trail_length == 25
         # All other fields fall back to default
         assert loaded.zoom_factor == 1.0
-        assert loaded.cursor_mode == "avatar"
+        assert loaded.cursor_size == 20
         assert loaded.body_weight_kg == 70.0
         from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
 
@@ -235,32 +235,6 @@ class TestSettingsLoadFallback:
         loaded = Settings.load()
         assert loaded.trail_length == 77
         assert not hasattr(loaded, "unknown_future_key")
-
-
-# ---------------------------------------------------------------------------
-# Settings — toggle_cursor_mode
-# ---------------------------------------------------------------------------
-
-
-class TestToggleCursorMode:
-    def test_avatar_toggles_to_circle(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        s = Settings(cursor_mode="avatar")
-        s.toggle_cursor_mode()
-        assert s.cursor_mode == "circle"
-
-    def test_circle_toggles_to_avatar(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        s = Settings(cursor_mode="circle")
-        s.toggle_cursor_mode()
-        assert s.cursor_mode == "avatar"
-
-    def test_toggle_twice_returns_to_original(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        s = Settings(cursor_mode="avatar")
-        s.toggle_cursor_mode()
-        s.toggle_cursor_mode()
-        assert s.cursor_mode == "avatar"
 
 
 # ---------------------------------------------------------------------------

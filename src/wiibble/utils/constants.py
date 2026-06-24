@@ -116,11 +116,7 @@ RECORDING_INDICATOR_Y = 8
 RECORDING_INDICATOR_TIMER_FONT_SIZE = 48  # elapsed time while recording
 RECORDING_INDICATOR_LIMIT_FONT_SIZE = 36  # configured duration limit (always visible)
 
-# Click detection radii
-CURSOR_HIT_RADIUS_CIRCLE = 20  # px — circle cursor click detection radius (fallback)
-CURSOR_HIT_FRACTION = 0.05  # fraction of screen height for avatar cursor
-
-# Cursor size limits (circle mode only)
+# Cursor size limits
 CURSOR_SIZE_MIN = 1  # minimum circle cursor radius in pixels
 CURSOR_SIZE_MAX = 50  # maximum circle cursor radius in pixels
 CURSOR_DRAG_THRESHOLD = (

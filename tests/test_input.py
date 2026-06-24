@@ -5,17 +5,14 @@ from wiibble.utils.state import AppState
 
 
 class DummySettings:
-    def __init__(self, cursor_mode="avatar", zoom_factor=1.0, cursor_size=20):
-        self.cursor_mode = cursor_mode
+    def __init__(self, zoom_factor=1.0, cursor_size=20):
         self.zoom_factor = zoom_factor
         self.cursor_size = cursor_size
         self.flip_horizontal = False
         self.flip_vertical = False
-        self.toggled = False
 
-    def toggle_cursor_mode(self):
-        self.toggled = True
-        self.cursor_mode = "circle" if self.cursor_mode == "avatar" else "avatar"
+    def save(self):
+        pass
 
 
 class DummyRegistry:
@@ -30,30 +27,27 @@ class DummyRegistry:
         return False
 
 
-def test_handle_canvas_click_toggles_cursor_when_ball_hit(monkeypatch):
+def test_handle_canvas_click_starts_cursor_drag_when_ball_hit(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=100, ball_y=50)
-    settings = DummySettings(cursor_mode="avatar", cursor_size=20)
+    settings = DummySettings(cursor_size=20)
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
     monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
 
-    # Click starts the drag; a tiny release (no drag) should toggle the mode
     input_module._handle_canvas_click(100, 50, app_state, settings, session_state)
     assert app_state.cursor_drag_in_progress is True
 
-    # Release without dragging — size unchanged, so toggle fires
     input_module._handle_cursor_release(app_state, settings)
 
-    assert settings.cursor_mode == "circle"
-    assert settings.toggled is True
     assert app_state.cursor_drag_in_progress is False
+    assert settings.cursor_size == 20
     assert app_state.target_in_progress is None
 
 
 def test_handle_canvas_click_starts_target_when_click_off_cursor(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
-    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    settings = DummySettings(zoom_factor=1.0, cursor_size=20)
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(input_module.dpg, "is_key_down", lambda _key: False)
     monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
@@ -77,7 +71,7 @@ def _click_suppression_monkeypatch(monkeypatch):
 def test_handle_canvas_click_starts_target_move_when_click_on_target(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
     app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
-    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    settings = DummySettings(zoom_factor=1.0, cursor_size=20)
     session_state = {"toolbar_visible": False}
     _click_suppression_monkeypatch(monkeypatch)
 
@@ -117,7 +111,7 @@ def test_handle_target_move_release_clears_move_state():
 def test_handle_target_move_click_without_drag_leaves_center_unchanged(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
     app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
-    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    settings = DummySettings(zoom_factor=1.0, cursor_size=20)
     session_state = {"toolbar_visible": False}
     _click_suppression_monkeypatch(monkeypatch)
 
@@ -158,7 +152,7 @@ def test_handle_target_release_appends_target():
 
 def test_handle_canvas_click_starts_rect_target_when_r_held(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
-    settings = DummySettings(cursor_mode="circle", zoom_factor=1.0, cursor_size=20)
+    settings = DummySettings(zoom_factor=1.0, cursor_size=20)
     session_state = {"toolbar_visible": False}
     monkeypatch.setattr(
         input_module.dpg, "is_key_down", lambda key: key == input_module.dpg.mvKey_R

@@ -17,7 +17,6 @@ from wiibble.ui.ui import (
 )
 from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
-    CURSOR_HIT_FRACTION,
     CURSOR_SIZE_MAX,
     CURSOR_SIZE_MIN,
     PANEL_W,
@@ -218,11 +217,7 @@ def _handle_canvas_click(
     if is_mouse_over_quick_access() or dpg.is_key_down(dpg.mvKey_LControl):
         return
 
-    cursor_radius = (
-        int(CURSOR_HIT_FRACTION * app_state.screen_height)
-        if settings.cursor_mode == "avatar"
-        else int(settings.cursor_size * settings.zoom_factor)
-    )
+    cursor_radius = int(settings.cursor_size * settings.zoom_factor)
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
         # Begin cursor drag — mode toggle is decided on release based on drag distance
@@ -290,21 +285,16 @@ def _handle_cursor_drag(app_state, settings) -> None:
 
 
 def _handle_cursor_release(app_state, settings) -> None:
-    """Finalise cursor drag: toggle mode if barely moved, otherwise save new size."""
+    """Finalise cursor drag: save new size if it changed, otherwise restore."""
     if not getattr(app_state, "cursor_drag_in_progress", False):
         return
     size_delta = abs(settings.cursor_size - app_state.cursor_drag_start_size)
-    if size_delta < CURSOR_DRAG_THRESHOLD:
-        # Treat as a click — toggle cursor mode
-        settings.toggle_cursor_mode()
-        # Restore size (drag was tiny, probably unintentional)
+    if size_delta >= CURSOR_DRAG_THRESHOLD:
+        settings.save()
+    else:
         settings.cursor_size = app_state.cursor_drag_start_size
         if dpg.does_item_exist("cursor_size_slider"):
             dpg.set_value("cursor_size_slider", settings.cursor_size)
-        if hasattr(app_state, "update_cursor_toggle_label"):
-            app_state.update_cursor_toggle_label()
-    else:
-        settings.save()
     app_state.cursor_drag_in_progress = False
 
 

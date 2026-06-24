@@ -43,7 +43,6 @@ class Settings:
     zoom_factor: float = 1.0  # S3: display scale multiplier
     filter_window: int = 1  # S4: moving average window (1 = no smoothing)
     record_duration: int = 30  # S5: CSV recording duration in seconds (0 = indefinite)
-    cursor_mode: str = "avatar"  # S1: "avatar" | "circle"
     cursor_size: int = 20  # S1: circle cursor radius in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
     show_global_axes: bool = True  # solid crosshairs at screen centre
@@ -63,11 +62,6 @@ class Settings:
     board_cal_reference_kg: float = 20.0  # known mass used for board scale calibration
     auto_report_after_recording: bool = True  # HTML report when recording ends
     open_report_in_browser: bool = True  # open report in browser after generation
-
-    def toggle_cursor_mode(self):
-        """S1: Switch between avatar and circle cursor."""
-        self.cursor_mode = "circle" if self.cursor_mode == "avatar" else "avatar"
-        self.save()
 
     def save(self) -> None:
         """Persist current settings to disk."""

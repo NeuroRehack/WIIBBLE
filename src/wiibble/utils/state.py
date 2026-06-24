@@ -48,7 +48,6 @@ class Settings:
     show_bbox: bool = True  # whether to show the bounding box on canvas
     show_global_axes: bool = True  # solid crosshairs at screen centre
     show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre
-    target_jelly: bool = True  # whether targets animate with jelly effect on hit
     target_dwell_seconds: float = (
         TARGET_DWELL_DEFAULT  # hold time to increment hit counter
     )
@@ -212,12 +211,6 @@ class AppState:
     last_recording_csv_path: str = ""
     report_job: dict | None = None
 
-    # Ripple animations — per-target jelly oscillation ages, keyed by target index.
-    # Value is the frame age since the hit; absent/removed when animation ends.
-    _jelly_ages: dict = field(default_factory=dict)
-    # Previous per-target hit states for edge detection — keyed by target index
-    _prev_hit_states: dict = field(default_factory=dict)
-
     # Target dwell hit counter — session runtime only
     target_hit_count: int = 0
     _target_dwell_elapsed: dict = field(
@@ -278,5 +271,3 @@ class AppState:
         self.target_move_in_progress = None
         self.toast_message = ""
         self.toast_until = 0.0
-        self._jelly_ages = {}
-        self._prev_hit_states = {}

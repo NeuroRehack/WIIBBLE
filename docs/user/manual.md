@@ -81,8 +81,6 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 **Show Local Axes** — Toggles dotted crosshairs centred on the sway bounding box, bounded to the box edges.
 
-**Target Jelly Effect** — Animates targets with a wobble when hit.
-
 ---
 
 ## Mouse & Keyboard Controls

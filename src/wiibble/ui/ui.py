@@ -1514,15 +1514,6 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
             "Dotted crosshairs at sway-bbox centre,\n"
             "bounded to the movement bounding box."
         )
-    dpg.add_spacer(height=4)
-    dpg.add_checkbox(
-        tag="target_jelly_checkbox",
-        label="Target jelly effect",
-        default_value=settings.target_jelly,
-        callback=lambda s, v: _on_target_jelly_change(v, settings),
-    )
-    with dpg.tooltip(parent="target_jelly_checkbox"):
-        dpg.add_text("Animate targets with a jelly wobble when hit.")
     dpg.add_spacer(height=8)
     dpg.add_text("Targets")
     dpg.add_text("Dwell time (s)")
@@ -1638,11 +1629,6 @@ def _on_show_global_axes_change(value: bool, settings) -> None:
 def _on_show_local_axes_change(value: bool, settings) -> None:
     """Toggle local (bbox-centred) axis crosshairs."""
     apply_setting_bool(settings, "show_local_axes", value)
-
-
-def _on_target_jelly_change(value: bool, settings) -> None:
-    """Toggle target jelly animation on hit."""
-    apply_setting_bool(settings, "target_jelly", value)
 
 
 def _on_target_dwell_change(value: float, settings) -> None:
@@ -2093,7 +2079,6 @@ def draw_main_screen(
                 target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v
             )
             target_hits[idx] = hit
-            app_state._prev_hit_states[idx] = hit
             fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
             dpg.draw_rectangle(
                 (min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl
@@ -2109,30 +2094,12 @@ def draw_main_screen(
         scaled_radius = logical_radius * zoom
         hit = _target_hit_at_point(target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v)
         target_hits[idx] = hit
-        # Spawn jelly oscillation on False→True transition
-        prev = app_state._prev_hit_states.get(idx, False)
-        if hit and not prev and settings.target_jelly:
-            app_state._jelly_ages[idx] = 0
-        app_state._prev_hit_states[idx] = hit
-        # Compute display radius with damped sinusoidal jelly if active
-        age = app_state._jelly_ages.get(idx, -1)
-        if age >= 0 and settings.target_jelly:
-            jelly_r = scaled_radius * (
-                1.0 + 0.25 * math.exp(-0.13 * age) * math.sin(0.55 * age)
-            )
-            age += 1
-            if age >= 50:
-                del app_state._jelly_ages[idx]
-            else:
-                app_state._jelly_ages[idx] = age
-        else:
-            jelly_r = scaled_radius
         fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
-        dpg.draw_circle((vx, vy), max(1.0, jelly_r), color=fill, fill=fill, parent=dl)
+        dpg.draw_circle(
+            (vx, vy), max(1.0, scaled_radius), color=fill, fill=fill, parent=dl
+        )
 
     update_target_dwell(app_state, settings, target_hits)
-
-    # (ripple ring loop removed — replaced by per-target jelly oscillation above)
 
     # Draw target-in-progress (preview)
     tip = getattr(app_state, "target_in_progress", None)

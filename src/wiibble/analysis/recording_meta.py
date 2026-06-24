@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from wiibble.utils.recording_names import features_path_for
+
 MIN_ANALYSIS_DURATION_S = 20.0
 
 
 def json_path_for(csv_path: Path) -> Path:
     """Return the features JSON sidecar path for a recording CSV."""
-    stem = csv_path.stem
-    if stem.startswith("recording_"):
-        return csv_path.with_name(stem.replace("recording_", "features_", 1) + ".json")
-    return csv_path.with_name(f"features_{stem}.json")
+    return features_path_for(csv_path)
 
 
 def read_recording_duration_s(csv_path: Path) -> float:

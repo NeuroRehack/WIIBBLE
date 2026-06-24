@@ -1298,11 +1298,13 @@ def _build_recording_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="recording_prefix_input"):
         dpg.add_text(
-            "Filename prefix for recordings (max 40 characters).\n"
+            "Filename prefix for recordings, metrics JSON, and reports (max 40 characters).\n"
             "Letters, digits, underscores, and hyphens only.\n"
             "Spaces become underscores; other special characters are removed.\n"
             "Leave blank for the default (recording).\n"
-            "Example: SPI001_SitStand → SPI001_SitStand_261101174543.csv"
+            "Example: SPI001_SitStand → SPI001_SitStand_261101174543.csv,\n"
+            "features_SPI001_SitStand_261101174543.json,\n"
+            "report_SPI001_SitStand_261101174543.html"
         )
     dpg.add_spacer(height=8)
     dpg.add_text("Session report")
@@ -1544,9 +1546,6 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
 
 def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
-    _build_section_header("CALIBRATION", accent_color=_theme_module.C_ACCENT_SESSION)
-    _build_calibration_controls(app_state, settings, session_state)
-
     _build_section_header("RECORDING", accent_color=_theme_module.C_ACCENT_RECORDING)
     _build_recording_controls(app_state, settings)
 
@@ -1557,6 +1556,9 @@ def build_panel_controls(app_state, settings, session_state: dict) -> None:
 
     _build_section_header("VISUALISATION", accent_color=_theme_module.C_ACCENT_VISUAL)
     _build_visualisation_controls(app_state, settings, session_state)
+
+    _build_section_header("CALIBRATION", accent_color=_theme_module.C_ACCENT_SESSION)
+    _build_calibration_controls(app_state, settings, session_state)
 
 
 def _on_trail_change(value: int, settings) -> None:

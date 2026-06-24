@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 
 from wiibble.utils.recording_names import (
-    DEFAULT_RECORDING_PREFIX,
+    build_recording_filename,
     normalize_recording_prefix,
     resolve_recording_dir,
 )
@@ -21,13 +21,6 @@ __all__ = [
     "normalize_recording_prefix",
     "resolve_recording_dir",
 ]
-
-
-def build_recording_filename(prefix: str, start_time: datetime.datetime) -> str:
-    """Build a recording CSV filename from prefix and recording start time."""
-    effective = normalize_recording_prefix(prefix) or DEFAULT_RECORDING_PREFIX
-    timestamp = start_time.strftime("%y%m%d%H%M%S")
-    return f"{effective}_{timestamp}.csv"
 
 
 def _resolve_recording_path(out_dir: Path, filename: str) -> Path:

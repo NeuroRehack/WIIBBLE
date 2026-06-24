@@ -43,6 +43,11 @@ from plotly.subplots import make_subplots
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
 from wiibble.analysis.analysis import load_recording, to_cop_array
 from wiibble.cli.recordings_dir import collect_recording_csvs, get_recordings_dir
+from wiibble.utils.recording_names import (
+    features_json_search_paths,
+    report_path_for,
+    report_search_paths,
+)
 from wiibble.utils.logging_config import configure_logging
 
 log = logging.getLogger(__name__)
@@ -1116,33 +1121,12 @@ _HTML_TEMPLATE = """\
 
 def _default_report_path(csv_file: Path) -> Path:
     """Return the default HTML report path for a recording CSV."""
-    stem = csv_file.stem
-    m = re.search(r"(\d{12})$", stem)
-    if not m:
-        m = re.search(r"(\d{8}_\d{6})", csv_file.name)
-    if m:
-        return csv_file.parent / f"report_{m.group(1)}.html"
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return csv_file.parent / f"report_{ts}.html"
+    return report_path_for(csv_file)
 
 
 def _find_features_json(csv_path: str) -> str | None:
-    """Locate the features JSON that matches the CSV timestamp, if it exists."""
-    csv = Path(csv_path)
-    dirname = csv.parent
-    stem = csv.stem
-
-    candidates = [dirname / f"features_{stem}.json"]
-    if stem.startswith("recording_"):
-        candidates.append(dirname / f"features_{stem[len('recording_') :]}.json")
-    m = re.search(r"(\d{12})$", stem)
-    if m:
-        candidates.append(dirname / f"features_{m.group(1)}.json")
-    m = re.search(r"(\d{8}_\d{6})", stem)
-    if m:
-        candidates.append(dirname / f"features_{m.group(1)}.json")
-
-    for candidate in candidates:
+    """Locate the features JSON that matches the CSV, if it exists."""
+    for candidate in features_json_search_paths(csv_path):
         if candidate.is_file():
             return str(candidate)
     return None
@@ -1274,8 +1258,11 @@ def _process_file(
         True on success, False if skipped or failed.
     """
     if not overwrite and out_path is None:
-        report_path = _default_report_path(csv_path.resolve())
-        if report_path.exists():
+        report_path = next(
+            (path for path in report_search_paths(csv_path.resolve()) if path.is_file()),
+            None,
+        )
+        if report_path is not None:
             typer.echo(f"  [skip] {csv_path.name} - report already exists", err=True)
             return False
 

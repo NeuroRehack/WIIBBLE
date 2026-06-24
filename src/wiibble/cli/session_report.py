@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 import typer
@@ -37,8 +38,13 @@ def main(
     configure_logging(
         level=logging.DEBUG if verbose else logging.INFO,
         log_to_file=False,
-        stream=True,
+        stream=False,
     )
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(
+        logging.Formatter("%(levelname)s %(name)s: %(message)s")
+    )
+    logging.getLogger().addHandler(stderr_handler)
     try:
         report_path = run_session_report(
             csv_path,

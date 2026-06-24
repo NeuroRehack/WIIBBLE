@@ -7,6 +7,7 @@ import datetime
 import logging
 import math
 import time
+from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 import hid
@@ -23,7 +24,10 @@ from wiibble.features.data_processing import (
     parse_data,
     tare,
 )
-from wiibble.session_report.launcher import launch_session_report_async
+from wiibble.session_report.launcher import (
+    launch_session_report_async,
+    parse_session_report_stdout,
+)
 from wiibble.ui.calibration_flow import (
     run_board_scale_calibration,
     run_board_weight_calibration,
@@ -209,6 +213,7 @@ def _recording_save_kwargs(app_state, settings) -> dict:
 
 def _on_recording_saved(csv_path: str, app_state, settings) -> None:
     """Toast after save and optionally launch end-of-session report generation."""
+    app_state.last_recording_csv_path = csv_path
     if not settings.auto_report_after_recording:
         app_state.toast_message = "Recording saved"
         app_state.toast_until = time.time() + 2.5
@@ -241,8 +246,8 @@ def _poll_report_job(app_state, settings) -> None:
     app_state.report_job = None
     stdout, stderr = process.communicate()
     if process.returncode == 0:
-        report_path = (stdout or "").strip()
-        if report_path:
+        report_path = parse_session_report_stdout(stdout or "")
+        if report_path and Path(report_path).is_file():
             app_state.last_report_path = report_path
         if settings.open_report_in_browser:
             app_state.toast_message = "Report ready — opened in browser"

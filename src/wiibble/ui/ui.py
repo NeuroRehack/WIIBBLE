@@ -31,6 +31,7 @@ from wiibble.session_actions import (
     toggle_recording,
 )
 from wiibble.session_report.launcher import open_report_in_browser
+from wiibble.utils.recording_names import report_search_paths
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -1241,10 +1242,34 @@ def _on_open_report_in_browser_change(value: bool, settings) -> None:
     apply_setting_bool(settings, "open_report_in_browser", value)
 
 
+def _resolve_last_report_path(app_state) -> Path | None:
+    """Return the most recent session report path, if one exists on disk."""
+    stored = getattr(app_state, "last_report_path", "")
+    if stored:
+        path = Path(stored)
+        if path.is_file():
+            return path
+
+    csv_path = getattr(app_state, "last_recording_csv_path", "")
+    if csv_path:
+        for candidate in report_search_paths(csv_path):
+            if candidate.is_file():
+                return candidate
+    return None
+
+
 def _on_view_last_report(app_state) -> None:
-    path = getattr(app_state, "last_report_path", "")
-    if path and Path(path).is_file():
-        open_report_in_browser(Path(path))
+    """Re-open the most recent session report in the default browser."""
+    report_path = _resolve_last_report_path(app_state)
+    if report_path is not None:
+        app_state.last_report_path = str(report_path)
+        open_report_in_browser(report_path)
+        return
+
+    app_state.toast_message = (
+        "No report available yet — finish a recording with auto-report enabled"
+    )
+    app_state.toast_until = time.time() + 4.0
 
 
 def _build_recording_controls(app_state, settings) -> None:

@@ -14,10 +14,29 @@ from tests.test_analysis import (
     _assert_matches_golden,
 )
 from wiibble.analysis.recording_meta import json_path_for
-from wiibble.session_report.launcher import resolve_session_report_command
+from wiibble.session_report.launcher import (
+    parse_session_report_stdout,
+    resolve_session_report_command,
+)
 from wiibble.session_report.runner import run_session_report
 
 pytestmark = pytest.mark.analysis
+
+
+def test_parse_session_report_stdout_ignores_log_lines():
+    stdout = (
+        "INFO wiibble.session_report.runner: Analysing recording.csv\n"
+        "INFO wiibble.cli.report: Report written\n"
+        "D:/recordings/report_SPI001_261101174543.html\n"
+    )
+    assert (
+        parse_session_report_stdout(stdout)
+        == "D:/recordings/report_SPI001_261101174543.html"
+    )
+
+
+def test_parse_session_report_stdout_single_line():
+    assert parse_session_report_stdout("/tmp/report.html\n") == "/tmp/report.html"
 
 
 def test_run_session_report_matches_golden(tmp_path):

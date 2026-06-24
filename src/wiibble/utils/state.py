@@ -209,6 +209,7 @@ class AppState:
 
     # End-of-session report — path to last HTML report; async companion job while set.
     last_report_path: str = ""
+    last_recording_csv_path: str = ""
     report_job: dict | None = None
 
     # Ripple animations — per-target jelly oscillation ages, keyed by target index.
@@ -269,6 +270,7 @@ class AppState:
         self.record_duration = 30.0
         self.recording_indicator = False
         self.last_report_path = ""
+        self.last_recording_csv_path = ""
         self.report_job = None
         self.cursor_drag_in_progress = False
         self.cursor_drag_start_size = 20

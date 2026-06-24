@@ -13,6 +13,16 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
+def parse_session_report_stdout(stdout: str) -> str:
+    """Extract the HTML report path printed by the session-report subprocess."""
+    for line in reversed(stdout.splitlines()):
+        stripped = line.strip()
+        if stripped.lower().endswith(".html"):
+            return stripped
+    lines = [line.strip() for line in stdout.splitlines() if line.strip()]
+    return lines[-1] if lines else ""
+
+
 def open_report_in_browser(report_path: Path) -> None:
     """Open an HTML report in the system default browser.
 

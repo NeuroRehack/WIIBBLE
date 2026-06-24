@@ -130,7 +130,7 @@ def test_on_recording_saved_schedules_job():
     )
     assert app_state.report_job is not None
     assert app_state.report_job["process"] is mock_process
-    assert app_state.toast_message == "Generating report…"
+    assert app_state.toast_message == "Generating report..."
 
 
 def test_on_recording_saved_skips_when_disabled():

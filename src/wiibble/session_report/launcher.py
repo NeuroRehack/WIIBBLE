@@ -25,6 +25,7 @@ def open_report_in_browser(report_path: Path) -> None:
     else:
         webbrowser.open(path.as_uri())
 
+
 SESSION_REPORT_EXE_NAME = "WIIBBLE-SessionReport.exe"
 SESSION_REPORT_SUBDIR = "session_report"
 

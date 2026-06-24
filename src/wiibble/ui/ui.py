@@ -387,12 +387,15 @@ def _left_quick_access_window_size(num_buttons: int) -> tuple[int, int]:
 def build_left_quick_access(
     gear_label: str, toggle_callback, session_state: dict
 ) -> None:
-    """Create the top-left quick-access bar (gear + clear screen + reset counter)."""
+    """Create the top-left quick-access bar (gear, clear, fit view, reset counter)."""
     if dpg.does_item_exist("left_quick_access_window"):
         dpg.delete_item("left_quick_access_window")
 
     clear_label = (
         _theme_module.ICON_ERASER if _theme_module.FA_ICON_FONT is not None else "Clr"
+    )
+    fit_view_label = (
+        _theme_module.ICON_FIT_VIEW if _theme_module.FA_ICON_FONT is not None else "Fit"
     )
     reset_label = (
         _theme_module.ICON_COUNTER_RESET
@@ -401,7 +404,7 @@ def build_left_quick_access(
     )
     btn = PANEL_TOGGLE_BTN_SIZE
     margin = QUICK_ACCESS_MARGIN
-    window_w, window_h = _left_quick_access_window_size(3)
+    window_w, window_h = _left_quick_access_window_size(4)
 
     with (
         dpg.window(
@@ -433,6 +436,15 @@ def build_left_quick_access(
             width=btn,
             height=btn,
         )
+        fit_view_btn = dpg.add_button(
+            tag="fit_view_quick_btn",
+            label=fit_view_label,
+            callback=lambda: session_state.update(
+                {"action": "zoom_to_bbox_and_reset_pan"}
+            ),
+            width=btn,
+            height=btn,
+        )
         reset_btn = dpg.add_button(
             tag="reset_counter_quick_btn",
             label=reset_label,
@@ -441,8 +453,14 @@ def build_left_quick_access(
             height=btn,
         )
         if _theme_module.FA_ICON_FONT is not None:
+            dpg.bind_item_font(fit_view_btn, _theme_module.FA_ICON_FONT)
             dpg.bind_item_font(reset_btn, _theme_module.FA_ICON_FONT)
 
+    with dpg.tooltip(parent="fit_view_quick_btn"):
+        dpg.add_text(
+            "Fit View: zoom and pan to fit all recorded\n"
+            "movement within the view."
+        )
     with dpg.tooltip(parent="reset_counter_quick_btn"):
         dpg.add_text("Reset the target hit counter to zero.")
 
@@ -452,7 +470,7 @@ def build_left_quick_access(
 
     with dpg.tooltip(parent="clear_screen_quick_btn"):
         dpg.add_text(
-            "Clear Screen — remove targets and sway trail.\nShortcut: Ctrl+Shift+C"
+            "Clear Screen: remove targets and sway trail.\nShortcut: Ctrl+Shift+C"
         )
 
 
@@ -506,15 +524,17 @@ def update_left_quick_access_layout(
     if toolbar_visible:
         dpg.configure_item("panel_float_btn", show=False)
         dpg.configure_item("clear_screen_quick_btn", show=True)
+        dpg.configure_item("fit_view_quick_btn", show=True)
         dpg.configure_item("reset_counter_quick_btn", show=True)
         dpg.set_item_pos("left_quick_access_window", (PANEL_W + 8, margin))
-        window_w, window_h = _left_quick_access_window_size(2)
+        window_w, window_h = _left_quick_access_window_size(3)
     else:
         dpg.configure_item("panel_float_btn", show=True)
         dpg.configure_item("clear_screen_quick_btn", show=True)
+        dpg.configure_item("fit_view_quick_btn", show=True)
         dpg.configure_item("reset_counter_quick_btn", show=True)
         dpg.set_item_pos("left_quick_access_window", (margin, margin))
-        window_w, window_h = _left_quick_access_window_size(3)
+        window_w, window_h = _left_quick_access_window_size(4)
 
     dpg.configure_item(
         "left_quick_access_window",
@@ -560,6 +580,7 @@ def is_mouse_over_quick_access() -> bool:
     for tag in (
         "panel_float_btn",
         "clear_screen_quick_btn",
+        "fit_view_quick_btn",
         "reset_counter_quick_btn",
         "recording_quick_btn",
     ):

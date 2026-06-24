@@ -31,7 +31,6 @@ from wiibble.session_actions import (
     toggle_recording,
 )
 from wiibble.session_report.launcher import open_report_in_browser
-from wiibble.utils.recording_names import report_search_paths
 from wiibble.ui.theme import (
     BAR_GREY_COLOR,
     BBOX_COLOR,
@@ -87,6 +86,7 @@ from wiibble.utils.constants import (
 from wiibble.utils.recording_names import (
     DEFAULT_RECORDING_DIR,
     normalize_recording_prefix,
+    report_search_paths,
 )
 from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
 
@@ -458,8 +458,7 @@ def build_left_quick_access(
 
     with dpg.tooltip(parent="fit_view_quick_btn"):
         dpg.add_text(
-            "Fit View: zoom and pan to fit all recorded\n"
-            "movement within the view."
+            "Fit View: zoom and pan to fit all recorded\nmovement within the view."
         )
     with dpg.tooltip(parent="reset_counter_quick_btn"):
         dpg.add_text("Reset the target hit counter to zero.")
@@ -1371,7 +1370,8 @@ def _build_recording_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="recording_prefix_input"):
         dpg.add_text(
-            "Filename prefix for recordings, metrics JSON, and reports (max 40 characters).\n"
+            "Filename prefix for recordings, metrics JSON, and reports "
+            "(max 40 characters).\n"
             "Letters, digits, underscores, and hyphens only.\n"
             "Spaces become underscores; other special characters are removed.\n"
             "Leave blank for the default (recording).\n"

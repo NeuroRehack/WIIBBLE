@@ -389,10 +389,11 @@ def test_handle_canvas_click_collapses_panel_on_canvas_click(monkeypatch):
     monkeypatch.setattr(
         input_module,
         "collapse_settings_panel",
-        lambda state: collapsed.update({"called": True}) or state.update(
-            {"toolbar_visible": False, "action": "toolbar_toggled"}
-        )
-        or True,
+        lambda state: (
+            collapsed.update({"called": True})
+            or state.update({"toolbar_visible": False, "action": "toolbar_toggled"})
+            or True
+        ),
     )
 
     input_module._handle_canvas_click(500, 300, app_state, settings, session_state)

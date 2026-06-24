@@ -204,9 +204,8 @@ def _handle_canvas_click(
     mx: float, my: float, app_state, settings, session_state
 ) -> None:
     """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
-    if (
-        dpg.does_item_exist("recording_dir_dialog")
-        and dpg.is_item_shown("recording_dir_dialog")
+    if dpg.does_item_exist("recording_dir_dialog") and dpg.is_item_shown(
+        "recording_dir_dialog"
     ):
         return
 

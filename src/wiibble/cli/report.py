@@ -43,12 +43,12 @@ from plotly.subplots import make_subplots
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
 from wiibble.analysis.analysis import load_recording, to_cop_array
 from wiibble.cli.recordings_dir import collect_recording_csvs, get_recordings_dir
+from wiibble.utils.logging_config import configure_logging
 from wiibble.utils.recording_names import (
     features_json_search_paths,
     report_path_for,
     report_search_paths,
 )
-from wiibble.utils.logging_config import configure_logging
 
 log = logging.getLogger(__name__)
 
@@ -1259,7 +1259,11 @@ def _process_file(
     """
     if not overwrite and out_path is None:
         report_path = next(
-            (path for path in report_search_paths(csv_path.resolve()) if path.is_file()),
+            (
+                path
+                for path in report_search_paths(csv_path.resolve())
+                if path.is_file()
+            ),
             None,
         )
         if report_path is not None:

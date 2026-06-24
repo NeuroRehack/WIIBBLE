@@ -11,7 +11,7 @@ if (-not $env:WIIBBLE_VERSION) {
 Write-Host "[ci_build] Version: $($env:WIIBBLE_VERSION)"
 
 Write-Host "[ci_build] Installing dependencies..."
-uv sync --extra dev
+uv sync --extra dev --extra analysis
 uv pip install -e .
 
 $env:CI = "true"

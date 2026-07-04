@@ -1,6 +1,6 @@
 [project]
 name = "wiibble"
-version = "2.0.2"
+version = "2.1.0"
 description = "Wii Balance Board Live Environment — clinical rehabilitation tool"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -96,7 +96,7 @@ omit = [
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "2.0.2"
+version = "2.1.0"
 version_files = ["pyproject.toml:version"]
 tag_format = "v$version"
 update_changelog_on_bump = false

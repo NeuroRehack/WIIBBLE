@@ -18,6 +18,7 @@ from wiibble.session_report.launcher import (
     parse_session_report_stdout,
     resolve_session_report_command,
 )
+from wiibble.session_report.progress import ReportProgressWriter, read_report_progress
 from wiibble.session_report.runner import run_session_report
 
 pytestmark = pytest.mark.analysis
@@ -43,17 +44,67 @@ def test_run_session_report_matches_golden(tmp_path):
     """Full session report writes features JSON and HTML for the fixture."""
     csv_path = tmp_path / "analysis_recording.csv"
     shutil.copy(RECORDING_CSV, csv_path)
+    progress_path = csv_path.with_name(f"{csv_path.stem}.report_progress.json")
 
     report_path = run_session_report(csv_path, open_browser=False)
 
     assert report_path.is_file()
     assert report_path.suffix == ".html"
+    assert not progress_path.is_file()
 
     features_path = json_path_for(csv_path)
     assert features_path.is_file()
     golden = json.loads(GOLDEN_JSON.read_text(encoding="utf-8"))
     actual = json.loads(features_path.read_text(encoding="utf-8"))
     _assert_matches_golden(golden, actual)
+
+
+def test_run_session_report_writes_progress_steps_then_clears(tmp_path):
+    """Progress sidecar advances monotonically and is removed on completion."""
+    csv_path = tmp_path / "analysis_recording.csv"
+    shutil.copy(RECORDING_CSV, csv_path)
+    progress_path = csv_path.with_name(f"{csv_path.stem}.report_progress.json")
+
+    seen_steps: list[int] = []
+
+    original_advance = ReportProgressWriter.advance
+
+    def tracking_advance(self, label: str) -> None:
+        original_advance(self, label)
+        snapshot = read_report_progress(self.path)
+        if snapshot is not None:
+            seen_steps.append(snapshot.step)
+
+    with patch.object(ReportProgressWriter, "advance", tracking_advance):
+        run_session_report(csv_path, open_browser=False)
+
+    assert seen_steps
+    assert seen_steps == sorted(seen_steps)
+    assert seen_steps[-1] == seen_steps[0] + len(seen_steps) - 1
+    assert not progress_path.is_file()
+
+
+def test_run_session_report_short_recording_uses_fewer_steps(tmp_path):
+    """Short recordings skip the metrics phase in the progress budget."""
+    csv_path = tmp_path / "short_recording.csv"
+    csv_path.write_text(
+        "# total_weight_kg=70.0\n"
+        "time (s),x (kg),y (kg)\n"
+        + "\n".join(f"{i * 0.1:.1f},0.1,0.2" for i in range(150)),
+        encoding="utf-8",
+    )
+
+    totals: list[int] = []
+    original_configure = ReportProgressWriter.configure
+
+    def capture_total(self, total: int, label: str = "Starting...") -> None:
+        totals.append(total)
+        original_configure(self, total, label)
+
+    with patch.object(ReportProgressWriter, "configure", capture_total):
+        run_session_report(csv_path, open_browser=False)
+
+    assert totals == [9]
 
 
 def test_run_session_report_skips_analysis_for_short_recording(tmp_path):
@@ -149,7 +200,10 @@ def test_on_recording_saved_schedules_job():
     )
     assert app_state.report_job is not None
     assert app_state.report_job["process"] is mock_process
-    assert app_state.toast_message == "Generating report..."
+    assert app_state.report_job["progress_path"].endswith(
+        "recording_test.report_progress.json"
+    )
+    assert app_state.toast_message == "Recording saved"
 
 
 def test_on_recording_saved_skips_when_disabled():

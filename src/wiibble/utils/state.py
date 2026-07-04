@@ -204,6 +204,7 @@ class AppState:
     last_report_path: str = ""
     last_recording_csv_path: str = ""
     report_job: dict | None = None
+    report_progress: dict | None = None
 
     # Target dwell hit counter — session runtime only
     target_hit_count: int = 0
@@ -259,6 +260,7 @@ class AppState:
         self.last_report_path = ""
         self.last_recording_csv_path = ""
         self.report_job = None
+        self.report_progress = None
         self.cursor_drag_in_progress = False
         self.cursor_drag_start_size = 20
         self.target_in_progress = None

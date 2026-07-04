@@ -1270,6 +1270,35 @@ def _on_open_report_in_browser_change(value: bool, settings) -> None:
     apply_setting_bool(settings, "open_report_in_browser", value)
 
 
+def sync_report_progress_ui(app_state) -> None:
+    """Show or hide the session-report progress widgets in the settings panel."""
+    if not dpg.does_item_exist("report_progress_group"):
+        return
+
+    active = app_state.report_job is not None
+    dpg.configure_item("report_progress_group", show=active)
+    if not active:
+        if dpg.does_item_exist("report_progress_bar"):
+            dpg.set_value("report_progress_bar", 0.0)
+            dpg.configure_item("report_progress_bar", overlay="")
+        return
+
+    progress = getattr(app_state, "report_progress", None) or {}
+    label = progress.get("label") or "Generating report..."
+    step = int(progress.get("step", 0))
+    total = max(1, int(progress.get("total", 1)))
+    pct = float(progress.get("pct", 0.0))
+
+    if dpg.does_item_exist("report_progress_label"):
+        dpg.set_value("report_progress_label", label)
+    if dpg.does_item_exist("report_progress_bar"):
+        dpg.set_value("report_progress_bar", pct)
+        dpg.configure_item(
+            "report_progress_bar",
+            overlay=f"{step}/{total}",
+        )
+
+
 def _resolve_last_report_path(app_state) -> Path | None:
     """Return the most recent session report path, if one exists on disk."""
     stored = getattr(app_state, "last_report_path", "")
@@ -1426,6 +1455,17 @@ def _build_recording_controls(app_state, settings) -> None:
     with dpg.tooltip(parent="open_report_in_browser_cb"):
         dpg.add_text("Open the report in your default web browser when ready.")
     _sync_open_report_browser_checkbox(settings)
+    dpg.add_spacer(height=4)
+    with dpg.group(tag="report_progress_group", horizontal=True, show=False):
+        dpg.add_loading_indicator(tag="report_progress_spinner", style=1, radius=1.0)
+        with dpg.group():
+            dpg.add_text("Generating report...", tag="report_progress_label")
+            dpg.add_progress_bar(
+                tag="report_progress_bar",
+                default_value=0.0,
+                overlay="",
+                width=PANEL_BTN_W - 32,
+            )
     dpg.add_spacer(height=4)
     dpg.add_button(
         tag="view_last_report_btn",

@@ -28,6 +28,11 @@ from wiibble.session_report.launcher import (
     launch_session_report_async,
     parse_session_report_stdout,
 )
+from wiibble.session_report.progress import (
+    progress_path_for,
+    read_report_progress,
+    remove_report_progress_file,
+)
 from wiibble.ui.calibration_flow import (
     run_board_scale_calibration,
     run_board_weight_calibration,
@@ -50,6 +55,7 @@ from wiibble.ui.ui import (
     set_stats_bar_visible,
     show_settings_panel,
     sync_recording_buttons,
+    sync_report_progress_ui,
     update_left_quick_access_layout,
     update_recording_quick_access_position,
     update_stats_bar,
@@ -230,23 +236,58 @@ def _on_recording_saved(csv_path: str, app_state, settings) -> None:
         app_state.toast_until = time.time() + 4.0
         return
 
-    app_state.report_job = {"process": process, "csv_path": csv_path}
-    app_state.toast_message = "Generating report..."
-    app_state.toast_until = time.time() + 5.0
+    app_state.report_job = {
+        "process": process,
+        "csv_path": csv_path,
+        "progress_path": str(progress_path_for(csv_path)),
+    }
+    app_state.report_progress = {
+        "label": "Starting...",
+        "step": 0,
+        "total": 1,
+        "pct": 0.0,
+    }
+    app_state.toast_message = "Recording saved"
+    app_state.toast_until = time.time() + 2.5
+
+
+def _read_report_job_progress(job: dict) -> dict:
+    """Return the latest progress snapshot for an active report job."""
+    progress_path = job.get("progress_path")
+    if progress_path:
+        snapshot = read_report_progress(progress_path)
+        if snapshot is not None:
+            return snapshot.as_dict()
+    return {
+        "label": "Starting...",
+        "step": 0,
+        "total": 1,
+        "pct": 0.0,
+    }
 
 
 def _poll_report_job(app_state, settings) -> None:
     """Check async session-report subprocess; update toast when complete."""
     job = app_state.report_job
     if not job:
+        app_state.report_progress = None
+        sync_report_progress_ui(app_state)
         return
+
+    app_state.report_progress = _read_report_job_progress(job)
+    sync_report_progress_ui(app_state)
 
     process = job["process"]
     if process.poll() is None:
         return
 
+    progress_path = job.get("progress_path")
     app_state.report_job = None
+    app_state.report_progress = None
+    sync_report_progress_ui(app_state)
     stdout, stderr = process.communicate()
+    if progress_path:
+        remove_report_progress_file(progress_path)
     if process.returncode == 0:
         report_path = parse_session_report_stdout(stdout or "")
         if report_path and Path(report_path).is_file():

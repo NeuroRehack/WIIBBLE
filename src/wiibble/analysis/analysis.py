@@ -25,15 +25,21 @@ Recording filter note:
     filter applied to the analysis signal.
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from code_descriptors_postural_control.descriptors import compute_all_features
 from code_descriptors_postural_control.stabilogram.stato import Stabilogram
 from wiibble.utils.constants import WBB_SENSOR_DIST_AP_CM, WBB_SENSOR_DIST_ML_CM
+
+if TYPE_CHECKING:
+    from wiibble.session_report.progress import ReportProgressWriter
 
 log = logging.getLogger(__name__)
 
@@ -137,7 +143,12 @@ def to_cop_array(data: np.ndarray, total_weight_kg: float) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
+def analyse_recording(
+    path: str,
+    total_weight_kg: float = None,
+    *,
+    progress: ReportProgressWriter | None = None,
+) -> dict:
     """Full pipeline: WIIBBLE CSV → CoP → Stabilogram → feature dictionary.
 
     Parameters
@@ -166,8 +177,10 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
     """
     t0 = time.perf_counter()
     path_name = Path(path).name
-    log.info("Computing metrics for '%s'…", path_name)
+    log.info("Computing metrics for '%s'...", path_name)
 
+    if progress is not None:
+        progress.advance("Loading recording...")
     data, metadata = load_recording(path)
     log.debug("Loaded %d samples from '%s'", len(data), path_name)
 
@@ -198,17 +211,23 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
         )
 
     # ---- CoP conversion -----------------------------------------------------
+    if progress is not None:
+        progress.advance("Converting to CoP...")
     cop_array = to_cop_array(data, weight_kg)
     log.debug("CoP conversion complete for '%s'", path_name)
 
     # ---- Stabilogram --------------------------------------------------------
     # from_array with 3 columns (time, ML, AP) triggers SWARII resampling to
     # 25 Hz, followed by Butterworth bandpass (0–10 Hz, order 4).
+    if progress is not None:
+        progress.advance("Building stabilogram...")
     stabilogram = Stabilogram()
     stabilogram.from_array(cop_array)
     log.debug("Stabilogram built for '%s'", path_name)
 
     # ---- Feature extraction -------------------------------------------------
+    if progress is not None:
+        progress.advance("Computing features...")
     features = compute_all_features(stabilogram)
     log.debug("Extracted %d metrics for '%s'", len(features), path_name)
 

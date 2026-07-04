@@ -33,6 +33,7 @@ import logging
 import re
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
@@ -49,6 +50,9 @@ from wiibble.utils.recording_names import (
     report_path_for,
     report_search_paths,
 )
+
+if TYPE_CHECKING:
+    from wiibble.session_report.progress import ReportProgressWriter
 
 log = logging.getLogger(__name__)
 
@@ -1133,7 +1137,11 @@ def _find_features_json(csv_path: str) -> str | None:
 
 
 def generate_report(
-    csv_path: str, features_path: str | None = None, out_path: str | None = None
+    csv_path: str,
+    features_path: str | None = None,
+    out_path: str | None = None,
+    *,
+    progress: ReportProgressWriter | None = None,
 ) -> str:
     """Build the HTML report and write it to disk.
 
@@ -1172,6 +1180,11 @@ def generate_report(
     if features_path and Path(features_path).is_file():
         features = json.loads(Path(features_path).read_text(encoding="utf-8"))
 
+    if features_path and Path(features_path).is_file():
+        features = json.loads(Path(features_path).read_text(encoding="utf-8"))
+
+    if progress is not None:
+        progress.advance("Loading recording for report...")
     log.info(f"Loading recording CSV: {csv_path}")
     data, metadata = load_recording(csv_path)
     weight_kg = float((features or metadata).get("total_weight_kg", 0))
@@ -1180,7 +1193,9 @@ def generate_report(
             "Cannot determine total_weight_kg — pass it explicitly or re-record."
         )
 
-    log.info("Generating Stabilogram and computing CoP series…")
+    if progress is not None:
+        progress.advance("Processing signal...")
+    log.info("Generating Stabilogram and computing CoP series...")
     cop = to_cop_array(data, weight_kg)
     stab = Stabilogram()
     stab.from_array(cop)
@@ -1200,18 +1215,30 @@ def generate_report(
         features.get("duration_s") if features else float(data[-1, 0] - data[0, 0])
     )
 
-    log.info("Creating all report figures (Plotly)…")
+    log.info("Creating all report figures (Plotly)...")
     t_fig_start = time.time()
-    figures = [
-        ("fig_sway_path", plot_sway_path(stab, features)),
-        ("fig_time_series", plot_time_series(stab)),
-        ("fig_velocity", plot_velocity(stab)),
-        ("fig_psd", plot_psd(stab, features)),
-        ("fig_diffusion", plot_diffusion(stab, features)),
-        ("fig_density", plot_density_heatmap(stab)),
+    figure_builders = [
+        ("fig_sway_path", "Sway path chart", lambda: plot_sway_path(stab, features)),
+        ("fig_time_series", "Time series chart", lambda: plot_time_series(stab)),
+        ("fig_velocity", "Velocity chart", lambda: plot_velocity(stab)),
+        ("fig_psd", "Power spectral density chart", lambda: plot_psd(stab, features)),
+        (
+            "fig_diffusion",
+            "Diffusion chart",
+            lambda: plot_diffusion(stab, features),
+        ),
+        ("fig_density", "Spatial density chart", lambda: plot_density_heatmap(stab)),
     ]
     if features:
-        figures.append(("fig_table", build_feature_table(features)))
+        figure_builders.append(
+            ("fig_table", "Feature table", lambda: build_feature_table(features))
+        )
+
+    figures: list[tuple[str, go.Figure]] = []
+    for name, label, builder in figure_builders:
+        if progress is not None:
+            progress.advance(label)
+        figures.append((name, builder()))
     t_fig_end = time.time()
     log.debug("Figures created in %.2f s", t_fig_end - t_fig_start)
 
@@ -1235,7 +1262,9 @@ def generate_report(
     )
 
     # ── Write output ─────────────────────────────────────────────────────────
-    log.info("Writing HTML report to disk…")
+    if progress is not None:
+        progress.advance("Writing HTML report...")
+    log.info("Writing HTML report to disk...")
     out_file = _default_report_path(csv_file) if out_path is None else Path(out_path)
     out_file = out_file.resolve()
     out_file.write_text(html, encoding="utf-8")

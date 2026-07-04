@@ -1365,9 +1365,7 @@ def _build_recording_controls(app_state, settings) -> None:
                 callback=lambda s, a: _on_open_recording_folder(settings)
             )
     dpg.add_text(_display_dir, tag="recording_dir_label", wrap=PANEL_BTN_W)
-    dpg.bind_item_handler_registry(
-        "recording_dir_label", "recording_dir_click_handler"
-    )
+    dpg.bind_item_handler_registry("recording_dir_label", "recording_dir_click_handler")
     with dpg.theme() as _recording_dir_link_theme, dpg.theme_component(dpg.mvText):
         dpg.add_theme_color(
             dpg.mvThemeCol_Text,

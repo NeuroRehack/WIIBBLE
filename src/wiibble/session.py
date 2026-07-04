@@ -52,7 +52,6 @@ from wiibble.ui.ui import (
     sync_recording_buttons,
     update_left_quick_access_layout,
     update_recording_quick_access_position,
-    update_scale_factor_label,
     update_stats_bar,
 )
 from wiibble.utils.constants import (
@@ -553,7 +552,6 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
                 log.info("Board scale calibration completed: factor=%.6f", new_factor)
                 if hasattr(device, "set_scale_factor"):
                     device.set_scale_factor(new_factor)
-                update_scale_factor_label(settings)
         finally:
             _resume_acquisition(session_state)
             _restore_ui_after_calibration(session_state, was_toolbar_visible)

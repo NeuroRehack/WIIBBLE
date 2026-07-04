@@ -5,6 +5,9 @@
 
 import logging
 import math
+import os
+import platform
+import subprocess
 import time
 from pathlib import Path
 
@@ -87,6 +90,7 @@ from wiibble.utils.recording_names import (
     DEFAULT_RECORDING_DIR,
     normalize_recording_prefix,
     report_search_paths,
+    resolve_recording_dir,
 )
 from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS
 
@@ -940,14 +944,6 @@ def _on_calibrate_scale(session_state: dict) -> None:
     request_calibrate_scale(session_state)
 
 
-def update_scale_factor_label(settings) -> None:
-    """Refresh the read-only scale factor display in the calibration panel."""
-    if dpg.does_item_exist("scale_factor_label"):
-        dpg.set_value(
-            "scale_factor_label", f"Scale factor: {settings.scale_factor:.4f}"
-        )
-
-
 def _build_calibration_controls(app_state, settings, session_state: dict) -> None:
     """Add body weight and board scale calibration controls to the panel."""
     dpg.add_text("Body weight (kg)")
@@ -1009,12 +1005,33 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
             "Tare the board, place the reference mass, and compute\n"
             "the HID raw-to-kg scale factor for this board."
         )
-    dpg.add_spacer(height=4)
-    dpg.add_text(
-        f"Scale factor: {settings.scale_factor:.4f}",
-        tag="scale_factor_label",
-        wrap=PANEL_BTN_W,
-    )
+
+
+def _open_folder_in_file_manager(path: Path) -> None:
+    """Open a folder in the system file manager."""
+    folder = path.resolve()
+    try:
+        system = platform.system()
+        if system == "Windows":
+            os.startfile(folder)  # noqa: S606
+        elif system == "Darwin":
+            subprocess.run(["open", str(folder)], check=False)
+        else:
+            subprocess.run(["xdg-open", str(folder)], check=False)
+        log.info("Opened recording folder: %s", folder)
+    except OSError as exc:
+        log.warning("Could not open recording folder %s: %s", folder, exc)
+
+
+def _on_open_recording_folder(settings) -> None:
+    """Open the configured recordings folder in the system file manager."""
+    folder = resolve_recording_dir(settings.recording_dir)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        log.warning("Could not create recording folder %s: %s", folder, exc)
+        return
+    _open_folder_in_file_manager(folder)
 
 
 def _on_recording_prefix_change(value: str, settings) -> None:
@@ -1342,7 +1359,24 @@ def _build_recording_controls(app_state, settings) -> None:
     dpg.add_text("Save location")
     _default_dir = str(DEFAULT_RECORDING_DIR)
     _display_dir = settings.recording_dir if settings.recording_dir else _default_dir
+    if not dpg.does_item_exist("recording_dir_click_handler"):
+        with dpg.item_handler_registry(tag="recording_dir_click_handler"):
+            dpg.add_item_clicked_handler(
+                callback=lambda s, a: _on_open_recording_folder(settings)
+            )
     dpg.add_text(_display_dir, tag="recording_dir_label", wrap=PANEL_BTN_W)
+    dpg.bind_item_handler_registry(
+        "recording_dir_label", "recording_dir_click_handler"
+    )
+    with dpg.theme() as _recording_dir_link_theme, dpg.theme_component(dpg.mvText):
+        dpg.add_theme_color(
+            dpg.mvThemeCol_Text,
+            _theme_module.C_BRAND,
+            category=dpg.mvThemeCat_Core,
+        )
+    dpg.bind_item_theme("recording_dir_label", _recording_dir_link_theme)
+    with dpg.tooltip(parent="recording_dir_label"):
+        dpg.add_text("Click to open this folder in your file manager.")
     dpg.add_spacer(height=4)
     dpg.add_button(
         tag="recording_dir_btn",

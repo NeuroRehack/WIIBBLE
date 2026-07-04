@@ -56,6 +56,7 @@ def run_session_report(
             MIN_ANALYSIS_DURATION_S,
         )
 
+    log.info("Generating HTML report for %s", csv_file.name)
     report_path = Path(
         generate_report(
             str(csv_file),
@@ -63,6 +64,7 @@ def run_session_report(
             out_path=str(out_path) if out_path is not None else None,
         )
     )
+    log.info("Session report written: %s", report_path.name)
 
     if open_browser:
         open_report_in_browser(report_path)

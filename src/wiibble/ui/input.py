@@ -4,6 +4,7 @@ This module encapsulates click, drag, release, and wheel input logic so
 that app.py can remain focused on session orchestration.
 """
 
+import logging
 import math
 
 import dearpygui.dearpygui as dpg
@@ -25,6 +26,8 @@ from wiibble.utils.constants import (
     ZOOM_SCALE,
     ZOOM_SPEED,
 )
+
+log = logging.getLogger(__name__)
 
 _SETTINGS_INPUT_TAGS = (
     "body_weight_input",
@@ -55,6 +58,7 @@ def _handle_clear_shortcut(session_state: dict) -> None:
     if not dpg.is_key_down(dpg.mvKey_LControl) or not dpg.is_key_down(dpg.mvKey_LShift):
         return
     session_state["action"] = "clear"
+    session_state["action_detail"] = "Ctrl+Shift+C"
 
 
 def _handle_record_shortcut(app_state, settings, session_state: dict) -> None:
@@ -63,7 +67,7 @@ def _handle_record_shortcut(app_state, settings, session_state: dict) -> None:
         return
     if not dpg.is_key_down(dpg.mvKey_LControl):
         return
-    _on_start_recording(app_state, settings)
+    _on_start_recording(app_state, settings, source="Ctrl+Space")
 
 
 def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:
@@ -108,7 +112,8 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
     app_state.pan_offset_y = new_pan_offset_y
 
     dpg.set_value("zoom_slider", slider_value)
-    _on_zoom_change(slider_value, settings, app_state)
+    _on_zoom_change(slider_value, settings, app_state, log_change=False)
+    log.info("Zoom changed via Ctrl+scroll to %.2fx", new_zoom)
     session_state["action"] = "pan_changed"
 
 
@@ -211,7 +216,7 @@ def _handle_canvas_click(
     if session_state.get("toolbar_visible", False):
         if mx <= PANEL_W or is_mouse_over_quick_access():
             return
-        collapse_settings_panel(session_state)
+        collapse_settings_panel(session_state, source="canvas click")
         return
 
     if is_mouse_over_quick_access() or dpg.is_key_down(dpg.mvKey_LControl):
@@ -220,7 +225,7 @@ def _handle_canvas_click(
     cursor_radius = int(settings.cursor_size * settings.zoom_factor)
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
-        # Begin cursor drag — mode toggle is decided on release based on drag distance
+        log.info("Cursor resize drag started")
         app_state.cursor_drag_in_progress = True
         app_state.cursor_drag_start_size = settings.cursor_size
         return
@@ -240,6 +245,7 @@ def _handle_canvas_click(
     hit = _find_target_at(mx, my, app_state, settings)
     if hit is not None:
         idx, target = hit
+        log.info("Target move started (index=%d)", idx)
         tcx, tcy = _target_logical_center(target)
         app_state.target_move_in_progress = {
             "index": idx,
@@ -249,6 +255,11 @@ def _handle_canvas_click(
 
     default_radius = float(settings.cursor_size)
     if dpg.is_key_down(dpg.mvKey_R):
+        log.info(
+            "Target placement started (rectangle) at (%.1f, %.1f)",
+            logical_x,
+            logical_y,
+        )
         app_state.target_in_progress = {
             "shape": "rect",
             "anchor": (logical_x, logical_y),
@@ -259,6 +270,11 @@ def _handle_canvas_click(
         }
         return
 
+    log.info(
+        "Target placement started (circle) at (%.1f, %.1f)",
+        logical_x,
+        logical_y,
+    )
     app_state.target_in_progress = {
         "center": (logical_x, logical_y),
         "radius": default_radius,
@@ -290,6 +306,11 @@ def _handle_cursor_release(app_state, settings) -> None:
         return
     size_delta = abs(settings.cursor_size - app_state.cursor_drag_start_size)
     if size_delta >= CURSOR_DRAG_THRESHOLD:
+        log.info(
+            "Cursor size changed via drag: %d → %d px",
+            app_state.cursor_drag_start_size,
+            settings.cursor_size,
+        )
         settings.save()
     else:
         settings.cursor_size = app_state.cursor_drag_start_size
@@ -372,6 +393,11 @@ def _handle_target_move_drag(app_state, settings) -> None:
 
 def _handle_target_move_release(app_state) -> None:
     """Finalize target reposition when the mouse button is released."""
+    if app_state.target_move_in_progress is not None:
+        log.info(
+            "Target moved (index=%d)",
+            app_state.target_move_in_progress["index"],
+        )
     app_state.target_move_in_progress = None
 
 
@@ -393,6 +419,23 @@ def _handle_target_release(app_state, settings):
             tip.pop(key, None)
     app_state.clicked_locations.append(tip)
     app_state.target_in_progress = None
+    if tip.get("shape") == "rect":
+        min_pt, max_pt = tip["min"], tip["max"]
+        log.info(
+            "Target placed (rectangle, bounds=(%.1f,%.1f)-(%.1f,%.1f))",
+            min_pt[0],
+            min_pt[1],
+            max_pt[0],
+            max_pt[1],
+        )
+    else:
+        center = tip["center"]
+        log.info(
+            "Target placed (circle, center=(%.1f,%.1f), radius=%.1f)",
+            center[0],
+            center[1],
+            tip.get("radius", 5.0),
+        )
 
 
 def _handle_pan_drag(app_state, session_state):
@@ -418,6 +461,11 @@ def _handle_pan_drag(app_state, session_state):
 def _handle_pan_release(app_state):
     """Stop panning when the mouse button is released."""
     if getattr(app_state, "is_panning", False):
+        log.info(
+            "Canvas pan offset set to (%.0f, %.0f)",
+            app_state.pan_offset_x,
+            app_state.pan_offset_y,
+        )
         app_state.is_panning = False
 
 
@@ -425,8 +473,9 @@ def _handle_right_click(mx: float, my: float, app_state, settings) -> None:
     """Remove a target when right-clicking inside it."""
     hit = _find_target_at(mx, my, app_state, settings)
     if hit is not None:
-        _, target = hit
+        idx, target = hit
         app_state.clicked_locations.remove(target)
+        log.info("Target removed (index=%d)", idx)
 
 
 def register_input_handlers(app_state, settings, session_state):

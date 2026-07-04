@@ -79,9 +79,8 @@ def _process_file(
         json_path.write_text(
             json.dumps(features, indent=2, default=str), encoding="utf-8"
         )
-        log.info(
-            "    JSON written: %s (total %.2f s)", json_path.name, time.time() - t0
-        )
+        log.info("    JSON written: %s", json_path.name)
+        log.debug("    Analysis completed in %.2f s", time.time() - t0)
 
         if with_report:
             try:

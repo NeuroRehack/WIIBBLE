@@ -191,6 +191,7 @@ def run_board_weight_calibration(device, dl, app_state, scale_factor: float) -> 
     """
 
     def _run() -> float:
+        log.info("On-board weight calibration flow started")
         if hasattr(device, "reset_calibration_phase"):
             device.reset_calibration_phase()
 
@@ -224,6 +225,7 @@ def run_board_scale_calibration(
     """
 
     def _run() -> float:
+        log.info("Board scale calibration flow started")
         if hasattr(device, "reset_calibration_phase"):
             device.reset_calibration_phase()
 

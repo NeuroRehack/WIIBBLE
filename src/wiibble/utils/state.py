@@ -69,7 +69,7 @@ class Settings:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(asdict(self), indent=2), encoding="utf-8")
-            log.info("Settings saved to %s", path)
+            log.debug("Settings saved to %s", path)
         except Exception:
             log.exception("Failed to save settings")
 

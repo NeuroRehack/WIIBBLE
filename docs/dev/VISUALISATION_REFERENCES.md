@@ -1,7 +1,7 @@
 # Visualisation References & Interpretation Guide
 
-**Applies to:** `report.py` v1.x  
-**Last reviewed:** 2026-07  
+**Applies to:** `report.py` v1.x
+**Last reviewed:** 2026-07
 **Maintainer:** Update this document whenever a figure is added, removed, or changed in `report.py`.
 
 This document serves two purposes:
@@ -172,8 +172,8 @@ CoP displacement in each axis as a function of time — the classical **stabilog
 
 For each resampled, filtered sample at time $t$ (seconds from start):
 
-- **Top panel:** $\text{ML}(t)$ in cm  
-- **Bottom panel:** $\text{AP}(t)$ in cm  
+- **Top panel:** $\text{ML}(t)$ in cm
+- **Bottom panel:** $\text{AP}(t)$ in cm
 
 Both channels are mean-centred. The horizontal dashed line at $y = 0$ is the session average for that axis.
 

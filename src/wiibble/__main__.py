@@ -56,7 +56,7 @@ def main(
     ),
 ) -> None:
     """Launch the WIIBBLE desktop application."""
-    configure_logging(level=logging.DEBUG, log_to_file=True, stream=True)
+    configure_logging(level=logging.INFO, log_to_file=True, stream=True)
     install_uncaught_exception_hook(log)
 
     if mock_scenario.lower() not in MOCK_SCENARIOS:

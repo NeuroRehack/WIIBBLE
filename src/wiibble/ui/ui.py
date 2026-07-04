@@ -3,6 +3,7 @@
 # The viewport_drawlist draws directly onto the viewport background — no
 # window chrome around the canvas. UI controls sit in a separate overlay window.
 
+import logging
 import math
 import time
 from pathlib import Path
@@ -88,6 +89,8 @@ from wiibble.utils.recording_names import (
     report_search_paths,
 )
 from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Layout constants — all proportional to viewport dimensions.
@@ -420,7 +423,9 @@ def build_left_quick_access(
         dpg.add_button(
             tag="clear_screen_quick_btn",
             label=clear_label,
-            callback=lambda: session_state.update({"action": "clear"}),
+            callback=lambda: session_state.update(
+                {"action": "clear", "action_detail": "quick access"}
+            ),
             width=btn,
             height=btn,
         )
@@ -428,7 +433,10 @@ def build_left_quick_access(
             tag="fit_view_quick_btn",
             label=fit_view_label,
             callback=lambda: session_state.update(
-                {"action": "zoom_to_bbox_and_reset_pan"}
+                {
+                    "action": "zoom_to_bbox_and_reset_pan",
+                    "action_detail": "quick access",
+                }
             ),
             width=btn,
             height=btn,
@@ -436,7 +444,9 @@ def build_left_quick_access(
         reset_btn = dpg.add_button(
             tag="reset_counter_quick_btn",
             label=reset_label,
-            callback=lambda: session_state.update({"action": "reset_target_counter"}),
+            callback=lambda: session_state.update(
+                {"action": "reset_target_counter", "action_detail": "quick access"}
+            ),
             width=btn,
             height=btn,
         )
@@ -488,7 +498,9 @@ def build_recording_quick_btn(app_state, settings) -> None:
         dpg.add_button(
             tag="recording_quick_btn",
             label="",
-            callback=lambda: _on_start_recording(app_state, settings),
+            callback=lambda: _on_start_recording(
+                app_state, settings, source="quick access"
+            ),
             width=btn,
             height=btn,
         )
@@ -580,7 +592,7 @@ def is_mouse_over_quick_access() -> bool:
     return False
 
 
-def collapse_settings_panel(session_state: dict) -> bool:
+def collapse_settings_panel(session_state: dict, *, source: str = "control") -> bool:
     """Hide the settings panel when it is open. Returns True if it was collapsed."""
     if not session_state.get("toolbar_visible", False):
         return False
@@ -592,10 +604,11 @@ def collapse_settings_panel(session_state: dict) -> bool:
         session_state.get("toolbar_enabled", False),
     )
     session_state["action"] = "toolbar_toggled"
+    log.info("Settings panel closed (%s)", source)
     return True
 
 
-def show_settings_panel(session_state: dict) -> None:
+def show_settings_panel(session_state: dict, *, source: str = "control") -> None:
     """Show the settings panel."""
     session_state["toolbar_visible"] = True
     if dpg.does_item_exist("control_panel"):
@@ -605,6 +618,7 @@ def show_settings_panel(session_state: dict) -> None:
         session_state.get("toolbar_enabled", False),
     )
     session_state["action"] = "toolbar_toggled"
+    log.info("Settings panel opened (%s)", source)
 
 
 # ---------------------------------------------------------------------------
@@ -894,9 +908,9 @@ def _on_record_duration_change(value: int, settings, app_state) -> None:
     update_recording_quick_access_position(dpg.get_viewport_width(), value)
 
 
-def _on_start_recording(app_state, settings) -> None:
+def _on_start_recording(app_state, settings, *, source: str = "panel") -> None:
     """Start or stop a recording session from the controls toolbar."""
-    active = toggle_recording(app_state, settings)
+    active = toggle_recording(app_state, settings, source=source)
     sync_recording_buttons(recording_active=active)
 
 
@@ -909,6 +923,7 @@ def _on_body_weight_change(value: float, settings, app_state) -> None:
 
 def _on_calibrate_board(session_state: dict) -> None:
     """Request on-board weight calibration from the main loop."""
+    log.info("On-board weight calibration requested")
     request_calibrate_board(session_state)
 
 
@@ -921,6 +936,7 @@ def _on_board_cal_reference_change(value: float, settings) -> None:
 
 def _on_calibrate_scale(session_state: dict) -> None:
     """Request board scale-factor calibration from the main loop."""
+    log.info("Board scale calibration requested")
     request_calibrate_scale(session_state)
 
 
@@ -1163,6 +1179,10 @@ def _open_recording_dir_picker(settings) -> None:
                 if dpg.does_item_exist("recording_dir_label"):
                     dpg.set_value("recording_dir_label", chosen)
 
+        def _on_dir_picker_cancel(sender, app_data) -> None:
+            log.info("Recording folder picker cancelled")
+            dpg.hide_item("recording_dir_dialog")
+
         dpg.add_file_dialog(
             directory_selector=True,
             show=False,
@@ -1171,11 +1191,12 @@ def _open_recording_dir_picker(settings) -> None:
             height=400,
             default_path=initial,
             callback=_on_dir_picker,
-            cancel_callback=lambda s, a: dpg.hide_item("recording_dir_dialog"),
+            cancel_callback=_on_dir_picker_cancel,
             modal=True,
         )
         dpg.bind_item_theme("recording_dir_dialog", "recording_dir_dialog_theme")
     dpg.show_item("recording_dir_dialog")
+    log.info("Recording folder picker opened")
 
 
 # Duration preset values (seconds); 0 = indefinite
@@ -1254,8 +1275,10 @@ def _on_view_last_report(app_state) -> None:
     if report_path is not None:
         app_state.last_report_path = str(report_path)
         open_report_in_browser(report_path)
+        log.info("Opened last report: %s", report_path.name)
         return
 
+    log.info("View last report — none available")
     app_state.toast_message = (
         "No report available yet — finish a recording with auto-report enabled"
     )
@@ -1455,7 +1478,9 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     dpg.add_button(
         label="Fit View to Bounding Box",
         tag="zoom_to_bbox_btn",
-        callback=lambda: session_state.update({"action": "zoom_to_bbox_and_reset_pan"}),
+        callback=lambda: session_state.update(
+            {"action": "zoom_to_bbox_and_reset_pan", "action_detail": "panel"}
+        ),
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
@@ -1523,7 +1548,9 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     dpg.add_button(
         label="Reset hit counter",
         tag="reset_target_counter_btn",
-        callback=lambda: session_state.update({"action": "reset_target_counter"}),
+        callback=lambda: session_state.update(
+            {"action": "reset_target_counter", "action_detail": "panel"}
+        ),
         width=PANEL_BTN_W,
         height=PANEL_BTN_H,
     )
@@ -1632,9 +1659,11 @@ def _on_flip_horizontal_toggle(settings, app_state) -> None:
     _update_flip_buttons(settings)
 
 
-def _on_zoom_change(value: float, settings, app_state) -> None:
+def _on_zoom_change(
+    value: float, settings, app_state, *, log_change: bool = True
+) -> None:
     """Apply a new zoom factor and immediately rescale runtime extents."""
-    apply_zoom_slider(settings, app_state, value)
+    apply_zoom_slider(settings, app_state, value, log_change=log_change)
 
 
 # ---------------------------------------------------------------------------
@@ -1949,12 +1978,22 @@ def update_target_dwell(
                 app_state.target_hit_count += 1
                 disarmed.add(idx)
                 elapsed.pop(idx, None)
+                log.info(
+                    "Target hit registered (count=%d, index=%d)",
+                    app_state.target_hit_count,
+                    idx,
+                )
                 continue
             elapsed[idx] = elapsed.get(idx, 0.0) + dt
             if elapsed[idx] >= dwell_seconds:
                 app_state.target_hit_count += 1
                 elapsed.pop(idx, None)
                 disarmed.add(idx)
+                log.info(
+                    "Target hit registered (count=%d, index=%d)",
+                    app_state.target_hit_count,
+                    idx,
+                )
         else:
             elapsed.pop(idx, None)
             disarmed.discard(idx)

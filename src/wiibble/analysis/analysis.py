@@ -26,6 +26,7 @@ Recording filter note:
 """
 
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
@@ -163,7 +164,12 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
     ValueError
         If body weight cannot be determined.
     """
+    t0 = time.perf_counter()
+    path_name = Path(path).name
+    log.info("Computing metrics for '%s'…", path_name)
+
     data, metadata = load_recording(path)
+    log.debug("Loaded %d samples from '%s'", len(data), path_name)
 
     # ---- resolve body weight ------------------------------------------------
     weight_kg = total_weight_kg
@@ -193,15 +199,18 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
 
     # ---- CoP conversion -----------------------------------------------------
     cop_array = to_cop_array(data, weight_kg)
+    log.debug("CoP conversion complete for '%s'", path_name)
 
     # ---- Stabilogram --------------------------------------------------------
     # from_array with 3 columns (time, ML, AP) triggers SWARII resampling to
     # 25 Hz, followed by Butterworth bandpass (0–10 Hz, order 4).
     stabilogram = Stabilogram()
     stabilogram.from_array(cop_array)
+    log.debug("Stabilogram built for '%s'", path_name)
 
     # ---- Feature extraction -------------------------------------------------
     features = compute_all_features(stabilogram)
+    log.debug("Extracted %d metrics for '%s'", len(features), path_name)
 
     # ---- Provenance ---------------------------------------------------------
     features["source_file"] = Path(path).name
@@ -212,9 +221,14 @@ def analyse_recording(path: str, total_weight_kg: float = None) -> dict:
 
     log.info(
         "Analysed '%s': %d features, %.1f s, %.0f Hz raw → 25 Hz resampled",
-        Path(path).name,
+        path_name,
         len(features),
         duration_s,
         len(data) / duration_s if duration_s > 0 else 0,
+    )
+    log.debug(
+        "Metrics computation finished for '%s' in %.2f s",
+        path_name,
+        time.perf_counter() - t0,
     )
     return features

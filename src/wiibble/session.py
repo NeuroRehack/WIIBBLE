@@ -126,6 +126,7 @@ def _try_connection_loop(dl, app_state, use_mock: bool = False) -> bool:
             draw_connection_failed_screen(dl, app_state)
             dpg.render_dearpygui_frame()
             if dpg.is_key_pressed(dpg.mvKey_Return):
+                log.info("Connection retry requested (Enter)")
                 # Show retrying feedback immediately before next attempt
                 dpg.delete_item(dl, children_only=True)
                 draw_connection_screen(dl, app_state)
@@ -149,9 +150,9 @@ def _get_gear_label() -> str:
 def _toggle_toolbar(session_state: dict) -> None:
     """Toggle the settings panel visibility state for the session."""
     if session_state.get("toolbar_visible", False):
-        collapse_settings_panel(session_state)
+        collapse_settings_panel(session_state, source="gear button")
     else:
-        show_settings_panel(session_state)
+        show_settings_panel(session_state, source="gear button")
 
 
 def _collapse_ui_for_calibration(session_state: dict) -> bool:
@@ -215,6 +216,7 @@ def _on_recording_saved(csv_path: str, app_state, settings) -> None:
     """Toast after save and optionally launch end-of-session report generation."""
     app_state.last_recording_csv_path = csv_path
     if not settings.auto_report_after_recording:
+        log.info("Recording saved (auto-report disabled)")
         app_state.toast_message = "Recording saved"
         app_state.toast_until = time.time() + 2.5
         return
@@ -223,6 +225,7 @@ def _on_recording_saved(csv_path: str, app_state, settings) -> None:
         csv_path,
         open_browser=settings.open_report_in_browser,
     )
+    log.info("Auto-report triggered for %s", Path(csv_path).name)
     if process is None:
         app_state.toast_message = "Recording saved — report tool not found"
         app_state.toast_until = time.time() + 4.0
@@ -294,6 +297,10 @@ def _update_recording_frame(
         )
         app_state.record_buffer.append((elapsed, x_kg, y_kg))
         if app_state.record_duration > 0 and elapsed >= app_state.record_duration:
+            log.info(
+                "Recording auto-stopped at duration limit (%ss)",
+                app_state.record_duration,
+            )
             app_state.is_recording = False
             app_state.recording_indicator = False
             app_state.stopwatch_elapsed = 0.0
@@ -358,6 +365,9 @@ def _update_countdown_and_recording(
             app_state.is_countdown = False
             app_state.is_recording = True
             app_state.recording_indicator = True
+            duration = app_state.record_duration
+            label = "indefinite" if duration <= 0 else f"{duration}s"
+            log.info("Recording started (duration=%s)", label)
             record_start_time = now
             app_state.record_start = now
             app_state.record_buffer = []
@@ -397,6 +407,16 @@ def _handle_viewport_resize(app_state, settings, session_state):
 def _clear_session_action(session_state):
     """Clear the current session action from shared state."""
     session_state["action"] = None
+    session_state.pop("action_detail", None)
+
+
+def _log_session_action(action: str, session_state: dict, message: str) -> None:
+    """Log a session action, appending optional user-facing detail."""
+    detail = session_state.pop("action_detail", None)
+    if detail:
+        log.info("%s (%s)", message, detail)
+    else:
+        log.info(message)
 
 
 def _reset_session_state(app_state, settings) -> None:
@@ -468,22 +488,29 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         dpg.delete_item(dl)
         return 0
     if action == "reset":
+        log.info("Session state reset")
         _reset_session_state(app_state, settings)
         _clear_session_action(session_state)
         return None
     if action == "clear":
+        _log_session_action(action, session_state, "Targets and sway trail cleared")
         _clear_screen_state(app_state, settings)
         _clear_session_action(session_state)
         return None
     if action == "reset_target_counter":
+        _log_session_action(action, session_state, "Target hit counter reset")
         app_state.reset_target_counter()
         _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox":
+        _log_session_action(action, session_state, "Fit view to bounding box")
         _apply_zoom_to_bbox(app_state, settings)
         _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox_and_reset_pan":
+        _log_session_action(
+            action, session_state, "Fit view to bounding box (pan reset)"
+        )
         _apply_zoom_to_bbox(app_state, settings)  # pan to bbox centre is handled inside
         _clear_session_action(session_state)
         return None
@@ -491,6 +518,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _clear_session_action(session_state)
         return None
     if action == "calibrate":
+        log.info("On-board weight calibration started")
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
         _pause_acquisition(session_state)
         try:
@@ -501,6 +529,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
                 settings.body_weight_kg = weight
                 app_state.weight = weight
                 settings.save()
+                log.info("On-board weight calibration completed: %.1f kg", weight)
                 if dpg.does_item_exist("body_weight_input"):
                     dpg.set_value("body_weight_input", weight)
         finally:
@@ -509,10 +538,11 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _clear_session_action(session_state)
         return None
     if action == "calibrate_scale":
+        ref_kg = settings.board_cal_reference_kg
+        log.info("Board scale calibration started (reference=%.1f kg)", ref_kg)
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
         _pause_acquisition(session_state)
         try:
-            ref_kg = settings.board_cal_reference_kg
             new_factor = run_board_scale_calibration(
                 device, dl, app_state, ref_kg, app_state.scale_factor
             )
@@ -520,6 +550,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
                 settings.scale_factor = new_factor
                 app_state.scale_factor = new_factor
                 settings.save()
+                log.info("Board scale calibration completed: factor=%.6f", new_factor)
                 if hasattr(device, "set_scale_factor"):
                     device.set_scale_factor(new_factor)
                 update_scale_factor_label(settings)
@@ -802,7 +833,7 @@ class _LoopDiagnostics:
         est_backlog_lag_ms = (
             max(0, self._max_reports_drained - 1) * _HID_REPORT_INTERVAL_S * 1000
         )
-        log.info(
+        log.debug(
             "Loop perf: fps=%.1f sensor_hz=%.1f empty_reads=%d "
             "max_hid_batch=%d avg_hid_batch=%.1f est_backlog_lag_ms=%.0f",
             fps,

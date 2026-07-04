@@ -1213,7 +1213,7 @@ def generate_report(
     if features:
         figures.append(("fig_table", build_feature_table(features)))
     t_fig_end = time.time()
-    log.info(f"Figures created in {t_fig_end - t_fig_start:.2f}s.")
+    log.debug("Figures created in %.2f s", t_fig_end - t_fig_start)
 
     # ── Serialise to HTML divs (JS bundle only in first figure) ──────────────
     div_map: dict[str, str] = {}
@@ -1240,8 +1240,8 @@ def generate_report(
     out_file = out_file.resolve()
     out_file.write_text(html, encoding="utf-8")
     elapsed = time.time() - start_all
-    log.info(f"Report written to {out_file} in {elapsed:.2f} seconds.")
-    log.info("Report written to %s (%.2f s total)", out_file, elapsed)
+    log.info("Report written to %s", out_file)
+    log.debug("Report generation completed in %.2f s", elapsed)
     return str(out_file)
 
 

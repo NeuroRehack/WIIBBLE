@@ -292,9 +292,7 @@ def test_handle_mouse_wheel_performs_pan_and_zooms(monkeypatch):
     monkeypatch.setattr(
         input_module,
         "_on_zoom_change",
-        lambda slider_value, settings_, app_state_: recorded.update(
-            {"zoom_called": True}
-        ),
+        lambda *args, **kwargs: recorded.update({"zoom_called": True}),
     )
 
     input_module._handle_mouse_wheel(1.0, app_state, session_state, settings)
@@ -383,7 +381,7 @@ def test_handle_canvas_click_collapses_panel_on_canvas_click(monkeypatch):
     monkeypatch.setattr(
         input_module,
         "collapse_settings_panel",
-        lambda state: (
+        lambda state, **kwargs: (
             collapsed.update({"called": True})
             or state.update({"toolbar_visible": False, "action": "toolbar_toggled"})
             or True
@@ -409,7 +407,7 @@ def test_handle_canvas_click_ignores_panel_area_when_open(monkeypatch):
     monkeypatch.setattr(
         input_module,
         "collapse_settings_panel",
-        lambda _state: collapsed.update({"called": True}) or True,
+        lambda _state, **kwargs: collapsed.update({"called": True}) or True,
     )
 
     input_module._handle_canvas_click(100, 300, app_state, settings, session_state)
@@ -425,6 +423,7 @@ def test_clear_shortcut_sets_action_when_allowed(monkeypatch):
     input_module._handle_clear_shortcut(session_state)
 
     assert session_state["action"] == "clear"
+    assert session_state["action_detail"] == "Ctrl+Shift+C"
 
 
 def test_clear_shortcut_ignored_when_toolbar_disabled(monkeypatch):
@@ -466,7 +465,7 @@ def test_record_shortcut_calls_start_recording_when_allowed(monkeypatch):
     monkeypatch.setattr(
         input_module,
         "_on_start_recording",
-        lambda a, s: called.update({"value": True}),
+        lambda *args, **kwargs: called.update({"value": True}),
     )
 
     input_module._handle_record_shortcut(app_state, settings, session_state)
@@ -484,7 +483,7 @@ def test_record_shortcut_ignored_without_ctrl(monkeypatch):
     monkeypatch.setattr(
         input_module,
         "_on_start_recording",
-        lambda a, s: called.update({"value": True}),
+        lambda *args, **kwargs: called.update({"value": True}),
     )
 
     input_module._handle_record_shortcut(app_state, settings, session_state)

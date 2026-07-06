@@ -6,16 +6,6 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
-
-### Planned
-- Move C# interop into dedicated `hardware_interface.py`
-- Add `utils.py` for shared helpers
-- Organise assets into `assets/fonts/`, `assets/images/` subfolders
-- CI: Nuitka executable artifact on every push (manual [Build (develop)](.github/workflows/build-develop.yml) workflow available for QA)
-
----
-
 ## [2.1.0] — 2026-07-06
 
 ### Added

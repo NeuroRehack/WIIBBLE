@@ -11,19 +11,32 @@ This manual is written for **clinicians and end users**. For developer setup, an
 
 The interface has three areas:
 
-**Settings Panel** — Left side of the screen. Organised into sections: Session, Recording, Cursor & Movement, and Visualisation. Can be collapsed to a floating gear button to maximise canvas space; tap the gear button to reopen it.
+**Settings Panel** — Left side of the screen. Organised into sections: Recording, Cursor & Movement, Visualisation, and Calibration. Hidden by default when the session starts; open it with the gear button. Can be collapsed again with the gear button in the panel header or by clicking the canvas. When collapsed, a floating gear button remains in the top-left corner beside the other quick-access controls.
 
-**Canvas** — The main area. Shows the live centre-of-pressure cursor, sway trail, targets, and optional bounding box. All mouse interactions happen here.
+**Canvas** — The main area. Shows the live centre-of-pressure cursor, sway trail, targets, optional hit counter, and optional bounding box. All mouse interactions happen here.
 
 **Stats Bar** — Bottom of the window. Shows left/right weight distribution percentage and total weight in kg. Colour reflects the amount of weight currently detected on the board.
 
-**Quick Access** — Always-visible buttons on the canvas (after the session starts): **Clear Screen** (eraser icon, top-left next to the gear) and a red **record** button (top-right, same position as the recording indicator). These mirror the settings panel recording control and clear the canvas without opening settings.
+**Quick Access** — Always-visible buttons on the canvas (once the session starts):
+
+| Position | Buttons (panel collapsed) | Buttons (panel open) |
+|---|---|---|
+| Top-left | Gear, Clear Screen, Fit View, Reset Counter | Clear Screen, Fit View, Reset Counter (gear is in the panel header) |
+| Top-right | Record / Stop | Record / Stop (over the recording indicator) |
+
+These mirror the corresponding settings-panel controls so you can work without opening settings.
 
 ---
 
 ## Quick Access Buttons
 
-**Clear Screen** (top-left) — Removes all targets and the sway trail from the canvas. Shortcut: **Ctrl+Shift+C**. When the settings panel is open, the clear button moves to the canvas edge beside the panel.
+**Gear** (top-left, panel collapsed) — Opens the settings panel. The same gear icon in the panel header closes it again.
+
+**Clear Screen** (eraser icon) — Removes all targets and the sway trail from the canvas. Shortcut: **Ctrl+Shift+C**.
+
+**Fit View** (expand icon) — Zooms and pans to fit all recorded movement within the view. Same as **Fit View to Bounding Box** in settings.
+
+**Reset Counter** — Resets the target hit counter to zero. Same as **Reset hit counter** in settings.
 
 **Record / Stop** (top-right) — Round red button when idle; turns square while recording or during the countdown. The configured duration limit (e.g. `00:10`, or `∞` for indefinite) is shown to the right of the button at all times; elapsed time appears on the left in a larger font while recording. Shortcut: **Ctrl+Space**.
 
@@ -33,41 +46,34 @@ The interface has three areas:
 
 ### Gear Button
 
-Opens and closes the settings panel. When collapsed, a floating gear button remains visible in the top-left corner of the screen, beside the Clear Screen button.
-
-### Calibration
-
-**Body weight (kg)** — Patient reference weight for cursor normalization and CSV recordings. Defaults to 70 kg when not set. Valid range: 1–150 kg.
-
-**Auto** — Runs step-off / step-on calibration to measure body weight on the board. Updates the body weight field when complete.
-
-**Board reference (kg)** — Known mass (10–150 kg) placed on the board for hardware scale calibration. Use a certified weight (e.g. kettlebell, weight plates).
-
-**Cal scale** — Tares the board, prompts you to place the reference mass, then computes and saves the HID raw-to-kg scale factor for this board. The current scale factor is shown below these controls.
-
-### Session
-
-**Restart Session** — Reconnects and re-tares the board. Use when a new patient is assessed or if the board loses connection.
+Opens and closes the settings panel. When collapsed, the floating gear button in the top-left corner reopens it.
 
 ### Recording
 
 **Duration Presets** — Choose from 10 s, 20 s, 30 s, 60 s, or indefinite (∞). The active selection is highlighted.
 
-**Manual Duration** — Type a custom duration in seconds. Enter `0` to record indefinitely until you press Stop.
+**Manual Duration** — Type a custom duration in seconds (up to 3600). Enter `0` to record indefinitely until you press Stop.
 
-**Start Recording / Stop Recording** — Starts a 3-second countdown then begins capturing. The button label changes to reflect the current state. Click again to stop early.
+**Start Recording / Stop Recording** — Starts a 3-second countdown then begins capturing. The button label toggles to **Stop Recording** while active. Click again to stop early.
 
-**Save Location** — Shows the folder where recordings are saved. Use **Choose Folder…** to change it. The app remembers your choice between sessions.
+**Save Location** — Shows the folder where recordings are saved (default: `Documents/WIIBBLE/recordings` under your home folder). Click the path to open it in your file manager, or use **Choose Folder…** to change it. The app remembers your choice between sessions.
+
+**Prefix** — Optional filename prefix for CSV recordings, metrics JSON, and HTML reports (max 40 characters; letters, digits, underscores, and hyphens). Leave blank for the default `recording`. Example: `SPI001_SitStand` → `SPI001_SitStand_261101174543.csv`, `features_SPI001_SitStand_261101174543.json`, `report_SPI001_SitStand_261101174543.html`.
+
+**Session report**
+
+- **generate report after recording** (default on) — Builds an interactive HTML report when a recording ends.
+- **Open in browser** (default on) — Opens the report in your default web browser when ready. Disabled when auto-report is off.
+- A progress indicator appears while the report is being generated.
+- **View last report** — Reopens the most recent report during the session.
 
 ### Cursor & Movement
 
-**Switch to Avatar / Switch to Circle** — Toggles the cursor between a person icon and a filled circle. You can also click the on-screen cursor directly to toggle.
-
-**Cursor Size** — Adjusts the circle cursor radius. You can also drag the cursor on-screen to resize it.
+**Cursor Size** — Adjusts the circle cursor radius (1–50 px). You can also drag the cursor on-screen to resize it.
 
 **Sway Trail** — Controls how much movement history is visible: **None**, **Medium**, or **Long**.
 
-**Smoothing Filter** — Number of frames averaged to smooth the cursor. Lower = more responsive; higher = smoother. This affects display only — recordings always save raw unfiltered data.
+**Smoothing Filter** — Number of frames averaged to smooth the cursor (1–20; 1 = no smoothing). Lower = more responsive; higher = smoother. This affects display only — recordings always save raw unfiltered data.
 
 ### Visualisation
 
@@ -75,11 +81,32 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 **Fit View to Bounding Box** — Automatically zooms and pans to fit all recorded movement on screen.
 
-**Show Bounding Box** — Toggles the movement extent overlay on the canvas.
+**Show bounding box** — Toggles the movement extent overlay on the canvas.
 
-**Show Global Axes** — Toggles solid crosshairs at the screen centre (neutral stance reference).
+**Show global axes** — Toggles solid crosshairs at the screen centre (neutral stance reference).
 
-**Show Local Axes** — Toggles dotted crosshairs centred on the sway bounding box, bounded to the box edges.
+**Show local axes** — Toggles dotted crosshairs centred on the sway bounding box, bounded to the box edges.
+
+**Targets**
+
+- **Dwell time (s)** — How long the cursor must stay inside a target before the hit counter increases (0–5 s in 0.1 s steps; 0 = instant).
+- **Show hit counter** — Toggles the large centred number at the top of the canvas.
+- **Reset hit counter** — Sets the counter back to zero.
+
+**Flip axis**
+
+- **Flip Vertical** — Inverts forward-back mapping on screen and in recordings.
+- **Flip Horizontal** — Inverts left-right mapping on screen and in recordings.
+
+### Calibration
+
+**Body weight (kg)** — Patient reference weight for cursor normalization and CSV recordings. Defaults to 70 kg when not set. Valid range: 1–150 kg.
+
+**Auto** — Runs step-off / step-on calibration to measure body weight on the board. Updates the body weight field when complete.
+
+**Board reference (kg)** — Known mass (10–150 kg) placed on the board for hardware scale calibration. Use a certified weight (e.g. kettlebell, weight plates). Default: 20 kg.
+
+**Cal scale** — Tares the board, prompts you to place the reference mass, then computes and saves the HID raw-to-kg scale factor for this board.
 
 ---
 
@@ -90,10 +117,12 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 | Action | Effect |
 |---|---|
 | Left-click cursor | Begin resizing cursor (drag to resize) |
-| Left-click canvas (not cursor) | Start placing a new target; drag to set radius |
-| Hold R + left-click drag | Place a rectangular target |
-| Release | Finalise cursor size or new target |
+| Left-click canvas (not cursor) | Start placing a new circular target; drag to set radius |
+| Hold R + left-click drag | Place a rectangular target (click without dragging creates a default square sized to the cursor) |
+| Left-click existing target | Begin moving it (drag to reposition) |
+| Release | Finalise cursor size, new target, or target move |
 | Right-click a target | Remove that target |
+| Left-click canvas (settings panel open) | Collapse the settings panel |
 | Ctrl + Left-click drag | Pan the canvas |
 | Ctrl + Mouse Wheel | Zoom in/out around the pointer |
 
@@ -105,13 +134,17 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 | Ctrl+Shift+C | Main session | Clear Screen (remove targets and sway trail) |
 | Ctrl+Space | Main session | Start / Stop Recording |
 
+Shortcuts are disabled while typing in a settings text field.
+
 ---
 
 ## Canvas Elements
 
-**Cursor** — Represents the patient's current centre of pressure. Circle or avatar mode.
+**Cursor** — Filled circle representing the patient's current centre of pressure.
 
-**Targets** — Created by left-clicking and dragging. Targets remain fixed to the movement space and scale with zoom. Right-click to remove.
+**Targets** — Circular or rectangular regions created on the canvas. Remain fixed to the movement space and scale with zoom. Drag to reposition; right-click to remove.
+
+**Hit Counter** — Large number at the top of the canvas (when enabled). Increments when the cursor dwells inside a target for the configured dwell time.
 
 **Sway Trail** — Fading history of recent movement.
 
@@ -129,9 +162,9 @@ Opens and closes the settings panel. When collapsed, a floating gear button rema
 
 ## Recording Data
 
-Starting a recording triggers a 3-second countdown, then captures data until the set duration elapses or you press Stop. The default recording duration is **30 seconds** (configurable in the settings panel). Recordings are saved as CSV files to the selected folder:
+Starting a recording triggers a 3-second countdown, then captures data until the set duration elapses or you press Stop. The default recording duration is **30 seconds** (configurable in the settings panel). Recordings are saved as CSV files to the selected folder.
 
-**Session report (installed build):** When **generate report after recording** is enabled in settings (default on), WIIBBLE generates an interactive HTML report automatically when a recording ends and opens it in your web browser. This usually takes a few seconds. Recordings of at least **20 seconds** include the full posturographic feature table; shorter recordings still show sway charts.
+When **generate report after recording** is enabled (default on), WIIBBLE generates an interactive HTML report automatically when a recording ends and opens it in your web browser (if **Open in browser** is enabled). This usually takes a few seconds; progress is shown in the settings panel. Recordings of at least **20 seconds** include the full posturographic feature table; shorter recordings still show sway charts.
 
 Use **View last report** in settings to reopen the most recent report during the session.
 
@@ -139,6 +172,8 @@ Use **View last report** in settings to reopen the most recent report during the
 ```
 # total_weight_kg=71.2000
 # ui_filter_window=5
+# flip_horizontal=false
+# flip_vertical=false
 time (s),x (kg),y (kg)
 0.000,0.123,-0.045
 ...
@@ -148,7 +183,7 @@ time (s),x (kg),y (kg)
 - `x (kg)` — left-right force deviation (raw, unfiltered)
 - `y (kg)` — front-back force deviation (raw, unfiltered)
 
-The comment lines at the top record the patient body weight and display smoothing level for traceability.
+The comment lines at the top record the patient body weight, display smoothing level, and axis-flip settings for traceability.
 
 ---
 
@@ -198,11 +233,12 @@ The settings panel (gear button) is available as soon as the main canvas appears
 
 ## Tips
 
-- Collapse the settings panel to maximise canvas space; the floating gear button re-opens it.
-- Use `Ctrl + Mouse Wheel` to zoom into a specific area of the canvas.
-- The app saves your preferences between sessions — zoom, save location, trail length, and cursor mode all persist.
+- Collapse the settings panel to maximise canvas space; click the canvas or the gear button to toggle it.
+- Use **Fit View** or `Ctrl + Mouse Wheel` to focus on a specific area of movement.
+- The app saves your preferences between sessions — zoom, save location, recording prefix, trail length, axis flips, target dwell time, and report options all persist.
 - If the cursor feels jittery, increase the **Smoothing Filter** slider.
-- If the gear icon is missing, check that `assets/fonts/fa-solid-900.ttf` is present.
+- If icons appear as boxes, check that `assets/fonts/fa-solid-900.ttf` is present.
+- For a new patient, update body weight and use **Clear Screen**; quit and relaunch the app if you need to reconnect the board.
 
 ---
 
@@ -210,13 +246,14 @@ The settings panel (gear button) is available as soon as the main canvas appears
 
 | Symptom | Solution |
 |---|---|
-| Board does not connect | Ensure Bluetooth is on, board is paired, and the LED is blinking blue. Check battery level. |
+| Board does not connect | Ensure Bluetooth is on, board is paired, and the LED is blinking blue. Check battery level. Press **Enter** on the connection screen to retry. |
 | DLL loading error | Make sure `WiiBalanceBoardLibrary.dll` is built. See [setup.md](../dev/setup.md). |
 | Black screen / no canvas | Restart the app. Update graphics drivers if persistent. |
 | Cursor very jittery | Increase the Smoothing Filter slider. |
 | Gear icon missing | Check `assets/fonts/fa-solid-900.ttf` is present. |
 | Settings lost | Delete `%APPDATA%\WIIBBLE\settings.json` (Windows) or `~/.wiibble/settings.json` (Linux/macOS) to reset to defaults. |
 | Library error on startup | Run `uv sync` — see [setup.md](../dev/setup.md). |
+| Report not generated | Ensure **generate report after recording** is enabled. Installed builds include the session-report companion; dev installs need `uv sync --extra analysis`. |
 
 For developer and build issues see [setup.md](../dev/setup.md).
 
@@ -225,7 +262,7 @@ For developer and build issues see [setup.md](../dev/setup.md).
 ## Command-Line Options
 
 ```
-WIIBBLE.exe [--mock] [--mock-scenario <scenario>]
+wiibble [--mock] [--mock-scenario <scenario>]
 ```
 
 | Flag | Description |

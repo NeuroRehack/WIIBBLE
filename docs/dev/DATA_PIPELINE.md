@@ -4,6 +4,7 @@ This document is the canonical reference for the full data processing pipeline �
 
 For user-facing analysis commands, see [User Manual — Posturographic Analysis](../user/manual.md#posturographic-analysis--reports).
 For developer setup (installing analysis extras, running scripts), see [setup.md — Posturographic Analysis and Reporting](setup.md#5-posturographic-analysis-and-reporting).
+For an interactive walkthrough of this pipeline, open [pipeline_explainer.html](pipeline_explainer.html) in a browser.
 
 ---
 
@@ -93,7 +94,7 @@ After parsing, the pipeline splits into two independent paths.
 
 ## 5. Buffering for Recording
 
-- **Location:** `_update_recording_frame()` in `wiibble/app.py`
+- **Location:** `_update_recording_frame()` in `wiibble/session.py`
 - Each frame during recording, appends `(timestamp, x_kg, y_kg)` to `app_state.record_buffer` using raw corners.
 - Timestamp is relative to recording start.
 
@@ -109,11 +110,13 @@ After parsing, the pipeline splits into two independent paths.
   ```
   # total_weight_kg=71.2000
   # ui_filter_window=5
+  # flip_horizontal=false
+  # flip_vertical=false
   time (s),x (kg),y (kg)
   0.000,0.123,-0.045
   ...
   ```
-  - Comment lines provide provenance for later analysis.
+  - Comment lines provide provenance for later analysis (body weight, display smoothing, axis-flip settings).
   - Data rows are always raw, unfiltered values.
 
 ---

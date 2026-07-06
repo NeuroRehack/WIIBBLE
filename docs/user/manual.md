@@ -278,4 +278,6 @@ These flags work with both `python -m wiibble` (`wiibble`) and the compiled `WII
 
 When **generate report after recording** is enabled (default), WIIBBLE generates an HTML report automatically at the end of each recording and opens it in your browser for review with the patient.
 
+Each figure in the report (sway path, time series, velocity, PSD, diffusion plot, spatial density, feature table) is described in [Visualisation References](../dev/VISUALISATION_REFERENCES.md) with literature citations — useful when interpreting metrics with patients or in research write-ups.
+
 For batch analysis of older recordings, or custom report paths, administrators can use the offline tools documented in [Developer Setup](../dev/setup.md#5-posturographic-analysis-and-reporting).

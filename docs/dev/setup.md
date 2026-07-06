@@ -246,10 +246,18 @@ GitHub Actions: `.github/workflows/ci.yml`
 |---|---|
 | `lint` | `ruff check .` and `ruff format --check .` |
 | `test` | `pytest -v` with ≥ 80% coverage gate (runs after lint passes) |
+| `dotnet` | `dotnet build` for `WiiBalanceBoardLibrary` |
+| `security` | `pip-audit` dependency scan (ubuntu-latest) |
 
-Both jobs run on `windows-latest`.
+Lint, test, and dotnet jobs run on `windows-latest`.
 
-Pending CI additions: `dotnet build` job, Nuitka executable artifact, see [TODO.md](TODO.md).
+Pending CI addition: Nuitka executable artifact on every push (use the manual [Build (develop)](../../.github/workflows/build-develop.yml) workflow for QA builds). See [TODO.md](TODO.md).
+
+---
+
+## Docker / DevContainer
+
+WIIBBLE is a **Windows-native desktop application** (DearPyGui viewport, Bluetooth HID, C# DLL handshake). Docker and DevContainers are not used — there is no containerised development or deployment path. On Linux, use mock mode for UI and pipeline development; see [Linux development (mock mode)](#linux-development-mock-mode).
 
 ---
 
@@ -409,15 +417,19 @@ WIIBBLE/
 ├── src/
 │   └── wiibble/
 │       ├── __main__.py            # App entry point (`python -m wiibble` / `wiibble` CLI)
-│       ├── app.py                 # Session lifecycle, main loop
-│       ├── analysis/              # CoP feature extraction, calibration
+│       ├── app.py                 # Thin re-export of session.run (backward compatibility)
+│       ├── session.py             # Session lifecycle, main loop, recording, report launch
+│       ├── session_actions.py     # Settings/recording mutations from UI callbacks
+│       ├── session_report/        # Companion launcher, runner, progress polling
+│       ├── analysis/              # CoP feature extraction (offline + companion)
 │       ├── board/                 # Board connection, mock board, CSV recording
 │       ├── features/              # Sensor data processing pipeline
 │       ├── ui/                    # Rendering, theme, input handlers
 │       ├── cli/
 │       │   ├── process_recordings.py  # `wiibble-process-recordings` entrypoint
 │       │   ├── recordings_dir.py      # shared recordings-folder helper for CLIs
-│       │   └── report.py              # `wiibble-report` entrypoint
+│       │   ├── report.py              # `wiibble-report` entrypoint
+│       │   └── session_report.py      # `wiibble-session-report` entrypoint
 │       └── utils/                 # Constants, state, resources
 ├── WiiBalanceBoardLibrary/      # C# project (build to produce DLL)
 ├── tests/                       # pytest test suite
@@ -426,11 +438,16 @@ WIIBBLE/
 │   │   ├── setup.md             # this file
 │   │   ├── architecture.md
 │   │   ├── DATA_PIPELINE.md
+│   │   ├── pipeline_explainer.html
 │   │   ├── VISUALISATION_REFERENCES.md
 │   │   ├── TODO.md
 │   │   └── decisions/
-│   │       └── 001-migrate-to-pyqt6.md
+│   │       ├── 001-migrate-to-pyqt6.md
+│   │       ├── 002-csharp-dll-bluetooth-bridge.md
+│   │       ├── 003-session-report-companion.md
+│   │       └── 004-dearpygui-realtime-ui.md
 │   └── user/
+│       ├── README.md
 │       └── manual.md
 ├── justfile
 ├── CHANGELOG.md

@@ -36,6 +36,7 @@ Built as part of the **EPIC-Tech study** at The University of Queensland / Griff
 - Sensitivity calibration, tare, and per-board scale calibration
 - Session recording to CSV (raw, unfiltered) with optional filename prefix
 - In-app HTML session report via companion process (Plotly; auto-generated when enabled)
+- Optional **THRIVE hub export** — live MQTT sensor node for rehabilitation games ([setup](docs/dev/THRIVE_BRIDGE.md))
 - Offline posturographic analysis: ~80–90 features (ellipse area, velocity, PSD, fractal dimension, SDA…)
 - Bluetooth connection via standard Windows pairing
 - Single `.exe` for clinical machines, no Python required
@@ -60,6 +61,7 @@ For full usage instructions see the [User Manual](docs/user/manual.md).
 | [Developer Setup](docs/dev/setup.md) | Developers | Bootstrap, test, build, packaging |
 | [Architecture](docs/dev/architecture.md) | Developers | Layers, data flows, design decisions |
 | [Data Pipeline](docs/dev/DATA_PIPELINE.md) | Developers | Sensor → CSV → features → report |
+| [THRIVE bridge](docs/dev/THRIVE_BRIDGE.md) | Developers / IT | Live MQTT export to THRIVE hub |
 | [Visualisation References](docs/dev/VISUALISATION_REFERENCES.md) | Developers | Literature basis for report figures |
 | [Changelog](CHANGELOG.md) | All | Version history |
 | [Contributing](CONTRIBUTING.md) | Developers | Branching, style, PR process |

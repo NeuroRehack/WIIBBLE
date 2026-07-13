@@ -47,6 +47,7 @@ _SETTING_LABELS: dict[str, str] = {
     "show_target_counter": "Show target hit counter",
     "auto_report_after_recording": "Auto-report after recording",
     "open_report_in_browser": "Open report in browser",
+    "thrive_enabled": "THRIVE hub export",
 }
 
 
@@ -253,3 +254,25 @@ def request_calibrate_board(session_state: dict) -> None:
 def request_calibrate_scale(session_state: dict) -> None:
     """Queue board scale-factor calibration in the main loop."""
     session_state["action"] = "calibrate_scale"
+
+
+def apply_thrive_broker_host(settings: Settings, value: str) -> str:
+    """Persist THRIVE MQTT broker hostname."""
+    host = (value or "").strip() or "localhost"
+    if settings.thrive_broker_host == host:
+        return host
+    settings.thrive_broker_host = host
+    log.info("THRIVE broker host set to %s", host)
+    settings.save()
+    return host
+
+
+def apply_thrive_hub_id(settings: Settings, value: str) -> str:
+    """Persist THRIVE hub ID (MQTT topic segment)."""
+    hub_id = (value or "").strip() or "demo"
+    if settings.thrive_hub_id == hub_id:
+        return hub_id
+    settings.thrive_hub_id = hub_id
+    log.info("THRIVE hub ID set to %s", hub_id)
+    settings.save()
+    return hub_id

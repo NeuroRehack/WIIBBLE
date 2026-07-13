@@ -75,6 +75,13 @@ class TestSettingsDefaults:
     def test_show_target_counter_default(self):
         assert Settings().show_target_counter is True
 
+    def test_thrive_defaults(self):
+        s = Settings()
+        assert s.thrive_enabled is False
+        assert s.thrive_broker_host == "localhost"
+        assert s.thrive_hub_id == "demo"
+        assert s.thrive_node_id == "wiibble_01"
+
 
 # ---------------------------------------------------------------------------
 # Settings — load with no file

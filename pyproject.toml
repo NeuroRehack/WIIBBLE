@@ -17,6 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+thrive = ["paho-mqtt>=2.0"]
 analysis = [
     "scipy>=1.13,<2",
     "plotly>=5.0",
@@ -37,6 +38,7 @@ wiibble = "wiibble.__main__:app"
 wiibble-report = "wiibble.cli.report:app"
 wiibble-process-recordings = "wiibble.cli.process_recordings:app"
 wiibble-session-report = "wiibble.cli.session_report:cli"
+wiibble-thrive = "wiibble.thrive.__main__:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -75,6 +77,8 @@ addopts = [
     "--cov=wiibble.utils.recording_names",
     "--cov=wiibble.board.acquisition",
     "--cov=wiibble.board.exceptions",
+    "--cov=wiibble.thrive.transform",
+    "--cov=wiibble.thrive.announce",
     "--cov-report=term-missing",
     "--cov-fail-under=80",
 ]

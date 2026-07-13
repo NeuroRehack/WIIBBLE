@@ -27,6 +27,8 @@ from wiibble.session_actions import (
     apply_recording_prefix,
     apply_setting_bool,
     apply_target_dwell_seconds,
+    apply_thrive_broker_host,
+    apply_thrive_hub_id,
     apply_trail_length,
     apply_zoom_slider,
     request_calibrate_board,
@@ -1478,6 +1480,63 @@ def _build_recording_controls(app_state, settings) -> None:
         dpg.add_text("Re-open the most recent session report in your browser.")
 
 
+def _build_thrive_controls(settings) -> None:
+    """Add THRIVE hub MQTT export settings."""
+    dpg.add_spacer(height=8)
+    dpg.add_text("THRIVE export")
+    dpg.add_checkbox(
+        tag="thrive_enabled_cb",
+        label="Export to THRIVE hub",
+        default_value=settings.thrive_enabled,
+        callback=lambda s, v: _on_thrive_enabled_change(v, settings),
+    )
+    with dpg.tooltip(parent="thrive_enabled_cb"):
+        dpg.add_text(
+            "Publish live balance-board data to a THRIVE rehabilitation hub\n"
+            "over MQTT while WIIBBLE is running.\n"
+            "Requires the THRIVE companion process and network access\n"
+            "to the hub PC (port 1883)."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_text("Broker host")
+    dpg.add_input_text(
+        tag="thrive_broker_host_input",
+        default_value=settings.thrive_broker_host,
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_thrive_broker_host_change(v, settings),
+    )
+    with dpg.tooltip(parent="thrive_broker_host_input"):
+        dpg.add_text(
+            "LAN IP address of the THRIVE PC running Mosquitto.\n"
+            "Use localhost only when the hub is on this machine."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_text("Hub ID")
+    dpg.add_input_text(
+        tag="thrive_hub_id_input",
+        default_value=settings.thrive_hub_id,
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_thrive_hub_id_change(v, settings),
+    )
+    with dpg.tooltip(parent="thrive_hub_id_input"):
+        dpg.add_text(
+            "Must match HUB_ID in the THRIVE .env file (default: demo).\n"
+            "MQTT topics use thrive/{hub_id}/nodes/wiibble_01/..."
+        )
+
+
+def _on_thrive_enabled_change(value: bool, settings) -> None:
+    apply_setting_bool(settings, "thrive_enabled", value)
+
+
+def _on_thrive_broker_host_change(value: str, settings) -> None:
+    apply_thrive_broker_host(settings, value)
+
+
+def _on_thrive_hub_id_change(value: str, settings) -> None:
+    apply_thrive_hub_id(settings, value)
+
+
 def _build_cursor_controls(app_state, settings) -> None:
     """Add cursor size, trail, and smoothing filter to the panel."""
     dpg.add_text("Cursor size")
@@ -1667,6 +1726,7 @@ def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
     _build_section_header("RECORDING", accent_color=_theme_module.C_ACCENT_RECORDING)
     _build_recording_controls(app_state, settings)
+    _build_thrive_controls(settings)
 
     _build_section_header(
         "CURSOR & MOVEMENT", accent_color=_theme_module.C_ACCENT_CURSOR

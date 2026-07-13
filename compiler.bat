@@ -37,6 +37,7 @@ python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --nofollow-import-to=wiibble.cli.process_recordings ^
     --nofollow-import-to=wiibble.cli.session_report ^
     --nofollow-import-to=wiibble.session_report.runner ^
+    --nofollow-import-to=wiibble.thrive ^
     --nofollow-import-to=code_descriptors_postural_control ^
     --nofollow-import-to=scipy ^
     --nofollow-import-to=pandas ^
@@ -60,6 +61,12 @@ echo [compiler] Build complete. Output: dist_nuitka\wiibble.dist\WIIBBLE.exe
 call compiler_session_report.bat
 if errorlevel 1 (
     echo [compiler] SESSION REPORT COMPANION BUILD FAILED.
+    exit /b 1
+)
+
+call compiler_thrive_companion.bat
+if errorlevel 1 (
+    echo [compiler] THRIVE COMPANION BUILD FAILED.
     exit /b 1
 )
 

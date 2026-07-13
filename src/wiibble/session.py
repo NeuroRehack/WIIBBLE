@@ -33,6 +33,7 @@ from wiibble.session_report.progress import (
     read_report_progress,
     remove_report_progress_file,
 )
+from wiibble.thrive.hook import get_thrive_hook, reset_thrive_hook
 from wiibble.ui.calibration_flow import (
     run_board_scale_calibration,
     run_board_weight_calibration,
@@ -598,6 +599,24 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
             _restore_ui_after_calibration(session_state, was_toolbar_visible)
         _clear_session_action(session_state)
         return None
+    if action == "tare":
+        log.info("Tare requested (THRIVE hub or remote command)")
+        was_toolbar_visible = _collapse_ui_for_calibration(session_state)
+        _pause_acquisition(session_state)
+        try:
+            with contextlib.suppress(Exception):
+                device.set_nonblocking(0)
+            tare(device, app_state.data_struct)
+            log.info("Board tare completed")
+        except Exception:
+            log.exception("Tare failed")
+        finally:
+            with contextlib.suppress(Exception):
+                device.set_nonblocking(1)
+            _resume_acquisition(session_state)
+            _restore_ui_after_calibration(session_state, was_toolbar_visible)
+        _clear_session_action(session_state)
+        return None
     if action == "toolbar_toggled":
         _clear_session_action(session_state)
         return None
@@ -682,6 +701,8 @@ def _render_main_screen_frame(
             return top_left, top_right, bottom_left, bottom_right
     else:
         session_state["last_frame"] = frame_state
+        if settings.thrive_enabled:
+            get_thrive_hook(settings).publish_frame(frame_state, settings)
 
     dpg.delete_item(dl, children_only=True)
     draw_main_screen(
@@ -983,6 +1004,8 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     # even if the first data frame hasn't arrived yet.
     top_left = top_right = bottom_left = bottom_right = 0.0
     diagnostics = _LoopDiagnostics()
+    thrive_hook = get_thrive_hook(settings)
+    thrive_hook.start()
 
     try:
         while dpg.is_dearpygui_running():
@@ -1000,6 +1023,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
             )
             _flush_record_buffer_if_complete(app_state, settings)
             _poll_report_job(app_state, settings)
+            thrive_hook.poll_commands(session_state, settings)
 
             action = session_state.get("action")
             result = _handle_session_action(
@@ -1031,6 +1055,8 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
                 time.sleep(_TARGET_FRAME_S - elapsed)
             _last_frame_time = time.perf_counter()
     finally:
+        thrive_hook.stop()
+        reset_thrive_hook()
         acquisition.stop()
         session_state.pop("acquisition", None)
 

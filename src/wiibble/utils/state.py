@@ -62,6 +62,10 @@ class Settings:
     board_cal_reference_kg: float = 20.0  # known mass used for board scale calibration
     auto_report_after_recording: bool = True  # HTML report when recording ends
     open_report_in_browser: bool = True  # open report in browser after generation
+    thrive_enabled: bool = False  # publish live data to THRIVE hub via MQTT
+    thrive_broker_host: str = "localhost"  # THRIVE PC LAN IP (Mosquitto)
+    thrive_hub_id: str = "demo"  # must match THRIVE .env HUB_ID
+    thrive_node_id: str = "wiibble_01"  # MQTT node id (distinct from simulator)
 
     def save(self) -> None:
         """Persist current settings to disk."""

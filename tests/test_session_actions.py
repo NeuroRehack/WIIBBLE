@@ -8,6 +8,8 @@ from wiibble.session_actions import (
     apply_recording_dir,
     apply_recording_prefix,
     apply_setting_bool,
+    apply_thrive_broker_host,
+    apply_thrive_hub_id,
     apply_trail_length,
     apply_zoom_slider,
     request_calibrate_board,
@@ -168,3 +170,29 @@ def test_request_calibrate_scale_queues_action():
     request_calibrate_scale(session_state)
 
     assert session_state["action"] == "calibrate_scale"
+
+
+def test_apply_thrive_broker_host_strips_and_sets():
+    settings = Settings()
+
+    host = apply_thrive_broker_host(settings, " 192.168.1.50 ")
+
+    assert host == "192.168.1.50"
+    assert settings.thrive_broker_host == "192.168.1.50"
+
+
+def test_apply_thrive_hub_id_strips_and_sets():
+    settings = Settings()
+
+    hub = apply_thrive_hub_id(settings, " clinic_a ")
+
+    assert hub == "clinic_a"
+    assert settings.thrive_hub_id == "clinic_a"
+
+
+def test_apply_thrive_enabled_bool():
+    settings = Settings()
+
+    apply_setting_bool(settings, "thrive_enabled", True)
+
+    assert settings.thrive_enabled is True

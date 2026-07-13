@@ -6,31 +6,28 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
-
-### Planned
-- Move C# interop into dedicated `hardware_interface.py`
-- Add `utils.py` for shared helpers
-- Organise assets into `assets/fonts/`, `assets/images/` subfolders
-- CI: Nuitka executable artifact on every push (manual [Build (develop)](.github/workflows/build-develop.yml) workflow available for QA)
-
----
-
 ## [2.1.0] — 2026-07-06
 
 ### Added
 - In-app session report via `WIIBBLE-SessionReport.exe` companion when **generate report after recording** is enabled (default)
 - `wiibble-session-report` CLI and `session_report/` package (launcher, runner, progress polling)
+- Session report progress indicators in the settings panel during post-recording analysis
+- **Open in browser** and **View last report** settings for session reports
+- `compiler_session_report.bat` Nuitka build for the session report companion executable
 - Rectangular target placement (hold **R** + drag) and target repositioning
-- Target hit counter with configurable dwell time (0–5 s)
+- Target hit counter with configurable dwell time (0.0–5.0 s, 0.1 s steps)
 - Quick-access canvas buttons: gear, clear screen, fit view, reset counter, record/stop
 - Global and local axes display options in settings
 - Axis flip (horizontal / vertical) for display and CSV recordings
 - Manual body weight field and on-demand **Auto** / **Cal scale** board calibration in settings
 - Recording filename prefix (shared across CSV, features JSON, and HTML report)
+- Click **Save Location** in settings to open the recordings folder in the system file manager
 - Background sensor acquisition thread (`SensorAcquisition`) with latest-frame slot
 - Typer-based CLIs (`wiibble`, `wiibble-process-recordings`, `wiibble-report`, `wiibble-session-report`)
 - `session_actions.py` for UI-triggered settings mutations
+- Updated application icon and branding (`logoPerson` assets)
+- Regression tests for the offline posturographic analysis pipeline
+- Architecture decision records: C# DLL bridge, session report companion, Dear PyGui UI
 - CI: `dotnet build` job for C# board library; `pip-audit` security job
 - Linux mock-mode development documented in setup guide
 
@@ -39,7 +36,11 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Settings panel collapsible toggle; session restart button removed from UI
 - CSV metadata extended with `flip_horizontal`, `flip_vertical`, and optional recording prefix in filenames
 - Offline CLIs use configured `recording_dir` from settings; batch `--new` / `--all` modes for reports
-- Documentation restructured under `docs/dev/` and `docs/user/` per project standards
+- Analysis dependencies slimmed down (statsmodels/sklearn replaced with numpy) under optional `analysis` extra
+- Session report companion build integrated into main `compiler.bat` workflow
+- `VISUALISATION_REFERENCES.md` expanded as a clinician/researcher interpretation guide
+- Documentation restructured under `docs/dev/` and `docs/user/` per project standards; legacy `Docs/` folder and outdated Copilot prompt files removed
+- CI: Windows develop build job timeout increased to 120 minutes
 - Version bumped to 2.1.0
 
 ### Fixed

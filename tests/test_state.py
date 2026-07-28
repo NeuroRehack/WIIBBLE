@@ -47,6 +47,9 @@ class TestSettingsDefaults:
     def test_cursor_size_default(self):
         assert Settings().cursor_size == 20
 
+    def test_cursor_mode_default(self):
+        assert Settings().cursor_mode == "circle"
+
     def test_body_weight_kg_default(self):
         assert Settings().body_weight_kg == 70.0
 
@@ -95,6 +98,7 @@ class TestSettingsLoadNoFile:
         assert s.trail_length == 100
         assert s.zoom_factor == 1.0
         assert s.cursor_size == 20
+        assert s.cursor_mode == "circle"
 
     def test_load_with_no_file_does_not_raise(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -114,6 +118,7 @@ class TestSettingsRoundTrip:
             zoom_factor=2.5,
             filter_window=10,
             record_duration=30,
+            cursor_mode="avatar",
             cursor_size=25,
             body_weight_kg=82.5,
             scale_factor=2.8,
@@ -135,6 +140,7 @@ class TestSettingsRoundTrip:
         assert loaded.zoom_factor == 2.5
         assert loaded.filter_window == 10
         assert loaded.record_duration == 30
+        assert loaded.cursor_mode == "avatar"
         assert loaded.cursor_size == 25
         assert loaded.body_weight_kg == 82.5
         assert loaded.scale_factor == 2.8
@@ -214,6 +220,7 @@ class TestSettingsLoadFallback:
         assert loaded.trail_length == 25
         # All other fields fall back to default
         assert loaded.zoom_factor == 1.0
+        assert loaded.cursor_mode == "circle"
         assert loaded.cursor_size == 20
         assert loaded.body_weight_kg == 70.0
         from wiibble.utils.constants import SCALE_FACTOR_DEFAULT
@@ -242,6 +249,42 @@ class TestSettingsLoadFallback:
         loaded = Settings.load()
         assert loaded.trail_length == 77
         assert not hasattr(loaded, "unknown_future_key")
+
+    def test_invalid_cursor_mode_falls_back_to_circle(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        path = env_settings_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            json.dump({"cursor_mode": "invalid"}, f)
+
+        loaded = Settings.load()
+        assert loaded.cursor_mode == "circle"
+
+
+# ---------------------------------------------------------------------------
+# Settings — toggle_cursor_mode
+# ---------------------------------------------------------------------------
+
+
+class TestToggleCursorMode:
+    def test_circle_toggles_to_avatar(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        s = Settings(cursor_mode="circle")
+        s.toggle_cursor_mode()
+        assert s.cursor_mode == "avatar"
+
+    def test_avatar_toggles_to_circle(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        s = Settings(cursor_mode="avatar")
+        s.toggle_cursor_mode()
+        assert s.cursor_mode == "circle"
+
+    def test_toggle_twice_returns_to_original(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        s = Settings(cursor_mode="circle")
+        s.toggle_cursor_mode()
+        s.toggle_cursor_mode()
+        assert s.cursor_mode == "circle"
 
 
 # ---------------------------------------------------------------------------

@@ -284,7 +284,7 @@ def _handle_canvas_click(
 
 
 def _handle_cursor_drag(app_state, settings) -> None:
-    """Resize the circle cursor while the mouse is dragged from the cursor position."""
+    """Resize the cursor while the mouse is dragged from the cursor position."""
     if not getattr(app_state, "cursor_drag_in_progress", False):
         return
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)

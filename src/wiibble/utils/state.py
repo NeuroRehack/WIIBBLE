@@ -72,7 +72,8 @@ class Settings:
     zoom_factor: float = 1.0  # S3: display scale multiplier
     filter_window: int = 1  # S4: moving average window (1 = no smoothing)
     record_duration: int = 30  # S5: CSV recording duration in seconds (0 = indefinite)
-    cursor_size: int = 20  # S1: circle cursor radius in pixels
+    cursor_mode: str = "circle"  # S1: "avatar" | "circle"
+    cursor_size: int = 20  # S1: circle radius / avatar half-height in pixels
     show_bbox: bool = True  # whether to show the bounding box on canvas
     show_global_axes: bool = True  # solid crosshairs at screen centre
     show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre
@@ -125,6 +126,11 @@ class Settings:
         for corner_key, field_name in _TARE_CORNER_FIELDS:
             setattr(self, field_name, float(data_struct[corner_key]["tare"]))
         self.tare_saved_at = datetime.now(UTC).isoformat()
+        self.save()
+
+    def toggle_cursor_mode(self) -> None:
+        """Switch between avatar and circle cursor display modes."""
+        self.cursor_mode = "circle" if self.cursor_mode == "avatar" else "avatar"
         self.save()
 
     def save(self) -> None:
@@ -191,6 +197,8 @@ class Settings:
             loaded.recording_prefix = normalize_recording_prefix(raw_prefix)
             if loaded.recording_prefix != raw_prefix:
                 loaded.save()
+            if loaded.cursor_mode not in ("avatar", "circle"):
+                loaded.cursor_mode = "circle"
             log.info("Settings loaded from %s", path)
             return loaded
         except Exception as e:

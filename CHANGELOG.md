@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Restored avatar cursor option (person silhouette) alongside circle cursor; mode persists in settings
 - Sit-to-stand rep counter with weight-based hysteresis thresholds (% body weight), min stand/sit dwell times, live status in settings, on-screen REPS display, and threshold markers on the stats bar (blue sit, green stand, yellow current weight)
 - Persisted per-corner tare offsets in settings; subsequent launches skip the Step OFF screen when saved tare exists
 - Saved-tare status label in **Settings → Calibration**

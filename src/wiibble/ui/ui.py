@@ -42,6 +42,7 @@ from wiibble.session_actions import (
     apply_zoom_slider,
     request_calibrate_board,
     request_calibrate_scale,
+    toggle_cursor_mode,
     toggle_recording,
 )
 from wiibble.session_report.launcher import open_report_in_browser
@@ -110,7 +111,7 @@ from wiibble.utils.recording_names import (
     report_search_paths,
     resolve_recording_dir,
 )
-from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS
+from wiibble.utils.resources import CONNECTION_PATH, IMAGE_PATHS, PERSON_IMAGE_PATH
 
 log = logging.getLogger(__name__)
 
@@ -237,6 +238,7 @@ def _estimate_text_width(text: str, font_size: int) -> int:
 
 _textures_loaded = False
 _wii_texture_tags = []
+_person_texture_tag = "person_image"
 _connection_texture_tag = "connection_image"
 
 
@@ -254,6 +256,10 @@ def ensure_textures_loaded():
             dpg.add_static_texture(w, h, data, tag=tag)
             _wii_texture_tags.append(tag)
 
+        # Person cursor image
+        w, h, _, data = dpg.load_image(PERSON_IMAGE_PATH)
+        dpg.add_static_texture(w, h, data, tag=_person_texture_tag)
+
         # Connection failed image
         w, h, _, data = dpg.load_image(CONNECTION_PATH)
         dpg.add_static_texture(w, h, data, tag=_connection_texture_tag)
@@ -266,6 +272,21 @@ def get_wii_image_size(index: int) -> tuple:
     return dpg.get_item_configuration(_wii_texture_tags[index])[
         "width"
     ], dpg.get_item_configuration(_wii_texture_tags[index])["height"]
+
+
+def get_person_image_size() -> tuple[int, int]:
+    """Return the width and height of the person cursor texture."""
+    cfg = dpg.get_item_configuration(_person_texture_tag)
+    return cfg["width"], cfg["height"]
+
+
+def _avatar_draw_size(settings, zoom_factor: float) -> tuple[int, int]:
+    """Return (width, height) in screen pixels for the avatar cursor."""
+    scaled_cursor = max(1, int(settings.cursor_size * zoom_factor))
+    scaled_h = 2 * scaled_cursor
+    iw, ih = get_person_image_size()
+    scaled_w = max(1, int(scaled_h * iw / ih))
+    return scaled_w, scaled_h
 
 
 # Cached stats values — stats drawlist only redraws when these change.
@@ -1050,6 +1071,25 @@ def _build_section_header(label: str, accent_color=None) -> None:
     dpg.add_spacer(height=PANEL_SECTION_SPACING)
 
 
+def _cursor_label(settings) -> str:
+    """Return what the cursor toggle button will switch TO (action label)."""
+    return (
+        "Switch to Avatar" if settings.cursor_mode == "circle" else "Switch to Circle"
+    )
+
+
+def update_cursor_toggle_label(settings) -> None:
+    """Update the panel cursor button label to reflect the current mode."""
+    if dpg.does_item_exist("cursor_toggle_btn"):
+        dpg.set_item_label("cursor_toggle_btn", _cursor_label(settings))
+
+
+def _on_cursor_toggle(settings) -> None:
+    """Toggle the cursor display mode and update the panel label."""
+    toggle_cursor_mode(settings)
+    update_cursor_toggle_label(settings)
+
+
 def _on_cursor_size_change(value: int, settings) -> None:
     """Persist a new cursor size selection and update settings."""
     apply_cursor_size(settings, value)
@@ -1738,7 +1778,21 @@ def _on_thrive_hub_id_change(value: str, settings) -> None:
 
 
 def _build_cursor_controls(app_state, settings) -> None:
-    """Add cursor size, trail, and smoothing filter to the panel."""
+    """Add cursor mode toggle, size, trail, and smoothing filter to the panel."""
+    dpg.add_button(
+        tag="cursor_toggle_btn",
+        label=_cursor_label(settings),
+        callback=lambda: _on_cursor_toggle(settings),
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
+    )
+    with dpg.tooltip(parent="cursor_toggle_btn"):
+        dpg.add_text(
+            "Switch between avatar and circle cursor.\n"
+            "Size slider and on-screen drag resize apply to both."
+        )
+    app_state.update_cursor_toggle_label = lambda: update_cursor_toggle_label(settings)
+    dpg.add_spacer(height=8)
     dpg.add_text("Cursor size")
     dpg.add_slider_int(
         tag="cursor_size_slider",
@@ -1751,7 +1805,7 @@ def _build_cursor_controls(app_state, settings) -> None:
     )
     with dpg.tooltip(parent="cursor_size_slider"):
         dpg.add_text(
-            "Adjust the cursor radius.\n"
+            "Adjust the cursor size.\n"
             "You can also drag the cursor on screen to resize."
         )
     dpg.add_spacer(height=8)
@@ -2671,13 +2725,19 @@ def draw_main_screen(
         dpg.draw_circle(coords[i], radius, color=tc, fill=tc, parent=dl)
 
     # Cursor (S1) — ball_x/ball_y in viewport coords
-    dpg.draw_circle(
-        (ball_x, ball_y),
-        scaled_cursor,
-        color=CURSOR_COLOR,
-        fill=CURSOR_COLOR,
-        parent=dl,
-    )
+    if settings.cursor_mode == "avatar":
+        scaled_w, scaled_h = _avatar_draw_size(settings, settings.zoom_factor)
+        p1 = (ball_x - scaled_w // 2, ball_y - scaled_h)
+        p2 = (ball_x + scaled_w // 2, ball_y)
+        dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
+    else:
+        dpg.draw_circle(
+            (ball_x, ball_y),
+            scaled_cursor,
+            color=CURSOR_COLOR,
+            fill=CURSOR_COLOR,
+            parent=dl,
+        )
 
     # Weight bar and stats text are both drawn on stats_dl in app.py
     # so they render above the canvas layer in the correct order.

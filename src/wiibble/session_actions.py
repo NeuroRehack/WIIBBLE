@@ -47,6 +47,7 @@ __all__ = [
     "request_calibrate_scale",
     "start_recording_countdown",
     "stop_recording",
+    "toggle_cursor_mode",
     "toggle_recording",
 ]
 
@@ -99,6 +100,11 @@ def toggle_recording(
         return False
     start_recording_countdown(app_state, settings)
     return True
+
+
+def toggle_cursor_mode(settings: Settings) -> None:
+    """Switch between avatar and circle cursor modes."""
+    settings.toggle_cursor_mode()
 
 
 def apply_cursor_size(

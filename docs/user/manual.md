@@ -69,7 +69,9 @@ Opens and closes the settings panel. When collapsed, the floating gear button in
 
 ### Cursor & Movement
 
-**Cursor Size** — Adjusts the circle cursor radius (1–50 px). You can also drag the cursor on-screen to resize it.
+**Switch to Avatar / Switch to Circle** — Toggle between a person silhouette cursor (feet anchored at the centre of pressure) and a filled circle. Your choice is saved between sessions.
+
+**Cursor Size** — Adjusts cursor size (1–50 px). For the circle this is the radius; for the avatar it sets the height to match the circle diameter. You can also drag the cursor on-screen to resize it. Zoom scales both modes the same way.
 
 **Sway Trail** — Controls how much movement history is visible: **None**, **Medium**, or **Long**.
 
@@ -140,7 +142,7 @@ Shortcuts are disabled while typing in a settings text field.
 
 ## Canvas Elements
 
-**Cursor** — Filled circle representing the patient's current centre of pressure.
+**Cursor** — Filled circle or person silhouette representing the patient's current centre of pressure. Switch modes in **Settings → Cursor & Movement**.
 
 **Targets** — Circular or rectangular regions created on the canvas. Remain fixed to the movement space and scale with zoom. Drag to reposition; right-click to remove.
 

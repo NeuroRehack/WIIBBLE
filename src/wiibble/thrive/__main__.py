@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+
 from wiibble.thrive.bridge import ThriveBridge
 from wiibble.thrive.config import (
     DEFAULT_BROKER_HOST,

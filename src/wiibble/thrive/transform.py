@@ -8,13 +8,16 @@ from wiibble.features.data_processing import (
     apply_axis_flip,
     calculate_force_deviation_kg,
 )
-from wiibble.thrive.announce import COP_X_RANGE, COP_Y_RANGE, QUAD_KG_RANGE, TOTAL_WT_RANGE
+from wiibble.thrive.announce import (
+    COP_X_RANGE,
+    COP_Y_RANGE,
+    QUAD_KG_RANGE,
+    TOTAL_WT_RANGE,
+)
 from wiibble.utils.constants import WBB_SENSOR_DIST_AP_CM, WBB_SENSOR_DIST_ML_CM
 
 
-def board_orientation_from_flips(
-    flip_horizontal: bool, flip_vertical: bool
-) -> str:
+def board_orientation_from_flips(flip_horizontal: bool, flip_vertical: bool) -> str:
     """Map WIIBBLE axis flips to THRIVE board_orientation (v1: 180° only)."""
     if flip_horizontal and flip_vertical:
         return "rotated-180"

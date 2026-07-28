@@ -48,20 +48,16 @@ class FrameSender:
             },
             separators=(",", ":"),
         ).encode("utf-8")
-        try:
+        with contextlib.suppress(OSError):
             self._sock.sendto(payload, self._addr)
-        except OSError:
-            pass
 
     def send_shutdown(self) -> None:
         """Signal the companion to exit."""
         payload = json.dumps({"type": "shutdown"}, separators=(",", ":")).encode(
             "utf-8"
         )
-        try:
+        with contextlib.suppress(OSError):
             self._sock.sendto(payload, self._addr)
-        except OSError:
-            pass
 
     def close(self) -> None:
         with contextlib.suppress(OSError):

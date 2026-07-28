@@ -64,9 +64,7 @@ def test_board_orientation_mapping():
 
 def test_rotated_180_negates_cop():
     base = frame_to_channels(10.0, 30.0, 10.0, 30.0)
-    rotated = frame_to_channels(
-        10.0, 30.0, 10.0, 30.0, board_orientation="rotated-180"
-    )
+    rotated = frame_to_channels(10.0, 30.0, 10.0, 30.0, board_orientation="rotated-180")
     assert rotated["cop_x_mm"] == -base["cop_x_mm"]
     assert rotated["cop_y_mm"] == -base["cop_y_mm"]
 

@@ -14,7 +14,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Saved-tare status label in **Settings → Calibration**
 
 ### Changed
-- STS stats-bar threshold markers: each mirrored flank now spans 0–100% BW (100% body weight sits halfway to the edge, not at the bar ends)
+- STS stats-bar overlay shows only a dark grey transition band between sit and stand thresholds (no live weight marker)
 - Manual tare via THRIVE runs the full empty-board wait flow and saves offsets to settings
 - Unified tare into `run_tare_and_persist()` in calibration_flow (startup, THRIVE, Auto, Cal scale)
 - Tare status label shows relative time (e.g. "just now", "5 min ago") and updates when the empty-board step completes

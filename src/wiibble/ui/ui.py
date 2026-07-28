@@ -119,9 +119,7 @@ log = logging.getLogger(__name__)
 # Change a value here and it propagates everywhere.
 # ---------------------------------------------------------------------------
 STATS_STRIP_H = 50  # height of bottom stats strip in pixels
-STS_SIT_MARKER_COLOR = (70, 130, 230, 255)
-STS_STAND_MARKER_COLOR = (50, 170, 90, 255)
-STS_WEIGHT_MARKER_COLOR = (250, 210, 50, 255)
+STS_TRANSITION_ZONE_COLOR = (55, 58, 65, 255)
 STATS_FONT_SCALE = 0.055  # stats font size as fraction of viewport height
 STATS_FONT_MIN = 24  # minimum stats font size in pixels
 
@@ -276,7 +274,6 @@ _stats_cache = {
     "left": -1,
     "weight": -1,
     "right": -1,
-    "weight_pct": -1,
     "sts_sit_pct": -1,
     "sts_stand_pct": -1,
     "sts_gauge": False,
@@ -320,19 +317,18 @@ def _draw_sts_threshold_markers(
     bar_bot: float,
     sw: int,
     settings,
-    curr_weight: float,
-    calib_weight: float,
     parent: str,
 ) -> None:
-    """Draw symmetric sit/stand threshold zones on the bottom stats bar.
+    """Draw symmetric STS threshold zones on the bottom stats bar.
+
+    Only the band between sit and stand thresholds is filled (dark grey);
+    seated (inside sit) and standing (beyond stand) regions stay transparent.
 
     Args:
         bar_top: Top y of the stats strip.
         bar_bot: Bottom y of the stats strip.
         sw: Viewport width in pixels.
         settings: User settings with STS threshold percentages.
-        curr_weight: Live total weight on the board in kg.
-        calib_weight: Calibrated body weight in kg.
         parent: Dear PyGui drawlist parent tag.
     """
     center_x = sw / 2.0
@@ -347,20 +343,6 @@ def _draw_sts_threshold_markers(
     sit_offset = _sts_symmetric_offset_px(sw, settings.sts_sit_threshold_pct)
     stand_offset = _sts_symmetric_offset_px(sw, settings.sts_stand_threshold_pct)
 
-    if sit_offset >= 0.5:
-        for x0, x1 in (
-            (center_x - sit_offset, center_x),
-            (center_x, center_x + sit_offset),
-        ):
-            dpg.draw_rectangle(
-                (x0, bar_top),
-                (x1, bar_bot),
-                fill=(*STS_SIT_MARKER_COLOR[:3], 55),
-                color=STS_SIT_MARKER_COLOR,
-                thickness=1,
-                parent=parent,
-            )
-
     if stand_offset > sit_offset + 0.5:
         for x0, x1 in (
             (center_x - stand_offset, center_x - sit_offset),
@@ -369,34 +351,9 @@ def _draw_sts_threshold_markers(
             dpg.draw_rectangle(
                 (x0, bar_top),
                 (x1, bar_bot),
-                fill=(*STS_STAND_MARKER_COLOR[:3], 55),
-                color=STS_STAND_MARKER_COLOR,
+                fill=(*STS_TRANSITION_ZONE_COLOR[:3], 140),
+                color=STS_TRANSITION_ZONE_COLOR,
                 thickness=1,
-                parent=parent,
-            )
-    elif stand_offset >= 0.5:
-        for x0, x1 in (
-            (center_x - stand_offset, center_x),
-            (center_x, center_x + stand_offset),
-        ):
-            dpg.draw_rectangle(
-                (x0, bar_top),
-                (x1, bar_bot),
-                fill=(*STS_STAND_MARKER_COLOR[:3], 55),
-                color=STS_STAND_MARKER_COLOR,
-                thickness=1,
-                parent=parent,
-            )
-
-    weight_pct = weight_pct_of_body(curr_weight, calib_weight)
-    weight_offset = _sts_symmetric_offset_px(sw, weight_pct)
-    if weight_offset >= 0.5:
-        for x in (center_x - weight_offset, center_x + weight_offset):
-            dpg.draw_line(
-                (x, bar_top),
-                (x, bar_bot),
-                color=STS_WEIGHT_MARKER_COLOR,
-                thickness=3,
                 parent=parent,
             )
 
@@ -412,7 +369,6 @@ def update_stats_bar(
     left_val = int(perc_left * 100)
     weight_val = int(curr_weight)
     right_val = int(perc_right * 100)
-    weight_pct_val = int(weight_pct_of_body(curr_weight, calib_weight))
     sts_gauge = bool(settings and settings.sts_enabled)
     sts_sit_pct = int(settings.sts_sit_threshold_pct) if sts_gauge else -1
     sts_stand_pct = int(settings.sts_stand_threshold_pct) if sts_gauge else -1
@@ -421,7 +377,6 @@ def update_stats_bar(
         left_val == _stats_cache["left"]
         and weight_val == _stats_cache["weight"]
         and right_val == _stats_cache["right"]
-        and weight_pct_val == _stats_cache["weight_pct"]
         and sts_gauge == _stats_cache["sts_gauge"]
         and sts_sit_pct == _stats_cache["sts_sit_pct"]
         and sts_stand_pct == _stats_cache["sts_stand_pct"]
@@ -431,7 +386,6 @@ def update_stats_bar(
     _stats_cache["left"] = left_val
     _stats_cache["weight"] = weight_val
     _stats_cache["right"] = right_val
-    _stats_cache["weight_pct"] = weight_pct_val
     _stats_cache["sts_gauge"] = sts_gauge
     _stats_cache["sts_sit_pct"] = sts_sit_pct
     _stats_cache["sts_stand_pct"] = sts_stand_pct
@@ -480,9 +434,7 @@ def update_stats_bar(
     )
 
     if sts_gauge:
-        _draw_sts_threshold_markers(
-            bar_top, bar_bot, sw, settings, curr_weight, calib_weight, "stats_dl"
-        )
+        _draw_sts_threshold_markers(bar_top, bar_bot, sw, settings, "stats_dl")
 
     t = dpg.draw_text(
         (10, y),
@@ -2027,8 +1979,7 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
     with dpg.tooltip(parent="sts_live_status_label"):
         dpg.add_text(
             "Live weight and posture state.\n"
-            "Bar markers: centre = 50% BW; each flank spans 0–100% BW.\n"
-            "Blue/green zones mirror left and right; yellow = current weight."
+            "Bar markers: centre = 50% BW; dark grey = sit–stand transition zone."
         )
     dpg.add_spacer(height=4)
     dpg.add_button(

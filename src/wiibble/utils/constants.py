@@ -117,8 +117,8 @@ RECORDING_INDICATOR_TIMER_FONT_SIZE = 48  # elapsed time while recording
 RECORDING_INDICATOR_LIMIT_FONT_SIZE = 36  # configured duration limit (always visible)
 
 # Cursor size limits
-CURSOR_SIZE_MIN = 1  # minimum circle cursor radius in pixels
-CURSOR_SIZE_MAX = 50  # maximum circle cursor radius in pixels
+CURSOR_SIZE_MIN = 10  # minimum circle cursor radius in pixels
+CURSOR_SIZE_MAX = 100  # maximum circle cursor radius in pixels
 CURSOR_DRAG_THRESHOLD = (
     5  # px size-delta below which a cursor press is treated as a click
 )

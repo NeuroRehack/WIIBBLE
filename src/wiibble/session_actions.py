@@ -9,6 +9,13 @@ from wiibble.utils.constants import (
     BOARD_CAL_REFERENCE_MIN,
     BODY_WEIGHT_MAX,
     BODY_WEIGHT_MIN,
+    STS_MIN_DWELL_MAX,
+    STS_MIN_DWELL_MIN,
+    STS_MIN_DWELL_STEP,
+    STS_SIT_THRESHOLD_PCT_MAX,
+    STS_SIT_THRESHOLD_PCT_MIN,
+    STS_STAND_THRESHOLD_PCT_MAX,
+    STS_STAND_THRESHOLD_PCT_MIN,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
     TARGET_DWELL_STEP,
@@ -31,6 +38,9 @@ __all__ = [
     "apply_recording_prefix",
     "apply_setting_bool",
     "apply_target_dwell_seconds",
+    "apply_sts_min_dwell_seconds",
+    "apply_sts_sit_threshold_pct",
+    "apply_sts_stand_threshold_pct",
     "apply_trail_length",
     "apply_zoom_slider",
     "request_calibrate_board",
@@ -45,6 +55,8 @@ _SETTING_LABELS: dict[str, str] = {
     "show_global_axes": "Show global axes",
     "show_local_axes": "Show local axes",
     "show_target_counter": "Show target hit counter",
+    "sts_enabled": "Sit-to-stand rep counter",
+    "sts_show_counter": "Show STS rep counter",
     "auto_report_after_recording": "Auto-report after recording",
     "open_report_in_browser": "Open report in browser",
     "thrive_enabled": "THRIVE hub export",
@@ -202,6 +214,60 @@ def apply_target_dwell_seconds(settings: Settings, value: float) -> float:
         return clamped
     settings.target_dwell_seconds = clamped
     log.info("Target dwell time set to %.1f s", clamped)
+    settings.save()
+    return clamped
+
+
+def _clamp_sts_dwell_seconds(value: float) -> float:
+    """Clamp an STS minimum dwell time to the allowed range."""
+    stepped = round(float(value) / STS_MIN_DWELL_STEP) * STS_MIN_DWELL_STEP
+    return max(STS_MIN_DWELL_MIN, min(STS_MIN_DWELL_MAX, stepped))
+
+
+def apply_sts_stand_threshold_pct(settings: Settings, value: float) -> float:
+    """Clamp and persist the STS stand threshold percentage."""
+    clamped = max(
+        STS_STAND_THRESHOLD_PCT_MIN,
+        min(STS_STAND_THRESHOLD_PCT_MAX, float(value)),
+    )
+    if settings.sts_stand_threshold_pct == clamped:
+        return clamped
+    settings.sts_stand_threshold_pct = clamped
+    if settings.sts_sit_threshold_pct >= clamped:
+        settings.sts_sit_threshold_pct = max(
+            STS_SIT_THRESHOLD_PCT_MIN, clamped - 10.0
+        )
+    log.info("STS stand threshold set to %.1f%% body weight", clamped)
+    settings.save()
+    return clamped
+
+
+def apply_sts_sit_threshold_pct(settings: Settings, value: float) -> float:
+    """Clamp and persist the STS sit threshold percentage."""
+    clamped = max(
+        STS_SIT_THRESHOLD_PCT_MIN,
+        min(STS_SIT_THRESHOLD_PCT_MAX, float(value)),
+    )
+    max_sit = settings.sts_stand_threshold_pct - 1.0
+    clamped = min(clamped, max(STS_SIT_THRESHOLD_PCT_MIN, max_sit))
+    if settings.sts_sit_threshold_pct == clamped:
+        return clamped
+    settings.sts_sit_threshold_pct = clamped
+    log.info("STS sit threshold set to %.1f%% body weight", clamped)
+    settings.save()
+    return clamped
+
+
+def apply_sts_min_dwell_seconds(
+    settings: Settings, field: str, value: float
+) -> float:
+    """Clamp and persist an STS minimum dwell time field."""
+    clamped = _clamp_sts_dwell_seconds(value)
+    if getattr(settings, field) == clamped:
+        return clamped
+    setattr(settings, field, clamped)
+    label = "stand" if field == "sts_min_stand_seconds" else "sit"
+    log.info("STS min %s time set to %.1f s", label, clamped)
     settings.save()
     return clamped
 

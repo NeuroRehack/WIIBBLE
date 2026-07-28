@@ -130,6 +130,22 @@ TARGET_DWELL_STEP = 0.1
 TARGET_DWELL_DEFAULT = 0.5
 
 # ---------------------------------------------------------------------------
+# Sit-to-stand rep counter — weight thresholds as % of calibrated body weight
+# ---------------------------------------------------------------------------
+STS_STAND_THRESHOLD_PCT_DEFAULT = 85.0
+STS_SIT_THRESHOLD_PCT_DEFAULT = 55.0
+STS_STAND_THRESHOLD_PCT_MIN = 50.0
+STS_STAND_THRESHOLD_PCT_MAX = 100.0
+STS_SIT_THRESHOLD_PCT_MIN = 10.0
+STS_SIT_THRESHOLD_PCT_MAX = 90.0
+STS_MIN_STAND_SECONDS_DEFAULT = 0.3
+STS_MIN_SIT_SECONDS_DEFAULT = 0.5
+STS_MIN_DWELL_MIN = 0.0
+STS_MIN_DWELL_MAX = 5.0
+STS_MIN_DWELL_STEP = 0.1
+STS_REP_FLASH_SECONDS = 0.3
+
+# ---------------------------------------------------------------------------
 # Wii Balance Board platform geometry
 # Source: Leach et al. (2014) Sensors 14:18244-18267, doi:10.3390/s141018244, Figure 3.
 # X = 433 mm (mediolateral sensor-to-sensor),

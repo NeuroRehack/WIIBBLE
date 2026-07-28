@@ -16,6 +16,11 @@ import dearpygui.dearpygui as dpg
 
 import wiibble.ui.theme as _theme_module
 from wiibble.features.data_processing import logical_to_viewport
+from wiibble.features.sts_counter import (
+    format_sts_state_label,
+    sts_flank_offset_fraction,
+    weight_pct_of_body,
+)
 from wiibble.session_actions import (
     apply_board_cal_reference,
     apply_body_weight,
@@ -27,6 +32,9 @@ from wiibble.session_actions import (
     apply_recording_dir,
     apply_recording_prefix,
     apply_setting_bool,
+    apply_sts_min_dwell_seconds,
+    apply_sts_sit_threshold_pct,
+    apply_sts_stand_threshold_pct,
     apply_target_dwell_seconds,
     apply_thrive_broker_host,
     apply_thrive_hub_id,
@@ -83,6 +91,13 @@ from wiibble.utils.constants import (
     RECORDING_INDICATOR_TIMER_FONT_SIZE,
     RECORDING_INDICATOR_TIMER_GAP,
     RECORDING_INDICATOR_Y,
+    STS_MIN_DWELL_MAX,
+    STS_MIN_DWELL_MIN,
+    STS_MIN_DWELL_STEP,
+    STS_SIT_THRESHOLD_PCT_MAX,
+    STS_SIT_THRESHOLD_PCT_MIN,
+    STS_STAND_THRESHOLD_PCT_MAX,
+    STS_STAND_THRESHOLD_PCT_MIN,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
     TARGET_DWELL_STEP,
@@ -104,6 +119,9 @@ log = logging.getLogger(__name__)
 # Change a value here and it propagates everywhere.
 # ---------------------------------------------------------------------------
 STATS_STRIP_H = 50  # height of bottom stats strip in pixels
+STS_SIT_MARKER_COLOR = (70, 130, 230, 255)
+STS_STAND_MARKER_COLOR = (50, 170, 90, 255)
+STS_WEIGHT_MARKER_COLOR = (250, 210, 50, 255)
 STATS_FONT_SCALE = 0.055  # stats font size as fraction of viewport height
 STATS_FONT_MIN = 24  # minimum stats font size in pixels
 
@@ -163,6 +181,53 @@ def _measure_crisp_text_width(text: str, size: int) -> float:
     return len(text) * size * 0.55
 
 
+def _draw_canvas_counter(
+    dl,
+    center_x: float,
+    label_y: float,
+    counter_y: float,
+    count: int,
+    *,
+    label: str = "",
+    counter_font_size: int = 90,
+    flash_active: bool = False,
+) -> None:
+    """Draw a large on-canvas counter with an optional label above the digits.
+
+    Args:
+        dl: Dear PyGui drawlist parent.
+        center_x: Horizontal centre of the counter in pixels.
+        label_y: Top y of the optional label row.
+        counter_y: Top y of the counter digits.
+        count: Integer value to display.
+        label: Label drawn above the digits when non-empty.
+        counter_font_size: Font size for the count.
+        flash_active: When True, use the STS rep flash colour.
+    """
+    label_font_size = 32
+    if label:
+        label_w = _measure_crisp_text_width(label, label_font_size)
+        _crisp_text(
+            (center_x - label_w / 2, label_y),
+            label,
+            color=(45, 45, 45, 255),
+            size=label_font_size,
+            parent=dl,
+        )
+    counter_str = str(count)
+    counter_w = _measure_crisp_text_width(counter_str, counter_font_size)
+    counter_color = (
+        (40, 160, 80, 255) if flash_active else (20, 20, 20, 255)
+    )
+    _crisp_text(
+        (center_x - counter_w / 2, counter_y),
+        counter_str,
+        color=counter_color,
+        size=counter_font_size,
+        parent=dl,
+    )
+
+
 def _estimate_text_width(text: str, font_size: int) -> int:
     """Approximate pixel width for draw_text labels."""
     return int(_measure_crisp_text_width(text, font_size))
@@ -207,7 +272,24 @@ def get_wii_image_size(index: int) -> tuple:
 
 # Cached stats values — stats drawlist only redraws when these change.
 # This eliminates the sub-pixel jitter that caused blurry text.
-_stats_cache = {"left": -1, "weight": -1, "right": -1}
+_stats_cache = {
+    "left": -1,
+    "weight": -1,
+    "right": -1,
+    "weight_pct": -1,
+    "sts_sit_pct": -1,
+    "sts_stand_pct": -1,
+    "sts_gauge": False,
+}
+
+
+def _clear_stats_cache() -> None:
+    """Reset the stats-bar draw cache so the next update redraws."""
+    for key in _stats_cache:
+        if isinstance(_stats_cache[key], bool):
+            _stats_cache[key] = False
+        else:
+            _stats_cache[key] = -1
 
 
 def build_stats_bar(app_state) -> None:
@@ -215,9 +297,7 @@ def build_stats_bar(app_state) -> None:
     if not dpg.does_item_exist("stats_dl"):
         dpg.add_viewport_drawlist(tag="stats_dl", front=False)
     dpg.delete_item("stats_dl", children_only=True)
-    _stats_cache["left"] = -1
-    _stats_cache["weight"] = -1
-    _stats_cache["right"] = -1
+    _clear_stats_cache()
 
 
 def set_stats_bar_visible(visible: bool) -> None:
@@ -227,29 +307,134 @@ def set_stats_bar_visible(visible: bool) -> None:
     dpg.configure_item("stats_dl", show=visible)
     if not visible:
         dpg.delete_item("stats_dl", children_only=True)
-        _stats_cache["left"] = -1
-        _stats_cache["weight"] = -1
-        _stats_cache["right"] = -1
+        _clear_stats_cache()
+
+
+def _sts_symmetric_offset_px(sw: int, pct: float) -> float:
+    """Return pixel distance from screen centre for a body-weight percentage."""
+    return sts_flank_offset_fraction(pct) * (sw / 2.0)
+
+
+def _draw_sts_threshold_markers(
+    bar_top: float,
+    bar_bot: float,
+    sw: int,
+    settings,
+    curr_weight: float,
+    calib_weight: float,
+    parent: str,
+) -> None:
+    """Draw symmetric sit/stand threshold zones on the bottom stats bar.
+
+    Args:
+        bar_top: Top y of the stats strip.
+        bar_bot: Bottom y of the stats strip.
+        sw: Viewport width in pixels.
+        settings: User settings with STS threshold percentages.
+        curr_weight: Live total weight on the board in kg.
+        calib_weight: Calibrated body weight in kg.
+        parent: Dear PyGui drawlist parent tag.
+    """
+    center_x = sw / 2.0
+    dpg.draw_line(
+        (center_x, bar_top),
+        (center_x, bar_bot),
+        color=(120, 120, 120, 220),
+        thickness=2,
+        parent=parent,
+    )
+
+    sit_offset = _sts_symmetric_offset_px(sw, settings.sts_sit_threshold_pct)
+    stand_offset = _sts_symmetric_offset_px(sw, settings.sts_stand_threshold_pct)
+
+    if sit_offset >= 0.5:
+        for x0, x1 in (
+            (center_x - sit_offset, center_x),
+            (center_x, center_x + sit_offset),
+        ):
+            dpg.draw_rectangle(
+                (x0, bar_top),
+                (x1, bar_bot),
+                fill=(*STS_SIT_MARKER_COLOR[:3], 55),
+                color=STS_SIT_MARKER_COLOR,
+                thickness=1,
+                parent=parent,
+            )
+
+    if stand_offset > sit_offset + 0.5:
+        for x0, x1 in (
+            (center_x - stand_offset, center_x - sit_offset),
+            (center_x + sit_offset, center_x + stand_offset),
+        ):
+            dpg.draw_rectangle(
+                (x0, bar_top),
+                (x1, bar_bot),
+                fill=(*STS_STAND_MARKER_COLOR[:3], 55),
+                color=STS_STAND_MARKER_COLOR,
+                thickness=1,
+                parent=parent,
+            )
+    elif stand_offset >= 0.5:
+        for x0, x1 in (
+            (center_x - stand_offset, center_x),
+            (center_x, center_x + stand_offset),
+        ):
+            dpg.draw_rectangle(
+                (x0, bar_top),
+                (x1, bar_bot),
+                fill=(*STS_STAND_MARKER_COLOR[:3], 55),
+                color=STS_STAND_MARKER_COLOR,
+                thickness=1,
+                parent=parent,
+            )
+
+    weight_pct = weight_pct_of_body(curr_weight, calib_weight)
+    weight_offset = _sts_symmetric_offset_px(sw, weight_pct)
+    if weight_offset >= 0.5:
+        for x in (center_x - weight_offset, center_x + weight_offset):
+            dpg.draw_line(
+                (x, bar_top),
+                (x, bar_bot),
+                color=STS_WEIGHT_MARKER_COLOR,
+                thickness=3,
+                parent=parent,
+            )
 
 
 def update_stats_bar(
-    perc_left: float, perc_right: float, curr_weight: float, calib_weight: float
+    perc_left: float,
+    perc_right: float,
+    curr_weight: float,
+    calib_weight: float,
+    settings=None,
 ) -> None:
     """Draw the live left/right distribution and weight stats overlay."""
     left_val = int(perc_left * 100)
     weight_val = int(curr_weight)
     right_val = int(perc_right * 100)
+    weight_pct_val = int(weight_pct_of_body(curr_weight, calib_weight))
+    sts_gauge = bool(settings and settings.sts_enabled)
+    sts_sit_pct = int(settings.sts_sit_threshold_pct) if sts_gauge else -1
+    sts_stand_pct = int(settings.sts_stand_threshold_pct) if sts_gauge else -1
 
     if (
         left_val == _stats_cache["left"]
         and weight_val == _stats_cache["weight"]
         and right_val == _stats_cache["right"]
+        and weight_pct_val == _stats_cache["weight_pct"]
+        and sts_gauge == _stats_cache["sts_gauge"]
+        and sts_sit_pct == _stats_cache["sts_sit_pct"]
+        and sts_stand_pct == _stats_cache["sts_stand_pct"]
     ):
         return
 
     _stats_cache["left"] = left_val
     _stats_cache["weight"] = weight_val
     _stats_cache["right"] = right_val
+    _stats_cache["weight_pct"] = weight_pct_val
+    _stats_cache["sts_gauge"] = sts_gauge
+    _stats_cache["sts_sit_pct"] = sts_sit_pct
+    _stats_cache["sts_stand_pct"] = sts_stand_pct
 
     sw = dpg.get_viewport_width()
     vh = dpg.get_viewport_height()
@@ -287,8 +472,17 @@ def update_stats_bar(
     x0 = sw // 2
     x1 = sw // 2 + pr * sw // 2
     dpg.draw_rectangle(
-        (x0, bar_top), (x1, bar_bot), fill=bar_color, color=bar_color, parent="stats_dl"
+        (x0, bar_top),
+        (x1, bar_bot),
+        fill=bar_color,
+        color=bar_color,
+        parent="stats_dl",
     )
+
+    if sts_gauge:
+        _draw_sts_threshold_markers(
+            bar_top, bar_bot, sw, settings, curr_weight, calib_weight, "stats_dl"
+        )
 
     t = dpg.draw_text(
         (10, y),
@@ -466,7 +660,7 @@ def build_left_quick_access(
             "Fit View: zoom and pan to fit all recorded\nmovement within the view."
         )
     with dpg.tooltip(parent="reset_counter_quick_btn"):
-        dpg.add_text("Reset the target hit counter to zero.")
+        dpg.add_text("Reset target hit and sit-to-stand rep counters to zero.")
 
     if _theme_module.FA_ICON_FONT is not None:
         dpg.bind_item_font("panel_float_btn", _theme_module.FA_ICON_FONT)
@@ -1740,7 +1934,114 @@ def _build_visualisation_controls(app_state, settings, session_state: dict) -> N
         height=PANEL_BTN_H,
     )
     with dpg.tooltip(parent="reset_target_counter_btn"):
-        dpg.add_text("Reset the target hit counter to zero.")
+        dpg.add_text("Reset target hit and sit-to-stand rep counters to zero.")
+    dpg.add_spacer(height=8)
+    dpg.add_text("Sit-to-stand counter")
+    dpg.add_checkbox(
+        tag="sts_enabled_checkbox",
+        label="Enable STS rep counter",
+        default_value=settings.sts_enabled,
+        callback=lambda s, v: _on_sts_enabled_change(v, settings),
+    )
+    with dpg.tooltip(parent="sts_enabled_checkbox"):
+        dpg.add_text(
+            "Count sit-to-stand reps from total weight.\n"
+            "Requires calibrated body weight."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_checkbox(
+        tag="sts_show_counter_checkbox",
+        label="Show STS rep counter",
+        default_value=settings.sts_show_counter,
+        callback=lambda s, v: _on_sts_show_counter_change(v, settings),
+    )
+    with dpg.tooltip(parent="sts_show_counter_checkbox"):
+        dpg.add_text("Show or hide the on-screen STS rep counter.")
+    dpg.add_spacer(height=4)
+    dpg.add_text("Stand threshold (% body weight)")
+    dpg.add_input_float(
+        tag="sts_stand_threshold_input",
+        default_value=settings.sts_stand_threshold_pct,
+        min_value=STS_STAND_THRESHOLD_PCT_MIN,
+        max_value=STS_STAND_THRESHOLD_PCT_MAX,
+        step=1.0,
+        format="%.1f",
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_sts_stand_threshold_change(v, settings),
+    )
+    with dpg.tooltip(parent="sts_stand_threshold_input"):
+        dpg.add_text(
+            "Weight must reach this fraction of body weight\n"
+            "and hold for the min stand time to count a rep."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_text("Sit threshold (% body weight)")
+    dpg.add_input_float(
+        tag="sts_sit_threshold_input",
+        default_value=settings.sts_sit_threshold_pct,
+        min_value=STS_SIT_THRESHOLD_PCT_MIN,
+        max_value=STS_SIT_THRESHOLD_PCT_MAX,
+        step=1.0,
+        format="%.1f",
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_sts_sit_threshold_change(v, settings),
+    )
+    with dpg.tooltip(parent="sts_sit_threshold_input"):
+        dpg.add_text(
+            "Weight must drop to this fraction of body weight\n"
+            "and hold for the min sit time to complete a rep."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_text("Min stand time (s)")
+    dpg.add_input_float(
+        tag="sts_min_stand_input",
+        default_value=settings.sts_min_stand_seconds,
+        min_value=STS_MIN_DWELL_MIN,
+        max_value=STS_MIN_DWELL_MAX,
+        step=STS_MIN_DWELL_STEP,
+        format="%.1f",
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_sts_min_stand_change(v, settings),
+    )
+    with dpg.tooltip(parent="sts_min_stand_input"):
+        dpg.add_text("Seconds above the stand threshold before standing is confirmed.")
+    dpg.add_spacer(height=4)
+    dpg.add_text("Min sit time (s)")
+    dpg.add_input_float(
+        tag="sts_min_sit_input",
+        default_value=settings.sts_min_sit_seconds,
+        min_value=STS_MIN_DWELL_MIN,
+        max_value=STS_MIN_DWELL_MAX,
+        step=STS_MIN_DWELL_STEP,
+        format="%.1f",
+        width=PANEL_BTN_W,
+        callback=lambda s, v: _on_sts_min_sit_change(v, settings),
+    )
+    with dpg.tooltip(parent="sts_min_sit_input"):
+        dpg.add_text(
+            "Seconds below the sit threshold before seated is confirmed\n"
+            "and the counter is re-armed for the next rep."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_text("", tag="sts_live_status_label")
+    with dpg.tooltip(parent="sts_live_status_label"):
+        dpg.add_text(
+            "Live weight and posture state.\n"
+            "Bar markers: centre = 50% BW; each flank spans 0–100% BW.\n"
+            "Blue/green zones mirror left and right; yellow = current weight."
+        )
+    dpg.add_spacer(height=4)
+    dpg.add_button(
+        label="Reset STS rep counter",
+        tag="reset_sts_counter_btn",
+        callback=lambda: session_state.update(
+            {"action": "reset_target_counter", "action_detail": "panel sts"}
+        ),
+        width=PANEL_BTN_W,
+        height=PANEL_BTN_H,
+    )
+    with dpg.tooltip(parent="reset_sts_counter_btn"):
+        dpg.add_text("Reset the sit-to-stand rep counter to zero.")
     dpg.add_spacer(height=8)
     dpg.add_text("Flip axis")
     _flip_icon_w = PANEL_BTN_H
@@ -1831,6 +2132,75 @@ def _on_target_dwell_change(value: float, settings) -> None:
 def _on_show_target_counter_change(value: bool, settings) -> None:
     """Toggle on-screen target hit counter visibility."""
     apply_setting_bool(settings, "show_target_counter", value)
+
+
+def _on_sts_enabled_change(value: bool, settings) -> None:
+    """Toggle sit-to-stand rep counter."""
+    apply_setting_bool(settings, "sts_enabled", value)
+    if value and not settings.sts_show_counter:
+        apply_setting_bool(settings, "sts_show_counter", True)
+        if dpg.does_item_exist("sts_show_counter_checkbox"):
+            dpg.set_value("sts_show_counter_checkbox", True)
+
+
+def _on_sts_show_counter_change(value: bool, settings) -> None:
+    """Toggle on-screen STS rep counter visibility."""
+    apply_setting_bool(settings, "sts_show_counter", value)
+
+
+def _on_sts_stand_threshold_change(value: float, settings) -> None:
+    """Update the STS stand threshold percentage."""
+    clamped = apply_sts_stand_threshold_pct(settings, value)
+    if dpg.does_item_exist("sts_stand_threshold_input"):
+        dpg.set_value("sts_stand_threshold_input", clamped)
+    if dpg.does_item_exist("sts_sit_threshold_input"):
+        dpg.set_value("sts_sit_threshold_input", settings.sts_sit_threshold_pct)
+
+
+def _on_sts_sit_threshold_change(value: float, settings) -> None:
+    """Update the STS sit threshold percentage."""
+    clamped = apply_sts_sit_threshold_pct(settings, value)
+    if dpg.does_item_exist("sts_sit_threshold_input"):
+        dpg.set_value("sts_sit_threshold_input", clamped)
+
+
+def _on_sts_min_stand_change(value: float, settings) -> None:
+    """Update the minimum stand dwell time."""
+    clamped = apply_sts_min_dwell_seconds(settings, "sts_min_stand_seconds", value)
+    if dpg.does_item_exist("sts_min_stand_input"):
+        dpg.set_value("sts_min_stand_input", clamped)
+
+
+def _on_sts_min_sit_change(value: float, settings) -> None:
+    """Update the minimum sit dwell time."""
+    clamped = apply_sts_min_dwell_seconds(settings, "sts_min_sit_seconds", value)
+    if dpg.does_item_exist("sts_min_sit_input"):
+        dpg.set_value("sts_min_sit_input", clamped)
+
+
+def format_sts_live_status(app_state, settings) -> str:
+    """Return the live STS status line for the settings panel.
+
+    Args:
+        app_state: Runtime session state with latest weight and STS state.
+        settings: User settings including body weight and enable flag.
+
+    Returns:
+        Human-readable status string, or empty when STS is disabled.
+    """
+    if not settings.sts_enabled:
+        return ""
+    weight_kg = getattr(app_state, "sts_last_weight_kg", 0.0)
+    pct = weight_pct_of_body(weight_kg, settings.body_weight_kg)
+    state_label = format_sts_state_label(getattr(app_state, "sts_state", "seated"))
+    return f"Live: {weight_kg:.0f} kg ({pct:.0f}% BW) - {state_label}"
+
+
+def update_sts_live_status_label(app_state, settings) -> None:
+    """Refresh the STS live-status label in the settings panel."""
+    if not dpg.does_item_exist("sts_live_status_label"):
+        return
+    dpg.set_value("sts_live_status_label", format_sts_live_status(app_state, settings))
 
 
 def _on_flip_vertical_toggle(settings, app_state) -> None:
@@ -2372,17 +2742,41 @@ def draw_main_screen(
             parent=dl,
         )
 
-    # Target hit counter — large centred number at top of canvas
-    if settings.show_target_counter and toolbar_enabled:
-        counter_str = str(app_state.target_hit_count)
-        counter_font_size = 90
-        counter_w = _measure_crisp_text_width(counter_str, counter_font_size)
-        _crisp_text(
-            (sw / 2 - counter_w / 2, sh * 0.08),
-            counter_str,
-            color=(20, 20, 20, 255),
-            size=counter_font_size,
-            parent=dl,
+    # On-canvas rep counters — STS left, target hits right (or centred when alone)
+    show_sts_counter = (
+        settings.sts_enabled
+        and settings.sts_show_counter
+        and toolbar_enabled
+    )
+    show_target_counter = settings.show_target_counter and toolbar_enabled
+    both_counters = show_sts_counter and show_target_counter
+    counter_font_size = 72 if both_counters else 90
+    label_y = sh * 0.055
+    counter_y = sh * 0.10
+
+    if show_sts_counter:
+        flash_active = time.time() < getattr(app_state, "sts_rep_flash_until", 0.0)
+        sts_x = sw * 0.22 if both_counters else sw / 2
+        _draw_canvas_counter(
+            dl,
+            sts_x,
+            label_y,
+            counter_y,
+            app_state.sts_rep_count,
+            label="REPS",
+            counter_font_size=counter_font_size,
+            flash_active=flash_active,
+        )
+    if show_target_counter:
+        target_x = sw * 0.78 if both_counters else sw / 2
+        _draw_canvas_counter(
+            dl,
+            target_x,
+            label_y,
+            counter_y,
+            app_state.target_hit_count,
+            label="HITS",
+            counter_font_size=counter_font_size,
         )
 
     # Recording indicator cluster: elapsed timer (while recording) + limit (always).

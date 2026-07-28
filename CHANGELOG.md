@@ -9,10 +9,12 @@ Versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Sit-to-stand rep counter with weight-based hysteresis thresholds (% body weight), min stand/sit dwell times, live status in settings, on-screen REPS display, and threshold markers on the stats bar (blue sit, green stand, yellow current weight)
 - Persisted per-corner tare offsets in settings; subsequent launches skip the Step OFF screen when saved tare exists
 - Saved-tare status label in **Settings → Calibration**
 
 ### Changed
+- STS stats-bar threshold markers: each mirrored flank now spans 0–100% BW (100% body weight sits halfway to the edge, not at the bar ends)
 - Manual tare via THRIVE runs the full empty-board wait flow and saves offsets to settings
 - Unified tare into `run_tare_and_persist()` in calibration_flow (startup, THRIVE, Auto, Cal scale)
 - Tare status label shows relative time (e.g. "just now", "5 min ago") and updates when the empty-board step completes

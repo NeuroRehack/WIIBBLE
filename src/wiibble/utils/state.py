@@ -9,6 +9,17 @@ from pathlib import Path
 
 from wiibble.utils.constants import (
     SCALE_FACTOR_DEFAULT,
+    STS_MIN_DWELL_MAX,
+    STS_MIN_DWELL_MIN,
+    STS_MIN_DWELL_STEP,
+    STS_MIN_SIT_SECONDS_DEFAULT,
+    STS_MIN_STAND_SECONDS_DEFAULT,
+    STS_SIT_THRESHOLD_PCT_DEFAULT,
+    STS_SIT_THRESHOLD_PCT_MAX,
+    STS_SIT_THRESHOLD_PCT_MIN,
+    STS_STAND_THRESHOLD_PCT_DEFAULT,
+    STS_STAND_THRESHOLD_PCT_MAX,
+    STS_STAND_THRESHOLD_PCT_MIN,
     TARGET_DWELL_DEFAULT,
     TARGET_DWELL_MAX,
     TARGET_DWELL_MIN,
@@ -89,6 +100,12 @@ class Settings:
     tare_top_left: float = 0.0
     tare_bottom_left: float = 0.0
     tare_saved_at: str = ""  # ISO-8601 UTC; empty means never tared
+    sts_enabled: bool = False  # enable sit-to-stand rep counter
+    sts_show_counter: bool = True  # show on-screen STS rep counter
+    sts_stand_threshold_pct: float = STS_STAND_THRESHOLD_PCT_DEFAULT
+    sts_sit_threshold_pct: float = STS_SIT_THRESHOLD_PCT_DEFAULT
+    sts_min_stand_seconds: float = STS_MIN_STAND_SECONDS_DEFAULT
+    sts_min_sit_seconds: float = STS_MIN_SIT_SECONDS_DEFAULT
 
     def has_saved_tare(self) -> bool:
         """Return True when persisted tare offsets are available."""
@@ -145,6 +162,31 @@ class Settings:
                 TARGET_DWELL_MIN,
                 min(TARGET_DWELL_MAX, stepped * TARGET_DWELL_STEP),
             )
+            loaded.sts_stand_threshold_pct = max(
+                STS_STAND_THRESHOLD_PCT_MIN,
+                min(STS_STAND_THRESHOLD_PCT_MAX, float(loaded.sts_stand_threshold_pct)),
+            )
+            loaded.sts_sit_threshold_pct = max(
+                STS_SIT_THRESHOLD_PCT_MIN,
+                min(STS_SIT_THRESHOLD_PCT_MAX, float(loaded.sts_sit_threshold_pct)),
+            )
+            if loaded.sts_sit_threshold_pct >= loaded.sts_stand_threshold_pct:
+                loaded.sts_sit_threshold_pct = max(
+                    STS_SIT_THRESHOLD_PCT_MIN,
+                    loaded.sts_stand_threshold_pct - 10.0,
+                )
+            for field_name in ("sts_min_stand_seconds", "sts_min_sit_seconds"):
+                stepped_sts = round(
+                    float(getattr(loaded, field_name)) / STS_MIN_DWELL_STEP
+                )
+                setattr(
+                    loaded,
+                    field_name,
+                    max(
+                        STS_MIN_DWELL_MIN,
+                        min(STS_MIN_DWELL_MAX, stepped_sts * STS_MIN_DWELL_STEP),
+                    ),
+                )
             raw_prefix = loaded.recording_prefix
             loaded.recording_prefix = normalize_recording_prefix(raw_prefix)
             if loaded.recording_prefix != raw_prefix:
@@ -256,6 +298,16 @@ class AppState:
     )  # targets awaiting exit before re-count
     _target_dwell_last_tick: float = 0.0
 
+    # Sit-to-stand rep counter — session runtime only
+    sts_rep_count: int = 0
+    sts_state: str = "seated"
+    sts_stand_dwell: float = 0.0
+    sts_sit_dwell: float = 0.0
+    sts_last_tick: float = 0.0
+    sts_last_weight_kg: float = 0.0
+    sts_rep_flash_until: float = 0.0
+    sts_disarmed: bool = False  # after a rep, must sit before next count
+
     def reset_sway_extents(self, trail_length: int) -> None:
         """Clear sway trail and bounding-box extents (e.g. after axis flip)."""
         self.historical_coords = [(0, 0)] * trail_length
@@ -271,6 +323,16 @@ class AppState:
         self._target_dwell_disarmed = set()
         self._target_dwell_last_tick = 0.0
 
+    def reset_sts_counter(self) -> None:
+        """Reset the sit-to-stand rep counter and internal state machine."""
+        self.sts_rep_count = 0
+        self.sts_state = "seated"
+        self.sts_stand_dwell = 0.0
+        self.sts_sit_dwell = 0.0
+        self.sts_last_tick = 0.0
+        self.sts_rep_flash_until = 0.0
+        self.sts_disarmed = False
+
     def reset(self, settings: Settings | None = None) -> None:
         """Called on RESTART — resets session data but preserves calibration."""
         self.ball_x = 0
@@ -281,6 +343,7 @@ class AppState:
         if settings is not None and settings.has_saved_tare():
             settings.apply_tare_to_data_struct(self.data_struct)
         self.reset_target_counter()
+        self.reset_sts_counter()
         self.is_recording = False
         self.record_buffer = []
         self.filter_buffer = []

@@ -23,6 +23,7 @@ from wiibble.features.data_processing import (
     calculate_force_deviation_kg,
     parse_data,
 )
+from wiibble.features.sts_counter import update_sts_counter
 from wiibble.session_report.launcher import (
     launch_session_report_async,
     parse_session_report_stdout,
@@ -59,6 +60,7 @@ from wiibble.ui.ui import (
     update_left_quick_access_layout,
     update_recording_quick_access_position,
     update_stats_bar,
+    update_sts_live_status_label,
 )
 from wiibble.utils.constants import (
     COORD_SCALE,
@@ -538,8 +540,9 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _clear_session_action(session_state)
         return None
     if action == "reset_target_counter":
-        _log_session_action(action, session_state, "Target hit counter reset")
+        _log_session_action(action, session_state, "Rep counters reset")
         app_state.reset_target_counter()
+        app_state.reset_sts_counter()
         _clear_session_action(session_state)
         return None
     if action == "zoom_to_bbox":
@@ -706,6 +709,8 @@ def _render_main_screen_frame(
         session_state["last_frame"] = frame_state
         if settings.thrive_enabled:
             get_thrive_hook(settings).publish_frame(frame_state, settings)
+        update_sts_counter(app_state, settings, frame_state["curr_weight"])
+        update_sts_live_status_label(app_state, settings)
 
     dpg.delete_item(dl, children_only=True)
     draw_main_screen(
@@ -731,6 +736,7 @@ def _render_main_screen_frame(
         frame_state["pr"],
         frame_state["curr_weight"],
         app_state.weight,
+        settings,
     )
 
     return (

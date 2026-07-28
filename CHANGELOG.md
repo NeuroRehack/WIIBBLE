@@ -16,6 +16,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Saved-tare status label in **Settings → Calibration**
 
 ### Changed
+- Avatar sway trail mirrors circle trail sizing (one stamp per history point, tapering with age) using solid-black silhouettes
+- Cursor and sway trail size are now fixed in screen pixels and no longer scale with canvas zoom
 - STS stats-bar overlay shows only a dark grey transition band between sit and stand thresholds (no live weight marker)
 - Manual tare via THRIVE runs the full empty-board wait flow and saves offsets to settings
 - Unified tare into `run_tare_and_persist()` in calibration_flow (startup, THRIVE, Auto, Cal scale)

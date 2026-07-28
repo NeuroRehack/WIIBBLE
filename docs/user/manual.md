@@ -71,7 +71,7 @@ Opens and closes the settings panel. When collapsed, the floating gear button in
 
 **Switch to Avatar / Switch to Circle** — Toggle between a person silhouette cursor (feet anchored at the centre of pressure) and a filled circle. Your choice is saved between sessions.
 
-**Cursor Size** — Adjusts cursor size (1–50 px). For the circle this is the radius; for the avatar it sets the height to match the circle diameter. You can also drag the cursor on-screen to resize it. Zoom scales both modes the same way.
+**Cursor Size** — Adjusts on-screen cursor size (1–50 px). For the circle this is the radius; for the avatar it sets the height to match the circle diameter. Size stays fixed when you zoom the canvas. You can also drag the cursor on-screen to resize it.
 
 **Sway Trail** — Controls how much movement history is visible: **None**, **Medium**, or **Long**.
 
@@ -150,7 +150,7 @@ Shortcuts are disabled while typing in a settings text field.
 
 **Hit Counter** — Large number at the top of the canvas (when enabled). Increments when the cursor dwells inside a target for the configured dwell time.
 
-**Sway Trail** — Fading history of recent movement.
+**Sway Trail** — Fading history of recent movement. Circle mode uses filled circles that grow and brighten with age; avatar mode uses the same tapering with solid-black person silhouettes.
 
 **Bounding Box** — Dashed rectangle showing the extent of movement since last clear.
 

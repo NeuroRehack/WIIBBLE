@@ -15,6 +15,7 @@ from wiibble.ui.ui import (
     _on_zoom_change,
     collapse_settings_panel,
     is_mouse_over_quick_access,
+    screen_cursor_radius,
 )
 from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
@@ -284,7 +285,7 @@ def _handle_canvas_click(
     if is_mouse_over_quick_access() or dpg.is_key_down(dpg.mvKey_LControl):
         return
 
-    cursor_radius = int(settings.cursor_size * settings.zoom_factor)
+    cursor_radius = screen_cursor_radius(settings)
     dist = math.sqrt((mx - app_state.ball_x) ** 2 + (my - app_state.ball_y) ** 2)
     if dist <= cursor_radius:
         log.info("Cursor resize drag started")
@@ -356,10 +357,7 @@ def _handle_cursor_drag(app_state, settings) -> None:
     dist = math.sqrt(
         (mouse_x - app_state.ball_x) ** 2 + (mouse_y - app_state.ball_y) ** 2
     )
-    # dist is in screen pixels; divide by zoom so cursor_size stays in logical units
-    new_size = int(
-        max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist / settings.zoom_factor))
-    )
+    new_size = int(max(CURSOR_SIZE_MIN, min(CURSOR_SIZE_MAX, dist)))
     settings.cursor_size = new_size
     if dpg.does_item_exist("cursor_size_slider"):
         dpg.set_value("cursor_size_slider", new_size)

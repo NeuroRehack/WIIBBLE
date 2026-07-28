@@ -280,13 +280,59 @@ def get_person_image_size() -> tuple[int, int]:
     return cfg["width"], cfg["height"]
 
 
-def _avatar_draw_size(settings, zoom_factor: float) -> tuple[int, int]:
+def screen_cursor_radius(settings) -> int:
+    """Return cursor radius in viewport pixels (independent of canvas zoom)."""
+    return max(1, int(settings.cursor_size))
+
+
+def _avatar_draw_size(settings) -> tuple[int, int]:
     """Return (width, height) in screen pixels for the avatar cursor."""
-    scaled_cursor = max(1, int(settings.cursor_size * zoom_factor))
-    scaled_h = 2 * scaled_cursor
+    scaled_h = 2 * screen_cursor_radius(settings)
     iw, ih = get_person_image_size()
     scaled_w = max(1, int(scaled_h * iw / ih))
     return scaled_w, scaled_h
+
+
+def _draw_avatar_feet_anchored(
+    feet_x: float,
+    feet_y: float,
+    settings,
+    parent,
+    *,
+    size_frac: float = 1.0,
+    tint: tuple[int, int, int, int] = (255, 255, 255, 255),
+) -> None:
+    """Draw the person cursor image with feet at (feet_x, feet_y)."""
+    scaled_w_full, scaled_h_full = _avatar_draw_size(settings)
+    scaled_w = max(1, int(size_frac * scaled_w_full))
+    scaled_h = max(1, int(size_frac * scaled_h_full))
+    p1 = (feet_x - scaled_w // 2, feet_y - scaled_h)
+    p2 = (feet_x + scaled_w // 2, feet_y)
+    dpg.draw_image(
+        _person_texture_tag,
+        p1,
+        p2,
+        parent=parent,
+        color=tint,
+    )
+
+
+def _draw_avatar_trail(
+    coords: list[tuple[float, float]], settings, parent
+) -> None:
+    """Draw avatar-mode trail matching circle trail sizing (black silhouettes)."""
+    n = len(coords)
+    for i in range(1, n):
+        frac = i / n
+        tx, ty = coords[i]
+        _draw_avatar_feet_anchored(
+            tx,
+            ty,
+            settings,
+            parent,
+            size_frac=frac,
+            tint=(0, 0, 0, 200),
+        )
 
 
 # Cached stats values — stats drawlist only redraws when these change.
@@ -2712,28 +2758,28 @@ def draw_main_screen(
         else []
     )
     n = len(coords)
-    scaled_cursor = max(1, int(settings.cursor_size * settings.zoom_factor))
-    for i in range(1, n):
-        frac = i / n
-        tc = (
-            int(frac * TRAIL_COLOR_BASE[0]),
-            int(frac * TRAIL_COLOR_BASE[1]),
-            int(frac * TRAIL_COLOR_BASE[2]),
-            200,
-        )
-        radius = max(1, int(i * scaled_cursor / n))
-        dpg.draw_circle(coords[i], radius, color=tc, fill=tc, parent=dl)
+    screen_radius = screen_cursor_radius(settings)
+    if settings.cursor_mode == "avatar":
+        _draw_avatar_trail(coords, settings, dl)
+    else:
+        for i in range(1, n):
+            frac = i / n
+            tc = (
+                int(frac * TRAIL_COLOR_BASE[0]),
+                int(frac * TRAIL_COLOR_BASE[1]),
+                int(frac * TRAIL_COLOR_BASE[2]),
+                200,
+            )
+            radius = max(1, int(i * screen_radius / n))
+            dpg.draw_circle(coords[i], radius, color=tc, fill=tc, parent=dl)
 
     # Cursor (S1) — ball_x/ball_y in viewport coords
     if settings.cursor_mode == "avatar":
-        scaled_w, scaled_h = _avatar_draw_size(settings, settings.zoom_factor)
-        p1 = (ball_x - scaled_w // 2, ball_y - scaled_h)
-        p2 = (ball_x + scaled_w // 2, ball_y)
-        dpg.draw_image(_person_texture_tag, p1, p2, parent=dl)
+        _draw_avatar_feet_anchored(ball_x, ball_y, settings, dl)
     else:
         dpg.draw_circle(
             (ball_x, ball_y),
-            scaled_cursor,
+            screen_radius,
             color=CURSOR_COLOR,
             fill=CURSOR_COLOR,
             parent=dl,

@@ -73,7 +73,7 @@ class Settings:
     filter_window: int = 1  # S4: moving average window (1 = no smoothing)
     record_duration: int = 30  # S5: CSV recording duration in seconds (0 = indefinite)
     cursor_mode: str = "circle"  # S1: "avatar" | "circle"
-    cursor_size: int = 20  # S1: circle radius / avatar half-height in pixels
+    cursor_size: int = 20  # S1: cursor radius in screen pixels (zoom-independent)
     show_bbox: bool = True  # whether to show the bounding box on canvas
     show_global_axes: bool = True  # solid crosshairs at screen centre
     show_local_axes: bool = False  # dotted crosshairs at sway-bbox centre

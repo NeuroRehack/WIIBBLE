@@ -6,6 +6,19 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- Persisted per-corner tare offsets in settings; subsequent launches skip the Step OFF screen when saved tare exists
+- Saved-tare status label in **Settings → Calibration**
+
+### Changed
+- Manual tare via THRIVE runs the full empty-board wait flow and saves offsets to settings
+- Unified tare into `run_tare_and_persist()` in calibration_flow (startup, THRIVE, Auto, Cal scale)
+- Tare status label shows relative time (e.g. "just now", "5 min ago") and updates when the empty-board step completes
+
+---
+
 ## [2.1.0] — 2026-07-06
 
 ### Added

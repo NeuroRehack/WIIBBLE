@@ -223,7 +223,16 @@ You may need to remove and re-pair if you switch adapters or restart Windows.
 
 On launch the app immediately attempts to connect to the board. If the board is unavailable, an error screen appears with instructions; press **Enter** to retry.
 
-Once connected, the app tares the board (step off until the empty-board screen completes), then opens the main canvas. Body weight comes from **Settings → Calibration** (default 70 kg). You can type a weight manually or use **Auto** to measure it from the board.
+Once connected, the app checks for saved tare offsets:
+
+- **First launch** (or after deleting settings): step off the board until the empty-board screen completes. The zero baseline is saved automatically.
+- **Later launches**: saved offsets are applied immediately and the main canvas opens without the tare screen.
+
+Body weight comes from **Settings → Calibration** (default 70 kg). You can type a weight manually or use **Auto** to measure it from the board.
+
+**Auto** (body weight calibration) and **Cal scale** both run the empty-board tare step before measuring. Use either when you need to re-zero the board after moving it or when readings look offset. The **Tare saved** line in settings shows relative time (e.g. "just now") and updates as soon as the Step OFF phase completes, before step-on or reference-mass measurement.
+
+Saved tare can drift over time (temperature, load-cell aging). Run **Auto** or **Cal scale** to refresh the zero baseline when weight or center-of-pressure readings look systematically wrong.
 
 **Board scale calibration** (optional, per board): enter a known reference mass under **Board reference (kg)** and click **Cal scale**. This replaces the factory default HID conversion factor and is independent of patient body weight.
 
@@ -235,7 +244,7 @@ The settings panel (gear button) is available as soon as the main canvas appears
 
 - Collapse the settings panel to maximise canvas space; click the canvas or the gear button to toggle it.
 - Use **Fit View** or `Ctrl + Mouse Wheel` to focus on a specific area of movement.
-- The app saves your preferences between sessions — zoom, save location, recording prefix, trail length, axis flips, target dwell time, and report options all persist.
+- The app saves your preferences between sessions — zoom, save location, recording prefix, trail length, axis flips, target dwell time, tare offsets, and report options all persist.
 - If the cursor feels jittery, increase the **Smoothing Filter** slider.
 - If icons appear as boxes, check that `assets/fonts/fa-solid-900.ttf` is present.
 - For a new patient, update body weight and use **Clear Screen**; quit and relaunch the app if you need to reconnect the board.

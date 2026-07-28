@@ -197,7 +197,7 @@ sequenceDiagram
 
 ### 2. Session startup (connect → tare → main canvas)
 
-Before any data is shown, the board must be connected and zeroed. Body weight is loaded from persisted settings (default 70 kg). On-board weight and scale calibration are optional and triggered from the settings panel.
+The board must be connected before data is shown. Tare offsets are persisted in settings; on later launches the saved baseline is applied without the Step OFF screen. First launch (or missing saved tare) runs the full empty-board wait and measurement flow. Body weight is loaded from persisted settings (default 70 kg). On-board weight and scale calibration are optional and triggered from the settings panel.
 
 ```mermaid
 sequenceDiagram
@@ -214,12 +214,14 @@ sequenceDiagram
     session->>hid: device.open(VENDOR_ID, PRODUCT_ID)
     hid-->>session: open HID stream
 
-    session->>calib: wait_for_tare(device, dl, app_state)
-    calib->>dp: measure_weight() × 20 stable reads
-    calib-->>session: board confirmed empty
-
-    session->>dp: tare(device, data_struct)
-    dp->>dp: average 10 reads → store baseline in data_struct
+    alt saved tare exists
+        session->>settings: apply_tare_to_data_struct()
+        settings-->>session: offsets in data_struct
+    else first launch or no saved tare
+        session->>calib: run_tare_and_persist()
+        calib->>calib: wait_for_tare → tare → save_tare_from_data_struct
+        calib->>calib: update_tare_status_label
+    end
 
     session->>settings: body_weight_kg (default 70)
     session->>session: app_state.weight = settings.body_weight_kg
@@ -301,7 +303,7 @@ Offline batch analysis (`wiibble-process-recordings`, `wiibble-report`) uses the
 | `wiibble/ui/ui.py` | Every DPG draw call — canvas, cursor, trail, targets, calibration screens, stats bar, settings panel | Never reads `AppState` for side effects during draws; receives values as arguments |
 | `wiibble/ui/input.py` | Mouse click/drag/release/wheel handlers; target creation; Ctrl+pan; Ctrl+zoom | Communicates back to `session.py` only via `session_state["action"]` |
 | `wiibble/features/data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
-| `wiibble/ui/calibration_flow.py` | Tare detection and body-weight / scale calibration blocking loops | Renders calibration screens inline; calls `dpg.render_dearpygui_frame()` directly |
+| `wiibble/ui/calibration_flow.py` | Unified `run_tare_and_persist`, body-weight and scale calibration blocking loops | Renders calibration screens inline; calls `dpg.render_dearpygui_frame()` directly |
 | `wiibble/utils/state.py` | `AppState` (runtime mutable state) + `Settings` (persisted preferences) | Settings auto-saved via `get_settings_path()` (`%APPDATA%\WIIBBLE\settings.json` on Windows) |
 | `wiibble/utils/constants.py` | Hardware IDs, byte offsets, `SCALE_FACTOR_DEFAULT`, thresholds, UI sizes | Factory default scale factor; runtime value lives in settings |
 | `wiibble/ui/theme.py` | Colour palette, global DPG theme, font loading (FontAwesome + Roboto) | `load_fonts()` must be called before `dpg.setup_dearpygui()` |
@@ -330,7 +332,8 @@ stateDiagram-v2
     Connecting --> ConnectionFailed : try_connection returns 1
     ConnectionFailed --> Connecting : Enter key pressed (retry)
 
-    Connecting --> Tare : connection succeeded
+    Connecting --> Tare : connection succeeded, no saved tare
+    Connecting --> Running : connection succeeded, saved tare applied
     Tare --> Running : tare complete, weight from settings
 
     Running --> Running : each frame (sensor read → render)

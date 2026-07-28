@@ -9,6 +9,7 @@ import os
 import platform
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
 
 import dearpygui.dearpygui as dpg
@@ -927,6 +928,57 @@ def _on_body_weight_change(value: float, settings, app_state) -> None:
         dpg.set_value("body_weight_input", clamped)
 
 
+def _relative_tare_label(saved_at: datetime, *, now: datetime | None = None) -> str:
+    """
+    Format a tare timestamp as a relative label for the settings panel.
+
+    Args:
+        saved_at: When tare was last persisted (timezone-aware or naive).
+        now: Reference time for tests; defaults to current local time.
+
+    Returns:
+        Human-readable relative string, e.g. "just now" or "5 min ago".
+    """
+    if saved_at.tzinfo is not None:
+        saved_local = saved_at.astimezone()
+        if now is None:
+            reference = datetime.now(saved_local.tzinfo)
+        elif now.tzinfo is not None:
+            reference = now.astimezone()
+        else:
+            reference = now.replace(tzinfo=saved_local.tzinfo)
+    else:
+        saved_local = saved_at
+        reference = now if now is not None else datetime.now()
+
+    age_seconds = max(0, int((reference - saved_local).total_seconds()))
+    if age_seconds < 60:
+        return "just now"
+    if age_seconds < 3600:
+        return f"{age_seconds // 60} min ago"
+    if age_seconds < 86400:
+        return f"{age_seconds // 3600} hr ago"
+    return saved_local.strftime("%Y-%m-%d %H:%M")
+
+
+def _format_tare_status(settings) -> str:
+    """Return a short label for the persisted tare timestamp."""
+    if not settings.has_saved_tare():
+        return "Tare: not saved"
+    try:
+        saved_at = datetime.fromisoformat(settings.tare_saved_at)
+        return f"Tare saved: {_relative_tare_label(saved_at)}"
+    except ValueError:
+        return f"Tare saved: {settings.tare_saved_at}"
+
+
+def update_tare_status_label(settings) -> None:
+    """Refresh the calibration panel tare timestamp label."""
+    if not dpg.does_item_exist("tare_status_label"):
+        return
+    dpg.set_value("tare_status_label", _format_tare_status(settings))
+
+
 def _on_calibrate_board(session_state: dict) -> None:
     """Request on-board weight calibration from the main loop."""
     log.info("On-board weight calibration requested")
@@ -975,8 +1027,8 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
         )
     with dpg.tooltip(parent="calibrate_board_btn"):
         dpg.add_text(
-            "Run step-off / step-on calibration to measure weight on the board.\n"
-            "Updates this field when complete."
+            "Step off, tare the board, then step on to measure body weight.\n"
+            "Also refreshes the saved zero baseline when complete."
         )
     dpg.add_spacer(height=8)
     dpg.add_text("Board reference (kg)")
@@ -1007,6 +1059,8 @@ def _build_calibration_controls(app_state, settings, session_state: dict) -> Non
             "Tare the board, place the reference mass, and compute\n"
             "the HID raw-to-kg scale factor for this board."
         )
+    dpg.add_spacer(height=8)
+    dpg.add_text(_format_tare_status(settings), tag="tare_status_label")
 
 
 def _open_folder_in_file_manager(path: Path) -> None:

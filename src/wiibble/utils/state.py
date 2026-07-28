@@ -4,6 +4,7 @@ import json
 import logging
 import platform
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from wiibble.utils.constants import (
@@ -16,6 +17,23 @@ from wiibble.utils.constants import (
 from wiibble.utils.recording_names import normalize_recording_prefix
 
 log = logging.getLogger(__name__)
+
+_TARE_CORNER_FIELDS = (
+    ("top_right", "tare_top_right"),
+    ("bottom_right", "tare_bottom_right"),
+    ("top_left", "tare_top_left"),
+    ("bottom_left", "tare_bottom_left"),
+)
+
+
+def default_data_struct() -> dict:
+    """Return a fresh per-corner HID mapping with zero tare offsets."""
+    return {
+        "top_right": {"rawIndex": 3, "tare": 0},
+        "bottom_right": {"rawIndex": 5, "tare": 0},
+        "top_left": {"rawIndex": 7, "tare": 0},
+        "bottom_left": {"rawIndex": 9, "tare": 0},
+    }
 
 
 def get_settings_path() -> Path:
@@ -66,6 +84,31 @@ class Settings:
     thrive_broker_host: str = "localhost"  # THRIVE PC LAN IP (Mosquitto)
     thrive_hub_id: str = "demo"  # must match THRIVE .env HUB_ID
     thrive_node_id: str = "wiibble_01"  # MQTT node id (distinct from simulator)
+    tare_top_right: float = 0.0
+    tare_bottom_right: float = 0.0
+    tare_top_left: float = 0.0
+    tare_bottom_left: float = 0.0
+    tare_saved_at: str = ""  # ISO-8601 UTC; empty means never tared
+
+    def has_saved_tare(self) -> bool:
+        """Return True when persisted tare offsets are available."""
+        return bool(self.tare_saved_at)
+
+    def apply_tare_to_data_struct(self, data_struct: dict) -> None:
+        """Copy persisted tare offsets into runtime ``data_struct`` corner entries."""
+        for corner_key, field_name in _TARE_CORNER_FIELDS:
+            data_struct[corner_key]["tare"] = getattr(self, field_name)
+
+    def save_tare_from_data_struct(self, data_struct: dict) -> None:
+        """Persist corner tare offsets from ``data_struct`` and write settings to disk.
+
+        UI label refresh is handled by
+        :func:`wiibble.ui.calibration_flow.run_tare_and_persist`.
+        """
+        for corner_key, field_name in _TARE_CORNER_FIELDS:
+            setattr(self, field_name, float(data_struct[corner_key]["tare"]))
+        self.tare_saved_at = datetime.now(UTC).isoformat()
+        self.save()
 
     def save(self) -> None:
         """Persist current settings to disk."""
@@ -143,14 +186,7 @@ class AppState:
     # Cursor drag-to-resize state
     cursor_drag_in_progress: bool = False
     cursor_drag_start_size: int = 20
-    data_struct: dict = field(
-        default_factory=lambda: {
-            "top_right": {"rawIndex": 3, "tare": 0},
-            "bottom_right": {"rawIndex": 5, "tare": 0},
-            "top_left": {"rawIndex": 7, "tare": 0},
-            "bottom_left": {"rawIndex": 9, "tare": 0},
-        }
-    )
+    data_struct: dict = field(default_factory=default_data_struct)
     is_recording: bool = False  # S5
     record_start: float = 0.0  # S5
     record_buffer: list = field(default_factory=list)  # S5
@@ -235,18 +271,15 @@ class AppState:
         self._target_dwell_disarmed = set()
         self._target_dwell_last_tick = 0.0
 
-    def reset(self):
+    def reset(self, settings: Settings | None = None) -> None:
         """Called on RESTART — resets session data but preserves calibration."""
         self.ball_x = 0
         self.ball_y = 0
         self.historical_coords = [(0, 0)] * 100
         self.clicked_locations = []
-        self.data_struct = {
-            "top_right": {"rawIndex": 3, "tare": 0},
-            "bottom_right": {"rawIndex": 5, "tare": 0},
-            "top_left": {"rawIndex": 7, "tare": 0},
-            "bottom_left": {"rawIndex": 9, "tare": 0},
-        }
+        self.data_struct = default_data_struct()
+        if settings is not None and settings.has_saved_tare():
+            settings.apply_tare_to_data_struct(self.data_struct)
         self.reset_target_counter()
         self.is_recording = False
         self.record_buffer = []

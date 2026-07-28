@@ -245,6 +245,77 @@ class TestSettingsLoadFallback:
 
 
 # ---------------------------------------------------------------------------
+# Settings — tare persistence
+# ---------------------------------------------------------------------------
+
+
+class TestSettingsTarePersistence:
+    def test_has_saved_tare_false_by_default(self):
+        assert Settings().has_saved_tare() is False
+
+    def test_tare_fields_survive_round_trip(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        original = Settings(
+            tare_top_right=42.1,
+            tare_bottom_right=41.8,
+            tare_top_left=43.0,
+            tare_bottom_left=42.5,
+            tare_saved_at="2026-07-27T10:30:00+00:00",
+        )
+        original.save()
+        loaded = Settings.load()
+
+        assert loaded.tare_top_right == 42.1
+        assert loaded.tare_bottom_right == 41.8
+        assert loaded.tare_top_left == 43.0
+        assert loaded.tare_bottom_left == 42.5
+        assert loaded.tare_saved_at == "2026-07-27T10:30:00+00:00"
+        assert loaded.has_saved_tare() is True
+
+    def test_apply_tare_to_data_struct(self):
+        settings = Settings(
+            tare_top_right=10.0,
+            tare_bottom_right=11.0,
+            tare_top_left=12.0,
+            tare_bottom_left=13.0,
+            tare_saved_at="2026-07-27T10:30:00+00:00",
+        )
+        data_struct = {
+            "top_right": {"rawIndex": 3, "tare": 0},
+            "bottom_right": {"rawIndex": 5, "tare": 0},
+            "top_left": {"rawIndex": 7, "tare": 0},
+            "bottom_left": {"rawIndex": 9, "tare": 0},
+        }
+
+        settings.apply_tare_to_data_struct(data_struct)
+
+        assert data_struct["top_right"]["tare"] == 10.0
+        assert data_struct["bottom_right"]["tare"] == 11.0
+        assert data_struct["top_left"]["tare"] == 12.0
+        assert data_struct["bottom_left"]["tare"] == 13.0
+
+    def test_save_tare_from_data_struct(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        settings = Settings()
+        data_struct = {
+            "top_right": {"rawIndex": 3, "tare": 20.0},
+            "bottom_right": {"rawIndex": 5, "tare": 21.0},
+            "top_left": {"rawIndex": 7, "tare": 22.0},
+            "bottom_left": {"rawIndex": 9, "tare": 23.0},
+        }
+
+        settings.save_tare_from_data_struct(data_struct)
+        loaded = Settings.load()
+
+        assert loaded.tare_top_right == 20.0
+        assert loaded.tare_bottom_right == 21.0
+        assert loaded.tare_top_left == 22.0
+        assert loaded.tare_bottom_left == 23.0
+        assert loaded.has_saved_tare() is True
+        assert loaded.tare_saved_at
+
+
+# ---------------------------------------------------------------------------
 # AppState — reset
 # ---------------------------------------------------------------------------
 
@@ -299,6 +370,30 @@ class TestAppStateReset:
         s.reset()
         assert s.target_hit_count == 0
         assert s._target_dwell_disarmed == set()
+
+    def test_reset_preserves_saved_tare_from_settings(self):
+        settings = Settings(
+            tare_top_right=10.0,
+            tare_bottom_right=11.0,
+            tare_top_left=12.0,
+            tare_bottom_left=13.0,
+            tare_saved_at="2026-07-27T10:30:00+00:00",
+        )
+        app_state = AppState()
+        app_state.data_struct["top_right"]["tare"] = 99.0
+
+        app_state.reset(settings)
+
+        assert app_state.data_struct["top_right"]["tare"] == 10.0
+        assert app_state.data_struct["bottom_left"]["tare"] == 13.0
+
+    def test_reset_zeros_tare_without_saved_settings(self):
+        app_state = AppState()
+        app_state.data_struct["top_right"]["tare"] = 42.0
+
+        app_state.reset()
+
+        assert app_state.data_struct["top_right"]["tare"] == 0.0
 
 
 class TestAppStateResetSwayExtents:

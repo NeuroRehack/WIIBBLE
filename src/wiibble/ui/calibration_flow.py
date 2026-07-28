@@ -15,12 +15,14 @@ from wiibble.ui.ui import (
     draw_reference_weight_instruction,
     draw_step_instruction,
     ensure_textures_loaded,
+    update_tare_status_label,
 )
 from wiibble.utils.constants import (
     CALIB_MIN_WEIGHT_DELTA,
     RAW_STABILITY_DELTA,
     TARE_MAX_WEIGHT,
 )
+from wiibble.utils.state import Settings
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +75,47 @@ def wait_for_tare(device, dl, app_state, scale_factor: float) -> float:
 
     log.info("wait_for_tare: stable empty board — baseline weight %.3f kg", weight)
     return weight
+
+
+def run_tare_and_persist(
+    device,
+    dl,
+    app_state,
+    settings: Settings,
+    scale_factor: float,
+    *,
+    reset_mock_phase: bool = False,
+) -> bool:
+    """
+    Wait for empty board, measure tare baseline, persist offsets, refresh UI label.
+
+    Args:
+        device: Open HID device (real or mock).
+        dl: Viewport drawlist for calibration screens.
+        app_state: Runtime application state.
+        settings: Persisted settings (tare fields updated on success).
+        scale_factor: HID raw-to-kg conversion factor.
+        reset_mock_phase: When True, reset mock device calibration phase first.
+
+    Returns:
+        True when tare completed and saved; False on abort or error.
+    """
+    if reset_mock_phase and hasattr(device, "reset_calibration_phase"):
+        device.reset_calibration_phase()
+
+    result = wait_for_tare(device, dl, app_state, scale_factor)
+    if result == -1:
+        return False
+
+    try:
+        tare(device, app_state.data_struct)
+    except Exception:
+        log.exception("run_tare_and_persist: tare measurement failed")
+        return False
+
+    settings.save_tare_from_data_struct(app_state.data_struct)
+    update_tare_status_label(settings)
+    return True
 
 
 def sensitivity_calibration(
@@ -183,7 +226,9 @@ def reference_weight_scale_calibration(
     return new_factor
 
 
-def run_board_weight_calibration(device, dl, app_state, scale_factor: float) -> float:
+def run_board_weight_calibration(
+    device, dl, app_state, scale_factor: float, settings: Settings
+) -> float:
     """
     Full on-board weight calibration: empty-board wait → tare → step-on measurement.
 
@@ -192,17 +237,9 @@ def run_board_weight_calibration(device, dl, app_state, scale_factor: float) -> 
 
     def _run() -> float:
         log.info("On-board weight calibration flow started")
-        if hasattr(device, "reset_calibration_phase"):
-            device.reset_calibration_phase()
-
-        result = wait_for_tare(device, dl, app_state, scale_factor)
-        if result == -1:
-            return -1
-
-        try:
-            tare(device, app_state.data_struct)
-        except Exception:
-            log.exception("run_board_weight_calibration: tare failed")
+        if not run_tare_and_persist(
+            device, dl, app_state, settings, scale_factor, reset_mock_phase=True
+        ):
             return -1
 
         on_start = (
@@ -216,7 +253,12 @@ def run_board_weight_calibration(device, dl, app_state, scale_factor: float) -> 
 
 
 def run_board_scale_calibration(
-    device, dl, app_state, reference_kg: float, scale_factor: float
+    device,
+    dl,
+    app_state,
+    reference_kg: float,
+    scale_factor: float,
+    settings: Settings,
 ) -> float:
     """
     Board scale calibration: tare → place reference mass → compute scale_factor.
@@ -226,17 +268,9 @@ def run_board_scale_calibration(
 
     def _run() -> float:
         log.info("Board scale calibration flow started")
-        if hasattr(device, "reset_calibration_phase"):
-            device.reset_calibration_phase()
-
-        result = wait_for_tare(device, dl, app_state, scale_factor)
-        if result == -1:
-            return -1
-
-        try:
-            tare(device, app_state.data_struct)
-        except Exception:
-            log.exception("run_board_scale_calibration: tare failed")
+        if not run_tare_and_persist(
+            device, dl, app_state, settings, scale_factor, reset_mock_phase=True
+        ):
             return -1
 
         on_start = None

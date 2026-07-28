@@ -22,7 +22,6 @@ from wiibble.features.data_processing import (
     calculate_coordinates,
     calculate_force_deviation_kg,
     parse_data,
-    tare,
 )
 from wiibble.session_report.launcher import (
     launch_session_report_async,
@@ -37,7 +36,7 @@ from wiibble.thrive.hook import get_thrive_hook, reset_thrive_hook
 from wiibble.ui.calibration_flow import (
     run_board_scale_calibration,
     run_board_weight_calibration,
-    wait_for_tare,
+    run_tare_and_persist,
 )
 from wiibble.ui.input import register_input_handlers
 from wiibble.ui.theme import ICON_COG
@@ -564,7 +563,7 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _pause_acquisition(session_state)
         try:
             weight = run_board_weight_calibration(
-                device, dl, app_state, app_state.scale_factor
+                device, dl, app_state, app_state.scale_factor, settings
             )
             if weight > 0:
                 settings.body_weight_kg = weight
@@ -585,7 +584,12 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _pause_acquisition(session_state)
         try:
             new_factor = run_board_scale_calibration(
-                device, dl, app_state, ref_kg, app_state.scale_factor
+                device,
+                dl,
+                app_state,
+                ref_kg,
+                app_state.scale_factor,
+                settings,
             )
             if new_factor > 0:
                 settings.scale_factor = new_factor
@@ -600,19 +604,17 @@ def _handle_session_action(action, device, dl, app_state, settings, session_stat
         _clear_session_action(session_state)
         return None
     if action == "tare":
-        log.info("Tare requested (THRIVE hub or remote command)")
+        log.info("Tare requested")
         was_toolbar_visible = _collapse_ui_for_calibration(session_state)
         _pause_acquisition(session_state)
         try:
-            with contextlib.suppress(Exception):
-                device.set_nonblocking(0)
-            tare(device, app_state.data_struct)
-            log.info("Board tare completed")
-        except Exception:
-            log.exception("Tare failed")
+            if not run_tare_and_persist(
+                device, dl, app_state, settings, app_state.scale_factor
+            ):
+                log.warning("Tare flow did not complete")
+            else:
+                log.info("Board tare completed")
         finally:
-            with contextlib.suppress(Exception):
-                device.set_nonblocking(1)
             _resume_acquisition(session_state)
             _restore_ui_after_calibration(session_state, was_toolbar_visible)
         _clear_session_action(session_state)
@@ -646,11 +648,12 @@ def _prepare_session(dl, app_state, settings, session_state, args):
     dpg.render_dearpygui_frame()
 
     app_state.scale_factor = settings.scale_factor
-    wait_for_tare(device, dl, app_state, app_state.scale_factor)
-    try:
-        tare(device, app_state.data_struct)
-    except Exception:
-        log.exception("Failed to tare")
+    if settings.has_saved_tare():
+        settings.apply_tare_to_data_struct(app_state.data_struct)
+        log.info("Using saved tare offsets (saved %s)", settings.tare_saved_at)
+    elif not run_tare_and_persist(
+        device, dl, app_state, settings, app_state.scale_factor
+    ):
         device.close()
         return None
 
@@ -942,7 +945,7 @@ def _run_session(app_state, settings, args) -> int:
         args.mock,
         getattr(args, "mock_scenario", "n/a"),
     )
-    app_state.reset()
+    app_state.reset(settings)
 
     # Update screen dimensions from current viewport
     app_state.screen_width = dpg.get_viewport_width()

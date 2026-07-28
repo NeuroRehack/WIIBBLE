@@ -68,6 +68,128 @@ def _click_suppression_monkeypatch(monkeypatch):
     monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
 
 
+def _shift_key_monkeypatch(monkeypatch):
+    """Monkeypatch is_key_down so only Shift reads as held."""
+    monkeypatch.setattr(
+        input_module.dpg,
+        "is_key_down",
+        lambda key: key == input_module.dpg.mvKey_ModShift,
+    )
+    monkeypatch.setattr(input_module.dpg, "does_item_exist", lambda _tag: False)
+    monkeypatch.setattr(input_module.dpg, "is_item_shown", lambda _tag: False)
+    monkeypatch.setattr(input_module, "is_mouse_over_quick_access", lambda: False)
+
+
+def test_handle_canvas_click_starts_target_resize_when_shift_on_circle(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
+    app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
+    settings = DummySettings(zoom_factor=1.0, cursor_size=20)
+    session_state = {"toolbar_visible": False}
+    _shift_key_monkeypatch(monkeypatch)
+
+    input_module._handle_canvas_click(150, 75, app_state, settings, session_state)
+
+    assert app_state.target_resize_in_progress is not None
+    assert app_state.target_resize_in_progress["index"] == 0
+    assert app_state.target_resize_in_progress["shape"] == "circle"
+    assert app_state.target_move_in_progress is None
+
+
+def test_handle_target_resize_drag_updates_circle_radius(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]
+    app_state.target_resize_in_progress = {
+        "index": 0,
+        "shape": "circle",
+        "edge": None,
+    }
+    settings = DummySettings(zoom_factor=1.0)
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (180, 75)
+    )
+
+    input_module._handle_target_resize_drag(app_state, settings)
+
+    assert app_state.clicked_locations[0]["center"] == (50.0, 25.0)
+    assert math.isclose(app_state.clicked_locations[0]["radius"], 30.0, rel_tol=1e-6)
+
+
+def test_pick_rect_edge_selects_closest_edge():
+    app_state = AppState(screen_width=200, screen_height=100)
+    target = {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
+    settings = DummySettings(zoom_factor=1.0)
+
+    assert (
+        input_module._pick_rect_edge(131, 75, target, app_state, settings) == "left"
+    )
+    assert (
+        input_module._pick_rect_edge(169, 75, target, app_state, settings) == "right"
+    )
+    assert (
+        input_module._pick_rect_edge(150, 57, target, app_state, settings) == "top"
+    )
+    assert (
+        input_module._pick_rect_edge(150, 93, target, app_state, settings) == "bottom"
+    )
+
+
+def test_handle_target_resize_drag_updates_rect_left_edge(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.clicked_locations = [
+        {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
+    ]
+    app_state.target_resize_in_progress = {
+        "index": 0,
+        "shape": "rect",
+        "edge": "left",
+    }
+    settings = DummySettings(zoom_factor=1.0)
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (120, 75)
+    )
+
+    input_module._handle_target_resize_drag(app_state, settings)
+
+    rect = app_state.clicked_locations[0]
+    assert rect["min"][0] == 20.0
+    assert rect["max"] == (70.0, 45.0)
+
+
+def test_handle_target_resize_drag_enforces_minimum_rect_span(monkeypatch):
+    app_state = AppState(screen_width=200, screen_height=100)
+    app_state.clicked_locations = [
+        {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
+    ]
+    app_state.target_resize_in_progress = {
+        "index": 0,
+        "shape": "rect",
+        "edge": "left",
+    }
+    settings = DummySettings(zoom_factor=1.0)
+    monkeypatch.setattr(
+        input_module.dpg, "get_mouse_pos", lambda local=False: (200, 75)
+    )
+
+    input_module._handle_target_resize_drag(app_state, settings)
+
+    rect = app_state.clicked_locations[0]
+    assert rect["min"][0] == 68.0
+    assert rect["max"][0] == 70.0
+
+
+def test_handle_target_resize_release_clears_state():
+    app_state = AppState()
+    app_state.target_resize_in_progress = {
+        "index": 0,
+        "shape": "circle",
+        "edge": None,
+    }
+
+    input_module._handle_target_resize_release(app_state)
+
+    assert app_state.target_resize_in_progress is None
+
+
 def test_handle_canvas_click_starts_target_move_when_click_on_target(monkeypatch):
     app_state = AppState(screen_width=200, screen_height=100, ball_x=0, ball_y=0)
     app_state.clicked_locations = [{"center": (50.0, 25.0), "radius": 20.0}]

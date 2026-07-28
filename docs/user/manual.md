@@ -122,7 +122,9 @@ Opens and closes the settings panel. When collapsed, the floating gear button in
 | Left-click canvas (not cursor) | Start placing a new circular target; drag to set radius |
 | Hold R + left-click drag | Place a rectangular target (click without dragging creates a default square sized to the cursor) |
 | Left-click existing target | Begin moving it (drag to reposition) |
-| Release | Finalise cursor size, new target, or target move |
+| Shift + left-click drag on existing circle | Resize radius (centre fixed) |
+| Shift + left-click drag on existing rectangle | Resize width or height by dragging the nearest edge |
+| Release | Finalise cursor size, new target, target move, or target resize |
 | Right-click a target | Remove that target |
 | Left-click canvas (settings panel open) | Collapse the settings panel |
 | Ctrl + Left-click drag | Pan the canvas |
@@ -144,7 +146,7 @@ Shortcuts are disabled while typing in a settings text field.
 
 **Cursor** — Filled circle or person silhouette representing the patient's current centre of pressure. Switch modes in **Settings → Cursor & Movement**.
 
-**Targets** — Circular or rectangular regions created on the canvas. Remain fixed to the movement space and scale with zoom. Drag to reposition; right-click to remove.
+**Targets** — Circular or rectangular regions created on the canvas. Remain fixed to the movement space and scale with zoom. Drag to reposition; hold **Shift** and drag to resize an existing target (circle: radius; rectangle: nearest edge); right-click to remove.
 
 **Hit Counter** — Large number at the top of the canvas (when enabled). Increments when the cursor dwells inside a target for the configured dwell time.
 

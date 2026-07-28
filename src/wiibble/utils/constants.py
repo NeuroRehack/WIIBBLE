@@ -123,6 +123,10 @@ CURSOR_DRAG_THRESHOLD = (
     5  # px size-delta below which a cursor press is treated as a click
 )
 
+# Existing target resize (Shift+drag)
+TARGET_EDGE_HIT_TOLERANCE = 8  # viewport px — edge proximity for rect resize
+TARGET_MIN_LOGICAL_SPAN = 2.0  # minimum width/height or diameter after resize
+
 # Target dwell counter — hold time required to increment hit count (seconds)
 TARGET_DWELL_MIN = 0.0
 TARGET_DWELL_MAX = 5.0

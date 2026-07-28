@@ -233,6 +233,8 @@ class AppState:
     target_in_progress: dict = None
     # Target reposition drag — {"index": int, "grab_offset": (dx, dy)} in logical coords
     target_move_in_progress: dict = None
+    # Target resize drag — {"index": int, "shape": str, "edge": str|None}
+    target_resize_in_progress: dict = None
     # Cursor drag-to-resize state
     cursor_drag_in_progress: bool = False
     cursor_drag_start_size: int = 20
@@ -373,5 +375,6 @@ class AppState:
         self.cursor_drag_start_size = 20
         self.target_in_progress = None
         self.target_move_in_progress = None
+        self.target_resize_in_progress = None
         self.toast_message = ""
         self.toast_until = 0.0

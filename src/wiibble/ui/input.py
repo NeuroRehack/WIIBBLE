@@ -21,6 +21,8 @@ from wiibble.utils.constants import (
     CURSOR_SIZE_MAX,
     CURSOR_SIZE_MIN,
     PANEL_W,
+    TARGET_EDGE_HIT_TOLERANCE,
+    TARGET_MIN_LOGICAL_SPAN,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
@@ -154,6 +156,66 @@ def _translate_target(target, dx: float, dy: float) -> None:
         target["center"] = (lx + dx, ly + dy)
 
 
+def _shift_held() -> bool:
+    """Return True when either Shift modifier key is held."""
+    return dpg.is_key_down(dpg.mvKey_ModShift)
+
+
+def _radius_from_center(
+    logical_x: float, logical_y: float, center_x: float, center_y: float
+) -> float:
+    """Return circle radius from centre to a logical point, with a minimum."""
+    min_radius = TARGET_MIN_LOGICAL_SPAN / 2.0
+    dist = math.sqrt((logical_x - center_x) ** 2 + (logical_y - center_y) ** 2)
+    return max(min_radius, dist)
+
+
+def _pick_rect_edge(mx: float, my: float, target, app_state, settings) -> str:
+    """Return the viewport edge nearest to (mx, my) for a rectangular target."""
+    cx, cy = _viewport_center(app_state)
+    min_vx, min_vy, max_vx, max_vy = _logical_rect_to_viewport_bounds(
+        target["min"],
+        target["max"],
+        cx,
+        cy,
+        settings.zoom_factor,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
+    tol = TARGET_EDGE_HIT_TOLERANCE
+    inside = (
+        min_vx - tol <= mx <= max_vx + tol and min_vy - tol <= my <= max_vy + tol
+    )
+    if not inside:
+        return "left"
+    dists = {
+        "left": abs(mx - min_vx),
+        "right": abs(mx - max_vx),
+        "top": abs(my - min_vy),
+        "bottom": abs(my - max_vy),
+    }
+    return min(dists, key=dists.get)
+
+
+def _start_target_resize(
+    idx: int, target, mx: float, my: float, app_state, settings
+) -> None:
+    """Begin Shift+drag resize for an existing target."""
+    shape = _target_shape(target)
+    edge = _pick_rect_edge(mx, my, target, app_state, settings) if shape == "rect" else None
+    app_state.target_resize_in_progress = {
+        "index": idx,
+        "shape": shape,
+        "edge": edge,
+    }
+    log.info(
+        "Target resize started (index=%d, shape=%s, edge=%s)",
+        idx,
+        shape,
+        edge,
+    )
+
+
 def _logical_rect_to_viewport_bounds(
     min_pt: tuple[float, float],
     max_pt: tuple[float, float],
@@ -245,6 +307,9 @@ def _handle_canvas_click(
     hit = _find_target_at(mx, my, app_state, settings)
     if hit is not None:
         idx, target = hit
+        if _shift_held():
+            _start_target_resize(idx, target, mx, my, app_state, settings)
+            return
         log.info("Target move started (index=%d)", idx)
         tcx, tcy = _target_logical_center(target)
         app_state.target_move_in_progress = {
@@ -351,8 +416,59 @@ def _handle_target_drag(app_state, settings):
         tip["max"] = (max(ax, logical_x), max(ay, logical_y))
         return
     x0, y0 = tip["center"]
-    new_radius = math.sqrt((logical_x - x0) ** 2 + (logical_y - y0) ** 2)
-    tip["radius"] = max(1.0, new_radius)
+    tip["radius"] = _radius_from_center(logical_x, logical_y, x0, y0)
+
+
+def _handle_target_resize_drag(app_state, settings) -> None:
+    """Resize an existing target while Shift+drag is in progress."""
+    resize = app_state.target_resize_in_progress
+    if resize is None:
+        return
+    idx = resize["index"]
+    if idx >= len(app_state.clicked_locations):
+        app_state.target_resize_in_progress = None
+        return
+    mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
+    cx = app_state.screen_width // 2 + app_state.pan_offset_x
+    cy = app_state.screen_height // 2 + app_state.pan_offset_y
+    logical_x, logical_y = viewport_to_logical(
+        mouse_x,
+        mouse_y,
+        cx,
+        cy,
+        settings.zoom_factor,
+        settings.flip_horizontal,
+        settings.flip_vertical,
+    )
+    target = app_state.clicked_locations[idx]
+    if resize["shape"] == "circle":
+        center_x, center_y = target["center"]
+        target["radius"] = _radius_from_center(
+            logical_x, logical_y, center_x, center_y
+        )
+        return
+    min_x, min_y = target["min"]
+    max_x, max_y = target["max"]
+    edge = resize["edge"]
+    min_span = TARGET_MIN_LOGICAL_SPAN
+    if edge == "left":
+        target["min"] = (min(logical_x, max_x - min_span), min_y)
+    elif edge == "right":
+        target["max"] = (max(logical_x, min_x + min_span), max_y)
+    elif edge == "top":
+        target["min"] = (min_x, min(logical_y, max_y - min_span))
+    elif edge == "bottom":
+        target["max"] = (max_x, max(logical_y, min_y + min_span))
+
+
+def _handle_target_resize_release(app_state) -> None:
+    """Finalize target resize when the mouse button is released."""
+    if app_state.target_resize_in_progress is not None:
+        log.info(
+            "Target resized (index=%d)",
+            app_state.target_resize_in_progress["index"],
+        )
+    app_state.target_resize_in_progress = None
 
 
 def _handle_target_move_drag(app_state, settings) -> None:
@@ -515,10 +631,15 @@ def register_input_handlers(app_state, settings, session_state):
                     _handle_cursor_drag(app_state, settings)
                     if getattr(app_state, "cursor_drag_in_progress", False)
                     else (
-                        _handle_target_move_drag(app_state, settings)
-                        if getattr(app_state, "target_move_in_progress", None)
+                        _handle_target_resize_drag(app_state, settings)
+                        if getattr(app_state, "target_resize_in_progress", None)
                         is not None
-                        else _handle_target_drag(app_state, settings)
+                        else (
+                            _handle_target_move_drag(app_state, settings)
+                            if getattr(app_state, "target_move_in_progress", None)
+                            is not None
+                            else _handle_target_drag(app_state, settings)
+                        )
                     )
                 )
             ),
@@ -532,10 +653,15 @@ def register_input_handlers(app_state, settings, session_state):
                     _handle_cursor_release(app_state, settings)
                     if getattr(app_state, "cursor_drag_in_progress", False)
                     else (
-                        _handle_target_move_release(app_state)
-                        if getattr(app_state, "target_move_in_progress", None)
+                        _handle_target_resize_release(app_state)
+                        if getattr(app_state, "target_resize_in_progress", None)
                         is not None
-                        else _handle_target_release(app_state, settings)
+                        else (
+                            _handle_target_move_release(app_state)
+                            if getattr(app_state, "target_move_in_progress", None)
+                            is not None
+                            else _handle_target_release(app_state, settings)
+                        )
                     )
                 )
             ),

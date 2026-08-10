@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import dearpygui.dearpygui as dpg
 import typer
+from dotenv import load_dotenv
 
 from wiibble.session import run
 from wiibble.ui.theme import apply_global_theme, load_fonts
@@ -56,6 +57,7 @@ def main(
     ),
 ) -> None:
     """Launch the WIIBBLE desktop application."""
+    load_dotenv()
     configure_logging(level=logging.INFO, log_to_file=True, stream=True)
     install_uncaught_exception_hook(log)
 

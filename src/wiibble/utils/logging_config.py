@@ -6,6 +6,7 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any
 
 
 def configure_logging(
@@ -50,7 +51,11 @@ def install_uncaught_exception_hook(logger: logging.Logger | None = None) -> Non
     """Log unhandled exceptions before the process exits."""
     log = logger or logging.getLogger(__name__)
 
-    def _hook(exc_type, exc_value, exc_tb) -> None:
+    def _hook(
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_tb: Any,
+    ) -> None:
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_tb)
             return

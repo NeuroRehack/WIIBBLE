@@ -82,7 +82,7 @@ This creates `.venv/` in the project directory. You can activate manually with:
 
 Most `uv run` and `just` commands detect the venv automatically.
 
-Optional: copy `.env.example` to `.env` if you need to override `WIIBBLE_SETTINGS_PATH` for local testing.
+Optional: copy `.env.example` to `.env` if you need to override `WIIBBLE_SETTINGS_PATH` for local testing. The app loads `.env` automatically at startup via `python-dotenv` (optional; no secrets required for normal use).
 
 ### (d) Build the C# board library
 
@@ -220,21 +220,20 @@ CI rejects PRs that fail either check.
 
 ### Tests
 
-Tests live in `tests/` and use `pytest` + `pytest-cov`. A coverage gate of **≥ 80%** is enforced for `wiibble/features/data_processing.py`, `wiibble/utils/state.py`, and `wiibble/board/recording.py`. Hardware-dependent and UI code is excluded from the gate.
+Tests mirror `src/wiibble/` under `tests/wiibble/`. Integration tests live in `tests/integration/`.
 
 ```powershell
 just test
-# or: uv run pytest -v
+just test-unit
+just test-integration
+just typecheck
 ```
 
-Current coverage (last verified locally):
+**Coverage policy**
 
-| Module | Coverage |
-|---|---|
-| `wiibble/board/recording.py` | 93% |
-| `wiibble/utils/state.py` | 96% |
-| `wiibble/features/data_processing.py` | 83% |
-| **Total (gated modules)** | **91%** |
+- **Gate:** `just test` enforces **≥ 80%** on eight core modules listed in `pyproject.toml` (`data_processing`, `state`, `recording`, `session_actions`, `recording_names`, `acquisition`, `exceptions`, Thrive `transform` and `announce`).
+- **Excluded:** Dear PyGui draw code, `session.py` orchestration, and hardware glue.
+- **Full report:** `just coverage-full` (informational, no fail-under).
 
 Use `MockHIDDevice` from `wiibble/board/mock_board.py` for any test that touches the sensor pipeline. Never write tests that require a physical board.
 
@@ -246,6 +245,7 @@ GitHub Actions: `.github/workflows/ci.yml`
 |---|---|
 | `lint` | `ruff check .` and `ruff format --check .` |
 | `test` | `pytest -v` with ≥ 80% coverage gate (runs after lint passes) |
+| `typecheck` | `mypy` on core packages (non-blocking initially) |
 | `dotnet` | `dotnet build` for `WiiBalanceBoardLibrary` |
 | `security` | `pip-audit` dependency scan (ubuntu-latest) |
 

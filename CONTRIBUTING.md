@@ -76,6 +76,9 @@ WIIBBLE uses [Ruff](https://github.com/astral-sh/ruff) for both linting and form
 ```powershell
 just lint
 just format
+just typecheck
+just test
+just check          # pre-commit on all files
 # or directly:
 uv run ruff check .
 uv run ruff format .
@@ -94,12 +97,20 @@ A few conventions to follow beyond what Ruff enforces:
 
 ## Tests
 
-Tests live in `tests/` and run with `pytest`. A coverage gate of **≥ 80%** is enforced for the testable modules (`wiibble/features/data_processing.py`, `wiibble/utils/state.py`, `wiibble/board/recording.py`). Hardware-dependent and UI code is excluded from the gate.
+Tests mirror the `src/wiibble/` layout under `tests/wiibble/`. Integration tests live in `tests/integration/`.
 
 ```powershell
-just test
-# or: uv run pytest -v
+just test              # unit tests + 80% coverage gate on core modules
+just test-unit         # exclude @pytest.mark.integration
+just test-integration  # mock session smoke test
+just coverage-full     # informational full src/ report (no gate)
 ```
+
+### Coverage policy
+
+- **Gate:** `just test` enforces **≥ 80%** on eight core modules listed in `pyproject.toml` under `[tool.pytest.ini_options]` (`data_processing`, `state`, `recording`, `session_actions`, `recording_names`, `acquisition`, `exceptions`, Thrive `transform` and `announce`).
+- **Excluded from the gate:** Dear PyGui draw code (`ui/ui.py`, `canvas_draw.py`, `settings_panel.py`), `session.py` orchestration, and hardware glue where mocking is impractical.
+- **Full report:** `just coverage-full` reports across all of `src/` for informational use only (no fail-under).
 
 When adding a new feature:
 - Add tests in `tests/` before or alongside the implementation.
@@ -110,7 +121,7 @@ When adding a new feature:
 
 ## Pull Request Process
 
-1. Make sure `just lint` and `just test` both pass locally before opening a PR.
+1. Make sure `just lint`, `just typecheck`, and `just test` all pass locally before opening a PR.
 2. Target `develop`, not `main`.
 3. Keep PRs focused — one logical change per PR makes review faster.
 4. Fill in the PR description: what changed, why, and how to test it.

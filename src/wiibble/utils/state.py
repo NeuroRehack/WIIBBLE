@@ -230,11 +230,11 @@ class AppState:
     # Each target: circle {"center", "radius"} or rect {"shape":"rect", "min", "max"}
     clicked_locations: list = field(default_factory=list)
     # Temporary state for a target being created (None or in-progress target dict)
-    target_in_progress: dict = None
+    target_in_progress: dict | None = None
     # Target reposition drag — {"index": int, "grab_offset": (dx, dy)} in logical coords
-    target_move_in_progress: dict = None
+    target_move_in_progress: dict | None = None
     # Target resize drag — {"index": int, "shape": str, "edge": str|None}
-    target_resize_in_progress: dict = None
+    target_resize_in_progress: dict | None = None
     # Cursor drag-to-resize state
     cursor_drag_in_progress: bool = False
     cursor_drag_start_size: int = 20

@@ -119,15 +119,9 @@ def test_pick_rect_edge_selects_closest_edge():
     target = {"shape": "rect", "min": (30.0, 5.0), "max": (70.0, 45.0)}
     settings = DummySettings(zoom_factor=1.0)
 
-    assert (
-        input_module._pick_rect_edge(131, 75, target, app_state, settings) == "left"
-    )
-    assert (
-        input_module._pick_rect_edge(169, 75, target, app_state, settings) == "right"
-    )
-    assert (
-        input_module._pick_rect_edge(150, 57, target, app_state, settings) == "top"
-    )
+    assert input_module._pick_rect_edge(131, 75, target, app_state, settings) == "left"
+    assert input_module._pick_rect_edge(169, 75, target, app_state, settings) == "right"
+    assert input_module._pick_rect_edge(150, 57, target, app_state, settings) == "top"
     assert (
         input_module._pick_rect_edge(150, 93, target, app_state, settings) == "bottom"
     )

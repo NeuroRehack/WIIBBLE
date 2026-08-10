@@ -65,11 +65,25 @@ WIIBBLE/
 └── installer.iss                # Inno Setup installer
 ```
 
+### Vendored research code
+
+`src/code_descriptors_postural_control/` is **vendored third-party research code** used only by the offline analysis pipeline (`analysis/analysis.py`). It is excluded from ruff and the main app runtime. Do not import it from `session.py` or `ui/`. A future refactor may move it to `vendor/` outside the installable package.
+
 ---
 
 ## Dependency direction
 
 Layers import only from layers below. Violations are bugs.
+
+### Mapping to SK standards layout
+
+WIIBBLE does not use a literal `backend/` package. The backend layer is:
+
+| SK standard term | WIIBBLE location |
+|---|---|
+| `backend/` | `features/`, `board/`, `session_actions.py`, `analysis/` |
+| `main/` (orchestration) | `__main__.py`, `session.py` |
+| `ui/` | `ui/` |
 
 ```mermaid
 flowchart BT

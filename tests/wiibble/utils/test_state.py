@@ -2,7 +2,7 @@
 # Unit tests for Settings persistence and AppState reset behaviour.
 
 import json
-import os
+from pathlib import Path
 
 import pytest
 
@@ -11,19 +11,22 @@ from wiibble.utils.state import AppState, Settings
 
 # Automatically set WIIBBLE_SETTINGS_PATH to a temp file for all tests in this module
 @pytest.fixture(autouse=True)
-def set_settings_path_env(tmp_path, monkeypatch):
-    settings_file = os.path.join(tmp_path, ".wiibble", "settings.json")
-    # Always create the parent directory for the settings file
-    os.makedirs(os.path.dirname(settings_file), exist_ok=True)
-    monkeypatch.setenv("WIIBBLE_SETTINGS_PATH", settings_file)
+def set_settings_path_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point settings persistence at an isolated temp file for each test."""
+    settings_file = tmp_path / ".wiibble" / "settings.json"
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("WIIBBLE_SETTINGS_PATH", str(settings_file))
 
 
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def env_settings_path():
-    return os.environ["WIIBBLE_SETTINGS_PATH"]
+def env_settings_path() -> Path:
+    """Return the path to the test settings file from the environment."""
+    import os
+
+    return Path(os.environ["WIIBBLE_SETTINGS_PATH"])
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +166,7 @@ class TestSettingsRoundTrip:
     def test_save_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         Settings().save()
-        assert os.path.isfile(env_settings_path())
+        assert env_settings_path().is_file()
 
     def test_save_writes_valid_json(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -211,7 +214,7 @@ class TestSettingsLoadFallback:
     def test_partial_json_fills_missing_keys_with_defaults(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         path = env_settings_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         # Write only one field
         with open(path, "w") as f:
             json.dump({"trail_length": 25}, f)
@@ -231,7 +234,7 @@ class TestSettingsLoadFallback:
     def test_corrupt_json_returns_defaults(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         path = env_settings_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             f.write("{ not valid json }")
 
@@ -242,7 +245,7 @@ class TestSettingsLoadFallback:
     def test_unknown_keys_in_json_are_ignored(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         path = env_settings_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             json.dump({"trail_length": 77, "unknown_future_key": "whatever"}, f)
 
@@ -253,7 +256,7 @@ class TestSettingsLoadFallback:
     def test_invalid_cursor_mode_falls_back_to_circle(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         path = env_settings_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             json.dump({"cursor_mode": "invalid"}, f)
 

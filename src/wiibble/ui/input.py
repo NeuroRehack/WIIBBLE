@@ -4,33 +4,43 @@ This module encapsulates click, drag, release, and wheel input logic so
 that app.py can remain focused on session orchestration.
 """
 
+from __future__ import annotations
+
 import logging
 import math
+from typing import Any
 
 import dearpygui.dearpygui as dpg
 
 from wiibble.features.data_processing import logical_to_viewport, viewport_to_logical
+from wiibble.ui.cursor_geometry import (
+    logical_rect_to_viewport_bounds,
+    pick_rect_edge,
+    radius_from_center,
+    screen_cursor_radius,
+)
 from wiibble.ui.ui import (
     _on_start_recording,
     _on_zoom_change,
     collapse_settings_panel,
     is_mouse_over_quick_access,
-    screen_cursor_radius,
 )
 from wiibble.utils.constants import (
     CURSOR_DRAG_THRESHOLD,
     CURSOR_SIZE_MAX,
     CURSOR_SIZE_MIN,
     PANEL_W,
-    TARGET_EDGE_HIT_TOLERANCE,
     TARGET_MIN_LOGICAL_SPAN,
     ZOOM_MAX,
     ZOOM_MIN,
     ZOOM_SCALE,
     ZOOM_SPEED,
 )
+from wiibble.utils.state import AppState, Settings
 
 log = logging.getLogger(__name__)
+
+SessionState = dict[str, Any]
 
 _SETTINGS_INPUT_TAGS = (
     "body_weight_input",
@@ -47,14 +57,14 @@ def _settings_input_active() -> bool:
     )
 
 
-def _keyboard_shortcuts_allowed(session_state: dict) -> bool:
+def _keyboard_shortcuts_allowed(session_state: SessionState) -> bool:
     """Return True when canvas keyboard shortcuts should fire."""
     if not session_state.get("toolbar_enabled"):
         return False
     return not _settings_input_active()
 
 
-def _handle_clear_shortcut(session_state: dict) -> None:
+def _handle_clear_shortcut(session_state: SessionState) -> None:
     """Clear the canvas when Ctrl+Shift+C is pressed."""
     if not _keyboard_shortcuts_allowed(session_state):
         return
@@ -64,7 +74,9 @@ def _handle_clear_shortcut(session_state: dict) -> None:
     session_state["action_detail"] = "Ctrl+Shift+C"
 
 
-def _handle_record_shortcut(app_state, settings, session_state: dict) -> None:
+def _handle_record_shortcut(
+    app_state: AppState, settings: Settings, session_state: SessionState
+) -> None:
     """Toggle recording when Ctrl+Space is pressed."""
     if not _keyboard_shortcuts_allowed(session_state):
         return
@@ -73,7 +85,12 @@ def _handle_record_shortcut(app_state, settings, session_state: dict) -> None:
     _on_start_recording(app_state, settings, source="Ctrl+Space")
 
 
-def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) -> None:
+def _handle_mouse_wheel(
+    wheel_delta: float,
+    app_state: AppState,
+    session_state: SessionState,
+    settings: Settings,
+) -> None:
     """Handle Ctrl+scroll zoom and pan around the current mouse position."""
     ctrl_held = dpg.is_key_down(dpg.mvKey_LControl)
     mouse_x, mouse_y = dpg.get_mouse_pos(local=False)
@@ -120,21 +137,23 @@ def _handle_mouse_wheel(wheel_delta: float, app_state, session_state, settings) 
     session_state["action"] = "pan_changed"
 
 
-def _viewport_center(app_state) -> tuple[float, float]:
+def _viewport_center(app_state: AppState) -> tuple[float, float]:
     """Return the canvas centre in viewport pixels (including pan)."""
     cx = app_state.screen_width // 2 + app_state.pan_offset_x
     cy = app_state.screen_height // 2 + app_state.pan_offset_y
     return cx, cy
 
 
-def _target_shape(target) -> str:
+def _target_shape(target: dict[str, Any] | tuple[float, float]) -> str:
     """Return ``circle`` or ``rect`` for a finalized or in-progress target."""
     if isinstance(target, dict) and target.get("shape") == "rect":
         return "rect"
     return "circle"
 
 
-def _target_logical_center(target) -> tuple[float, float]:
+def _target_logical_center(
+    target: dict[str, Any] | tuple[float, float],
+) -> tuple[float, float]:
     """Return the logical centre of a target (circle centre or rect centroid)."""
     if _target_shape(target) == "rect":
         min_pt = target["min"]
@@ -145,7 +164,7 @@ def _target_logical_center(target) -> tuple[float, float]:
     return target
 
 
-def _translate_target(target, dx: float, dy: float) -> None:
+def _translate_target(target: dict[str, Any], dx: float, dy: float) -> None:
     """Shift a target by a logical delta."""
     if isinstance(target, dict) and _target_shape(target) == "rect":
         min_x, min_y = target["min"]
@@ -166,44 +185,36 @@ def _radius_from_center(
     logical_x: float, logical_y: float, center_x: float, center_y: float
 ) -> float:
     """Return circle radius from centre to a logical point, with a minimum."""
-    min_radius = TARGET_MIN_LOGICAL_SPAN / 2.0
-    dist = math.sqrt((logical_x - center_x) ** 2 + (logical_y - center_y) ** 2)
-    return max(min_radius, dist)
+    return radius_from_center(logical_x, logical_y, center_x, center_y)
 
 
-def _pick_rect_edge(mx: float, my: float, target, app_state, settings) -> str:
+def _pick_rect_edge(
+    mx: float,
+    my: float,
+    target: dict[str, Any],
+    app_state: AppState,
+    settings: Settings,
+) -> str:
     """Return the viewport edge nearest to (mx, my) for a rectangular target."""
     cx, cy = _viewport_center(app_state)
-    min_vx, min_vy, max_vx, max_vy = _logical_rect_to_viewport_bounds(
-        target["min"],
-        target["max"],
-        cx,
-        cy,
-        settings.zoom_factor,
-        settings.flip_horizontal,
-        settings.flip_vertical,
-    )
-    tol = TARGET_EDGE_HIT_TOLERANCE
-    inside = (
-        min_vx - tol <= mx <= max_vx + tol and min_vy - tol <= my <= max_vy + tol
-    )
-    if not inside:
-        return "left"
-    dists = {
-        "left": abs(mx - min_vx),
-        "right": abs(mx - max_vx),
-        "top": abs(my - min_vy),
-        "bottom": abs(my - max_vy),
-    }
-    return min(dists, key=dists.get)
+    return pick_rect_edge(mx, my, target, cx, cy, settings)
 
 
 def _start_target_resize(
-    idx: int, target, mx: float, my: float, app_state, settings
+    idx: int,
+    target: dict[str, Any],
+    mx: float,
+    my: float,
+    app_state: AppState,
+    settings: Settings,
 ) -> None:
     """Begin Shift+drag resize for an existing target."""
     shape = _target_shape(target)
-    edge = _pick_rect_edge(mx, my, target, app_state, settings) if shape == "rect" else None
+    edge = (
+        _pick_rect_edge(mx, my, target, app_state, settings)
+        if shape == "rect"
+        else None
+    )
     app_state.target_resize_in_progress = {
         "index": idx,
         "shape": shape,
@@ -227,16 +238,18 @@ def _logical_rect_to_viewport_bounds(
     flip_vertical: bool,
 ) -> tuple[float, float, float, float]:
     """Convert logical rect corners to viewport min/max x/y (order-normalized)."""
-    vx0, vy0 = logical_to_viewport(
-        min_pt[0], min_pt[1], cx, cy, zoom, flip_horizontal, flip_vertical
+    return logical_rect_to_viewport_bounds(
+        min_pt, max_pt, cx, cy, zoom, flip_horizontal, flip_vertical
     )
-    vx1, vy1 = logical_to_viewport(
-        max_pt[0], max_pt[1], cx, cy, zoom, flip_horizontal, flip_vertical
-    )
-    return min(vx0, vx1), min(vy0, vy1), max(vx0, vx1), max(vy0, vy1)
 
 
-def _point_hits_target(mx: float, my: float, target, app_state, settings) -> bool:
+def _point_hits_target(
+    mx: float,
+    my: float,
+    target: dict[str, Any] | tuple[float, float],
+    app_state: AppState,
+    settings: Settings,
+) -> bool:
     """Return True when viewport point (mx, my) is inside the target."""
     cx, cy = _viewport_center(app_state)
     zoom = settings.zoom_factor
@@ -259,7 +272,9 @@ def _point_hits_target(mx: float, my: float, target, app_state, settings) -> boo
     return dist <= scaled_radius
 
 
-def _find_target_at(mx: float, my: float, app_state, settings):
+def _find_target_at(
+    mx: float, my: float, app_state: AppState, settings: Settings
+) -> int | None:
     """Return (index, target) for the first target hit at viewport coords, or None."""
     for idx, target in enumerate(app_state.clicked_locations):
         if _point_hits_target(mx, my, target, app_state, settings):
@@ -268,7 +283,11 @@ def _find_target_at(mx: float, my: float, app_state, settings):
 
 
 def _handle_canvas_click(
-    mx: float, my: float, app_state, settings, session_state
+    mx: float,
+    my: float,
+    app_state: AppState,
+    settings: Settings,
+    session_state: SessionState,
 ) -> None:
     """Handle left-click on the canvas, starting cursor drag/resize or a new target."""
     if dpg.does_item_exist("recording_dir_dialog") and dpg.is_item_shown(
@@ -349,7 +368,7 @@ def _handle_canvas_click(
     }
 
 
-def _handle_cursor_drag(app_state, settings) -> None:
+def _handle_cursor_drag(app_state: AppState, settings: Settings) -> None:
     """Resize the cursor while the mouse is dragged from the cursor position."""
     if not getattr(app_state, "cursor_drag_in_progress", False):
         return
@@ -363,7 +382,7 @@ def _handle_cursor_drag(app_state, settings) -> None:
         dpg.set_value("cursor_size_slider", new_size)
 
 
-def _handle_cursor_release(app_state, settings) -> None:
+def _handle_cursor_release(app_state: AppState, settings: Settings) -> None:
     """Finalise cursor drag: save new size if it changed, otherwise restore."""
     if not getattr(app_state, "cursor_drag_in_progress", False):
         return
@@ -382,7 +401,7 @@ def _handle_cursor_release(app_state, settings) -> None:
     app_state.cursor_drag_in_progress = False
 
 
-def _handle_target_drag(app_state, settings):
+def _handle_target_drag(app_state: AppState, settings: Settings) -> None:
     """Resize the target under construction while the mouse is dragged."""
     tip = app_state.target_in_progress
     if tip is None:
@@ -417,7 +436,7 @@ def _handle_target_drag(app_state, settings):
     tip["radius"] = _radius_from_center(logical_x, logical_y, x0, y0)
 
 
-def _handle_target_resize_drag(app_state, settings) -> None:
+def _handle_target_resize_drag(app_state: AppState, settings: Settings) -> None:
     """Resize an existing target while Shift+drag is in progress."""
     resize = app_state.target_resize_in_progress
     if resize is None:
@@ -441,9 +460,7 @@ def _handle_target_resize_drag(app_state, settings) -> None:
     target = app_state.clicked_locations[idx]
     if resize["shape"] == "circle":
         center_x, center_y = target["center"]
-        target["radius"] = _radius_from_center(
-            logical_x, logical_y, center_x, center_y
-        )
+        target["radius"] = _radius_from_center(logical_x, logical_y, center_x, center_y)
         return
     min_x, min_y = target["min"]
     max_x, max_y = target["max"]
@@ -459,7 +476,7 @@ def _handle_target_resize_drag(app_state, settings) -> None:
         target["max"] = (max_x, max(logical_y, min_y + min_span))
 
 
-def _handle_target_resize_release(app_state) -> None:
+def _handle_target_resize_release(app_state: AppState) -> None:
     """Finalize target resize when the mouse button is released."""
     if app_state.target_resize_in_progress is not None:
         log.info(
@@ -469,7 +486,7 @@ def _handle_target_resize_release(app_state) -> None:
     app_state.target_resize_in_progress = None
 
 
-def _handle_target_move_drag(app_state, settings) -> None:
+def _handle_target_move_drag(app_state: AppState, settings: Settings) -> None:
     """Reposition an existing target while the mouse is dragged."""
     move = app_state.target_move_in_progress
     if move is None:
@@ -505,7 +522,7 @@ def _handle_target_move_drag(app_state, settings) -> None:
         }
 
 
-def _handle_target_move_release(app_state) -> None:
+def _handle_target_move_release(app_state: AppState) -> None:
     """Finalize target reposition when the mouse button is released."""
     if app_state.target_move_in_progress is not None:
         log.info(
@@ -515,7 +532,7 @@ def _handle_target_move_release(app_state) -> None:
     app_state.target_move_in_progress = None
 
 
-def _handle_target_release(app_state, settings):
+def _handle_target_release(app_state: AppState, settings: Settings) -> None:
     """Finalize the current target when the mouse button is released."""
     tip = app_state.target_in_progress
     if tip is None:
@@ -552,7 +569,7 @@ def _handle_target_release(app_state, settings):
         )
 
 
-def _handle_pan_drag(app_state, session_state):
+def _handle_pan_drag(app_state: AppState, session_state: SessionState) -> None:
     """Handle Ctrl+drag panning of the main canvas."""
     if not dpg.is_key_down(dpg.mvKey_LControl):
         return
@@ -572,7 +589,7 @@ def _handle_pan_drag(app_state, session_state):
     session_state["action"] = "pan_changed"
 
 
-def _handle_pan_release(app_state):
+def _handle_pan_release(app_state: AppState) -> None:
     """Stop panning when the mouse button is released."""
     if getattr(app_state, "is_panning", False):
         log.info(
@@ -583,7 +600,9 @@ def _handle_pan_release(app_state):
         app_state.is_panning = False
 
 
-def _handle_right_click(mx: float, my: float, app_state, settings) -> None:
+def _handle_right_click(
+    mx: float, my: float, app_state: AppState, settings: Settings
+) -> None:
     """Remove a target when right-clicking inside it."""
     hit = _find_target_at(mx, my, app_state, settings)
     if hit is not None:
@@ -592,7 +611,9 @@ def _handle_right_click(mx: float, my: float, app_state, settings) -> None:
         log.info("Target removed (index=%d)", idx)
 
 
-def register_input_handlers(app_state, settings, session_state):
+def register_input_handlers(
+    app_state: AppState, settings: Settings, session_state: SessionState
+) -> None:
     """Register all mouse interaction handlers for the main session canvas."""
     if dpg.does_item_exist("click_handler"):
         dpg.delete_item("click_handler")

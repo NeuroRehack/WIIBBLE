@@ -1,7 +1,7 @@
 # ADR-001: Migrate UI Framework from DearPyGui to PyQt6/PySide6
 
 **Date:** 2026-05-26
-**Status:** Proposed
+**Status:** Superseded by [ADR-004](004-dearpygui-realtime-ui.md)
 
 ## Context
 

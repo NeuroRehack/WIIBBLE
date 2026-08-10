@@ -240,9 +240,7 @@ def apply_sts_stand_threshold_pct(settings: Settings, value: float) -> float:
         return clamped
     settings.sts_stand_threshold_pct = clamped
     if settings.sts_sit_threshold_pct >= clamped:
-        settings.sts_sit_threshold_pct = max(
-            STS_SIT_THRESHOLD_PCT_MIN, clamped - 10.0
-        )
+        settings.sts_sit_threshold_pct = max(STS_SIT_THRESHOLD_PCT_MIN, clamped - 10.0)
     log.info("STS stand threshold set to %.1f%% body weight", clamped)
     settings.save()
     return clamped
@@ -264,9 +262,7 @@ def apply_sts_sit_threshold_pct(settings: Settings, value: float) -> float:
     return clamped
 
 
-def apply_sts_min_dwell_seconds(
-    settings: Settings, field: str, value: float
-) -> float:
+def apply_sts_min_dwell_seconds(settings: Settings, field: str, value: float) -> float:
     """Clamp and persist an STS minimum dwell time field."""
     clamped = _clamp_sts_dwell_seconds(value)
     if getattr(settings, field) == clamped:

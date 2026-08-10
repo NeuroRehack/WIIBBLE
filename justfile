@@ -10,6 +10,9 @@ sync:
 lint:
     uv run ruff check .
 
+typecheck:
+    uv run mypy
+
 format:
     uv run ruff format .
 

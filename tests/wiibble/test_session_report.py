@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.test_analysis import (
+from tests.wiibble.test_analysis import (
     GOLDEN_JSON,
     RECORDING_CSV,
     _assert_matches_golden,

@@ -3,8 +3,8 @@
 # Uses tmp_path + monkeypatch.chdir so no files are written to the real workspace.
 import csv
 import datetime
-import os
 import re
+from pathlib import Path
 
 import pytest
 
@@ -15,23 +15,24 @@ from wiibble.board.recording import (
 )
 
 
-def _find_csv(recordings_dir) -> str:
+def _find_csv(recordings_dir: Path) -> Path:
     """Return the single CSV file in the recordings directory."""
-    files = [f for f in os.listdir(recordings_dir) if f.endswith(".csv")]
+    files = [f for f in recordings_dir.iterdir() if f.suffix == ".csv"]
     assert len(files) == 1, f"Expected 1 CSV file, found: {files}"
-    return os.path.join(recordings_dir, files[0])
+    return files[0]
 
 
-def _read_csv(path) -> list:
+def _read_csv(path: Path) -> list:
     """Return CSV rows, skipping metadata comment lines (lines starting with #)."""
-    with open(path, newline="") as f:
+    with path.open(newline="") as f:
         return [row for row in csv.reader(f) if not (row and row[0].startswith("#"))]
 
 
-def _read_metadata(path) -> dict:
+def _read_metadata(path: Path | str) -> dict:
     """Return metadata comment lines as key/value pairs."""
     metadata = {}
-    with open(path) as f:
+    file_path = Path(path)
+    with file_path.open() as f:
         for line in f:
             stripped = line.strip()
             if stripped.startswith("#"):
@@ -74,25 +75,29 @@ class TestDirectoryCreation:
 
 class TestFilenaming:
     def test_filename_matches_expected_pattern(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv([], out_dir=recordings_dir)
-        files = os.listdir(recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv([], out_dir=str(recordings_dir))
+        files = list(recordings_dir.iterdir())
         assert len(files) == 1
-        assert re.fullmatch(r"recording_\d{12}\.csv", files[0])
+        assert re.fullmatch(r"recording_\d{12}\.csv", files[0].name)
 
     def test_blank_prefix_uses_default(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
-        _save_recording_csv([], out_dir=recordings_dir, prefix="", start_time=start)
-        assert os.listdir(recordings_dir) == ["recording_261101174543.csv"]
-
-    def test_custom_prefix(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
+        recordings_dir = tmp_path / "recordings"
         start = datetime.datetime(2026, 11, 1, 17, 45, 43)
         _save_recording_csv(
-            [], out_dir=recordings_dir, prefix="SPI001_SitStand", start_time=start
+            [], out_dir=str(recordings_dir), prefix="", start_time=start
         )
-        assert os.listdir(recordings_dir) == ["SPI001_SitStand_261101174543.csv"]
+        names = [p.name for p in recordings_dir.iterdir()]
+        assert names == ["recording_261101174543.csv"]
+
+    def test_custom_prefix(self, tmp_path):
+        recordings_dir = tmp_path / "recordings"
+        start = datetime.datetime(2026, 11, 1, 17, 45, 43)
+        _save_recording_csv(
+            [], out_dir=str(recordings_dir), prefix="SPI001_SitStand", start_time=start
+        )
+        names = [p.name for p in recordings_dir.iterdir()]
+        assert names == ["SPI001_SitStand_261101174543.csv"]
 
     def test_unsafe_prefix_chars_removed(self):
         start = datetime.datetime(2026, 11, 1, 17, 45, 43)
@@ -138,12 +143,13 @@ class TestFilenaming:
         assert build_recording_filename("CON", start) == "CON_file_260102030405.csv"
 
     def test_collision_appends_numeric_suffix(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
+        recordings_dir = tmp_path / "recordings"
         start = datetime.datetime(2026, 11, 1, 17, 45, 43)
-        kwargs = dict(out_dir=recordings_dir, prefix="SPI001", start_time=start)
+        kwargs = dict(out_dir=str(recordings_dir), prefix="SPI001", start_time=start)
         _save_recording_csv([], **kwargs)
         _save_recording_csv([], **kwargs)
-        assert sorted(os.listdir(recordings_dir)) == [
+        names = sorted(p.name for p in recordings_dir.iterdir())
+        assert names == [
             "SPI001_261101174543.csv",
             "SPI001_261101174543_2.csv",
         ]
@@ -156,16 +162,16 @@ class TestFilenaming:
 
 class TestHeader:
     def test_empty_buffer_writes_header_only(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv([], out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv([], out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         assert len(rows) == 1
         assert rows[0] == ["time (s)", "x (kg)", "y (kg)"]
 
     def test_header_is_exactly_correct(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv([(0.0, 1.0, 2.0)], out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv([(0.0, 1.0, 2.0)], out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         assert rows[0] == ["time (s)", "x (kg)", "y (kg)"]
@@ -178,8 +184,8 @@ class TestHeader:
 
 class TestRowContent:
     def test_single_row_values_present(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv([(1.234, 5.678, -9.012)], out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv([(1.234, 5.678, -9.012)], out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         assert len(rows) == 2  # header + 1 data row
@@ -187,15 +193,15 @@ class TestRowContent:
 
     def test_three_rows_all_written(self, tmp_path):
         buffer = [(0.0, 0.1, 0.2), (0.01, 0.11, 0.21), (0.02, 0.12, 0.22)]
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv(buffer, out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv(buffer, out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         assert len(rows) == 4  # header + 3 data rows
 
     def test_values_formatted_to_three_decimal_places(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv([(0.01, 1.0, 2.0)], out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv([(0.01, 1.0, 2.0)], out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         # "0.010" not "0.01"
@@ -204,8 +210,8 @@ class TestRowContent:
         assert rows[1][2] == "2.000"
 
     def test_negative_values_written_correctly(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv([(0.0, -1.5, -2.75)], out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv([(0.0, -1.5, -2.75)], out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         assert rows[1][1] == "-1.500"
@@ -213,8 +219,8 @@ class TestRowContent:
 
     def test_row_order_preserved(self, tmp_path):
         buffer = [(float(i), float(i), float(i)) for i in range(5)]
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        _save_recording_csv(buffer, out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        _save_recording_csv(buffer, out_dir=str(recordings_dir))
         path = _find_csv(recordings_dir)
         rows = _read_csv(path)
         for idx, row in enumerate(rows[1:]):
@@ -228,17 +234,17 @@ class TestRowContent:
 
 class TestMetadata:
     def test_flip_metadata_defaults_false(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
-        path = _save_recording_csv([], out_dir=recordings_dir)
+        recordings_dir = tmp_path / "recordings"
+        path = _save_recording_csv([], out_dir=str(recordings_dir))
         metadata = _read_metadata(path)
         assert metadata["flip_horizontal"] == "false"
         assert metadata["flip_vertical"] == "false"
 
     def test_flip_metadata_true_when_enabled(self, tmp_path):
-        recordings_dir = os.path.join(tmp_path, "recordings")
+        recordings_dir = tmp_path / "recordings"
         path = _save_recording_csv(
             [],
-            out_dir=recordings_dir,
+            out_dir=str(recordings_dir),
             flip_horizontal=True,
             flip_vertical=True,
         )

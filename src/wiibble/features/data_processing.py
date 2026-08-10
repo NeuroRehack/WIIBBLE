@@ -1,5 +1,7 @@
-# data_processing.py
+from __future__ import annotations
+
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -14,14 +16,17 @@ log = logging.getLogger(__name__)
 
 def calculate_force_deviation_kg(
     top_left: float, top_right: float, bottom_left: float, bottom_right: float
-) -> tuple:
-    """
-    Calculate x and y force deviations (in kg) from the four corner sensor readings.
-    x: Net left-right force (kg), positive = more weight on right,
-       negative = more on left
-    y: Net front-back force (kg), positive = more weight forward,
-       negative = more backward
-    Returns (x, y) in kg.
+) -> tuple[float, float]:
+    """Calculate x and y force deviations (in kg) from the four corner sensor readings.
+
+    Args:
+        top_left: Top-left corner reading in kg.
+        top_right: Top-right corner reading in kg.
+        bottom_left: Bottom-left corner reading in kg.
+        bottom_right: Bottom-right corner reading in kg.
+
+    Returns:
+        Tuple ``(x, y)`` in kg: x is net left-right; y is net front-back.
     """
     # x axis: right sensors minus left sensors
     x = (top_right + bottom_right) - (top_left + bottom_left)
@@ -77,8 +82,15 @@ def logical_to_viewport(
     )
 
 
-def read_data(device):
-    """Read a raw 32-byte HID report from the device."""
+def read_data(device: Any) -> list[int] | None:
+    """Read a raw 32-byte HID report from the device.
+
+    Args:
+        device: HID device exposing a ``read`` method.
+
+    Returns:
+        Raw report bytes, or None on failure.
+    """
     try:
         return device.read(32)
     except Exception as e:
@@ -86,7 +98,7 @@ def read_data(device):
         return None
 
 
-def read_latest_data(device) -> tuple:
+def read_latest_data(device: Any) -> tuple[list[int] | None, int]:
     """Drain the HID input buffer and return the most recent 32-byte report.
 
     In non-blocking mode the OS may queue multiple reports between render
@@ -140,7 +152,7 @@ def parse_data(data: list, data_struct: dict, scale_factor: float) -> dict:
     return corners
 
 
-def tare(device, data_struct: dict) -> None:
+def tare(device: Any, data_struct: dict[str, Any]) -> None:
     """
     Record the empty-board baseline into data_struct tare values.
     Averages 10 readings to reduce noise.
@@ -164,7 +176,7 @@ def tare(device, data_struct: dict) -> None:
     log.debug("Tare complete: %s", data_struct)
 
 
-def measure_raw_load(device, data_struct: dict) -> float:
+def measure_raw_load(device: Any, data_struct: dict[str, Any]) -> float:
     """
     Average 10 readings of total tared raw load (sum of corners in HID units).
     Used for board scale calibration without depending on the current scale factor.
@@ -190,7 +202,9 @@ def compute_scale_factor(reference_kg: float, raw_load: float) -> float:
     return max(SCALE_FACTOR_MIN, min(SCALE_FACTOR_MAX, factor))
 
 
-def measure_weight(device, data_struct: dict, scale_factor: float) -> float:
+def measure_weight(
+    device: Any, data_struct: dict[str, Any], scale_factor: float
+) -> float:
     """
     Average 10 readings to get a stable total weight in kg.
     Tare offsets in data_struct are applied via parse_data().
@@ -245,13 +259,21 @@ def calculate_coordinates(
     screen_width: float,
     screen_height: float,
     zoom: float = 1.0,
-) -> tuple:
-    """
-    Convert corner kg values to screen coordinates (pixels from centre).
+) -> tuple[float, float]:
+    """Convert corner kg values to screen coordinates (pixels from centre).
 
-    Divides by total body weight to normalise, then scales to screen size.
-    zoom (S3) is applied as a multiplier — 1.0 preserves original behaviour.
-    Guard against weight == 0 to avoid division by zero.
+    Args:
+        top_left: Top-left corner kg.
+        top_right: Top-right corner kg.
+        bottom_left: Bottom-left corner kg.
+        bottom_right: Bottom-right corner kg.
+        weight: Total body weight in kg for normalisation.
+        screen_width: Viewport width in pixels.
+        screen_height: Viewport height in pixels.
+        zoom: Display zoom multiplier.
+
+    Returns:
+        Tuple ``(x, y)`` offset from screen centre in pixels.
     """
     if weight == 0:
         return 0.0, 0.0

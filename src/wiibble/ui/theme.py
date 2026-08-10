@@ -43,7 +43,7 @@ _TEXT_FONT_CANDIDATES = [
 ]
 
 
-def _find_text_font():
+def _find_text_font() -> str | None:
     """Return the resolved path to the first available text font, or None."""
     for candidate in _TEXT_FONT_CANDIDATES:
         p = resource_path(candidate)
@@ -52,7 +52,7 @@ def _find_text_font():
     return None
 
 
-def bind_text_font(item_tag) -> None:
+def bind_text_font(item_tag: int | str) -> None:
     """
     Bind TEXT_FONT to a draw_text (or any) item so it renders crisply.
 
@@ -106,7 +106,7 @@ BAR_ORANGE_COLOR = (255, 165, 50, 255)
 BAR_RED_COLOR = (220, 60, 60, 255)
 
 
-def get_stats_bar_color(percent: float):
+def get_stats_bar_color(percent: float) -> tuple[int, int, int, int]:
     """
     Return the stats bar color based on percent of calibration weight.
     Discrete transitions:

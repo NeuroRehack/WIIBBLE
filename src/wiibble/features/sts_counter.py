@@ -14,6 +14,7 @@ import time
 from enum import StrEnum
 
 from wiibble.utils.constants import STS_REP_FLASH_SECONDS
+from wiibble.utils.state import AppState, Settings
 
 log = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ def sts_flank_offset_fraction(pct: float) -> float:
     return min(1.0, abs(pct - STS_CENTER_PCT) / STS_FLANK_RANGE_PCT)
 
 
-def _register_sts_rep(app_state) -> None:
+def _register_sts_rep(app_state: AppState) -> None:
     """Increment the STS rep count and mark the counter disarmed until seated.
 
     Args:
@@ -117,7 +118,7 @@ def _register_sts_rep(app_state) -> None:
     log.info("STS rep registered (count=%d)", app_state.sts_rep_count)
 
 
-def _confirm_standing(app_state) -> None:
+def _confirm_standing(app_state: AppState) -> None:
     """Enter the standing state and count a rep when the counter is armed.
 
     Args:
@@ -129,7 +130,7 @@ def _confirm_standing(app_state) -> None:
         _register_sts_rep(app_state)
 
 
-def _confirm_seated(app_state) -> None:
+def _confirm_seated(app_state: AppState) -> None:
     """Enter the seated state and re-arm the counter for the next rep.
 
     Args:
@@ -141,8 +142,8 @@ def _confirm_seated(app_state) -> None:
 
 
 def update_sts_counter(
-    app_state,
-    settings,
+    app_state: AppState,
+    settings: Settings,
     curr_weight_kg: float,
     *,
     dt: float | None = None,

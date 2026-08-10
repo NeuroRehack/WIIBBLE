@@ -14,6 +14,7 @@ dependencies = [
     "pytz",
     "tk",
     "typer>=0.26.7",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +26,7 @@ analysis = [
 ]
 dev = [
     "commitizen>=4.0",
+    "mypy>=1.0",
     "nuitka>=2.0",
     "pip-audit>=2.10",
     "pre-commit>=4.0",
@@ -54,16 +56,22 @@ package = true
 [tool.ruff]
 line-length = 88
 target-version = "py311"
-exclude = ["src/code_descriptors_postural_control"]
+exclude = ["src/code_descriptors_postural_control", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "N", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["wiibble.features", "wiibble.session_actions", "wiibble.utils"]
+disallow_untyped_defs = true
 
 [tool.ruff.lint.per-file-ignores]
 "src/wiibble/cli/*.py" = ["B008"]
 "src/wiibble/cli/report.py" = ["B008", "E501"]
 "src/wiibble/session.py" = ["N806"]
-"src/wiibble/ui/ui.py" = ["SIM117"]
+"src/wiibble/ui/ui.py" = ["SIM117", "F401", "I001"]
+"src/wiibble/ui/settings_panel.py" = ["SIM117"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -104,3 +112,8 @@ version = "2.1.0"
 version_files = ["pyproject.toml:version"]
 tag_format = "v$version"
 update_changelog_on_bump = false
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.0",
+]

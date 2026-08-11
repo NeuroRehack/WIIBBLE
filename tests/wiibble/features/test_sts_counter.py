@@ -68,17 +68,42 @@ class TestFormatStsStateLabel:
 
 
 class TestStsFlankOffsetFraction:
-    def test_centre_is_zero(self) -> None:
-        assert sts_flank_offset_fraction(50.0) == 0.0
+    def test_zero_is_zero(self) -> None:
+        assert sts_flank_offset_fraction(0.0) == 0.0
 
     def test_full_body_weight_is_half_flank(self) -> None:
+        """100% total body weight lands halfway, matching an even two-foot split."""
         assert sts_flank_offset_fraction(100.0) == 0.5
 
-    def test_below_centre_uses_absolute_delta(self) -> None:
-        assert sts_flank_offset_fraction(30.0) == 0.2
+    def test_full_scale_is_full_flank(self) -> None:
+        assert sts_flank_offset_fraction(200.0) == 1.0
+
+    def test_partial_value_is_proportional(self) -> None:
+        assert sts_flank_offset_fraction(60.0) == 0.3
 
     def test_above_flank_range_is_clamped(self) -> None:
-        assert sts_flank_offset_fraction(150.0) == 1.0
+        assert sts_flank_offset_fraction(250.0) == 1.0
+
+    def test_no_fold_back_around_old_centre(self) -> None:
+        """Regression test: values straddling the old 50% anchor must not collide."""
+        assert sts_flank_offset_fraction(40.0) != sts_flank_offset_fraction(60.0)
+
+    def test_monotonic_across_sit_stand_range(self) -> None:
+        """Offsets must strictly increase across the valid sit/stand threshold range."""
+        assert (
+            sts_flank_offset_fraction(10.0)
+            < sts_flank_offset_fraction(55.0)
+            < sts_flank_offset_fraction(85.0)
+        )
+
+    def test_stand_marker_stays_within_reach_of_even_split_fill(self) -> None:
+        """A per-foot fill fraction from an evenly split standing load must be able
+        to exceed the stand marker, so the bar visually reflects a Standing state.
+        """
+        total_pct = 103.0
+        per_foot_fill_fraction = (total_pct / 100.0) / 2.0
+        stand_pct = 60.0
+        assert per_foot_fill_fraction > sts_flank_offset_fraction(stand_pct)
 
 
 class TestUpdateStsCounter:

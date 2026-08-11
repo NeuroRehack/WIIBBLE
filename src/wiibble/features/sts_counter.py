@@ -18,8 +18,7 @@ from wiibble.utils.state import AppState, Settings
 
 log = logging.getLogger(__name__)
 
-STS_CENTER_PCT = 50.0  # stats bar centre = 50% body weight
-STS_FLANK_RANGE_PCT = 100.0  # each mirrored flank spans 0–100% BW from centre
+STS_GAUGE_MAX_PCT = 200.0  # total-body-weight % at which a mirrored flank reaches the bar edge
 
 
 class StsState(StrEnum):
@@ -93,9 +92,17 @@ def format_sts_state_label(state: str) -> str:
 def sts_flank_offset_fraction(pct: float) -> float:
     """Return mirrored flank position as a fraction of half-bar width (0–1).
 
-    The stats bar centre represents 50% body weight. Each mirrored flank
-    spans 0–100% BW from centre to edge, so the full bar encodes 200% of
-    display range. At 100% body weight the marker sits halfway along each flank.
+    Both flanks fill outward from the true centre (0% body weight) in
+    proportion to the weight magnitude, so a higher percentage always
+    pushes the marker further from centre and never back toward it.
+
+    ``pct`` is a *total* body-weight percentage (both feet combined), but
+    each flank of the stats bar is filled by a single foot's share of that
+    total (see ``pl``/``pr`` in ``session.py``). Assuming an even left/right
+    split, one foot carries half the total load, so the scale is doubled
+    (``STS_GAUGE_MAX_PCT``) to keep threshold markers aligned with where the
+    live fill actually reaches — e.g. a 100% total-weight value lands
+    halfway along the flank, matching a normal two-footed stand.
 
     Args:
         pct: Body-weight percentage (e.g. threshold or live weight %).
@@ -103,7 +110,7 @@ def sts_flank_offset_fraction(pct: float) -> float:
     Returns:
         Fraction of one flank width from centre, clamped to 1.0.
     """
-    return min(1.0, abs(pct - STS_CENTER_PCT) / STS_FLANK_RANGE_PCT)
+    return min(1.0, max(0.0, pct) / STS_GAUGE_MAX_PCT)
 
 
 def _register_sts_rep(app_state: AppState) -> None:

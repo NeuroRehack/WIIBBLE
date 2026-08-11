@@ -389,7 +389,6 @@ The settings panel and quick-access controls are created at startup but hidden u
 | DearPyGui for real-time UI | Immediate-mode full-canvas redraw at ~100 Hz; `viewport_drawlist` for sensor overlay | [ADR-004](decisions/004-dearpygui-realtime-ui.md) |
 | Raw corners for recording, filtered for display | Clinical traceability — CSV provenance must not depend on display smoothing | — |
 | Session split (`session.py` hub, `app.py` re-export) | Testability and clearer layering; `app.py` preserved for import compatibility | — |
-| PyQt6 migration considered, then superseded | Richer styling and widget testing were weighed against rewrite cost; DearPyGui's real-time redraw model was ultimately kept (see [ADR-004](decisions/004-dearpygui-realtime-ui.md)) | [ADR-001](decisions/001-migrate-to-pyqt6.md) (Superseded) |
 
 ---
 

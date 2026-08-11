@@ -18,7 +18,9 @@ from wiibble.utils.state import AppState, Settings
 
 log = logging.getLogger(__name__)
 
-STS_GAUGE_MAX_PCT = 200.0  # total-body-weight % at which a mirrored flank reaches the bar edge
+STS_GAUGE_MAX_PCT = (
+    200.0  # total-body-weight % at which a mirrored flank reaches the bar edge
+)
 
 
 class StsState(StrEnum):

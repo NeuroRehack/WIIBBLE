@@ -43,7 +43,12 @@ WIIBBLE/
 │   │   ├── recording.py         # CSV writer with provenance metadata comments
 │   │   └── exceptions.py        # Board connection error types
 │   ├── ui/
-│   │   ├── ui.py                # All DPG draw calls and settings-panel widgets
+│   │   ├── ui.py                # Window/viewport setup; re-exports the public API of the modules below
+│   │   ├── canvas_draw.py       # Canvas drawing — cursor, trail, targets, calibration screens, recording indicator
+│   │   ├── settings_panel.py    # Settings-panel widgets and their callbacks
+│   │   ├── cursor_geometry.py   # Pure cursor/target geometry math (no Dear PyGui imports)
+│   │   ├── textures.py          # Dear PyGui texture registry (calibration and cursor images)
+│   │   ├── draw_helpers.py      # Shared crisp-text draw_text helpers
 │   │   ├── input.py             # Mouse/keyboard handlers; sets session_state["action"]
 │   │   ├── calibration_flow.py  # Tare and on-demand calibration blocking loops
 │   │   └── theme.py             # Colours, fonts, global DPG theme
@@ -314,7 +319,12 @@ Offline batch analysis (`wiibble-process-recordings`, `wiibble-report`) uses the
 | `wiibble/app.py` | Backward-compatible re-export of `session.run` | Do not add logic here; use `session.py` |
 | `wiibble/session.py` | Session lifecycle, render loop, recording state machine, action dispatch, report launch | The largest orchestration file |
 | `wiibble/session_actions.py` | Settings and recording mutations from UI callbacks | Keeps `ui.py` free of direct state-machine logic |
-| `wiibble/ui/ui.py` | Every DPG draw call — canvas, cursor, trail, targets, calibration screens, stats bar, settings panel | Never reads `AppState` for side effects during draws; receives values as arguments |
+| `wiibble/ui/ui.py` | Window/viewport setup; re-exports the public API of `canvas_draw`, `settings_panel`, `textures`, `draw_helpers`, and `cursor_geometry` for backward compatibility | Never reads `AppState` for side effects during draws; receives values as arguments |
+| `wiibble/ui/canvas_draw.py` | Canvas drawing — cursor, sway trail, targets, calibration/connection screens, recording indicator | Extracted from `ui.py`; imports `cursor_geometry`, `draw_helpers`, `textures` |
+| `wiibble/ui/settings_panel.py` | Settings-panel widget construction and callbacks (recording, cursor, visualisation, calibration sections) | Extracted from `ui.py`; uses dynamic imports of `wiibble.ui.ui` for the handful of functions re-exported back through it, avoiding an import cycle |
+| `wiibble/ui/cursor_geometry.py` | Pure cursor/target geometry math — radii, viewport bounds, edge picking, trail sizing | No Dear PyGui imports; fully unit-testable (see `tests/wiibble/ui/test_cursor_geometry.py`) |
+| `wiibble/ui/textures.py` | Dear PyGui texture registry — loads and tags calibration and cursor images | `ensure_textures_loaded()` must run once before any texture-backed draw call |
+| `wiibble/ui/draw_helpers.py` | Shared `draw_text` helpers for crisp font rendering, used by `canvas_draw.py` and `ui.py` | Small, dependency-free of the rest of `ui/` |
 | `wiibble/ui/input.py` | Mouse click/drag/release/wheel handlers; target creation; Ctrl+pan; Ctrl+zoom | Communicates back to `session.py` only via `session_state["action"]` |
 | `wiibble/features/data_processing.py` | Raw HID read, byte parsing + tare, moving-average filter, coordinate calc, weight measurement | Pure functions — no DPG imports, no state; fully unit-testable |
 | `wiibble/ui/calibration_flow.py` | Unified `run_tare_and_persist`, body-weight and scale calibration blocking loops | Renders calibration screens inline; calls `dpg.render_dearpygui_frame()` directly |
@@ -379,7 +389,7 @@ The settings panel and quick-access controls are created at startup but hidden u
 | DearPyGui for real-time UI | Immediate-mode full-canvas redraw at ~100 Hz; `viewport_drawlist` for sensor overlay | [ADR-004](decisions/004-dearpygui-realtime-ui.md) |
 | Raw corners for recording, filtered for display | Clinical traceability — CSV provenance must not depend on display smoothing | — |
 | Session split (`session.py` hub, `app.py` re-export) | Testability and clearer layering; `app.py` preserved for import compatibility | — |
-| PyQt6 migration under consideration | Richer styling and widget testing, but significant rewrite cost | [ADR-001](decisions/001-migrate-to-pyqt6.md) (Proposed) |
+| PyQt6 migration considered, then superseded | Richer styling and widget testing were weighed against rewrite cost; DearPyGui's real-time redraw model was ultimately kept (see [ADR-004](decisions/004-dearpygui-realtime-ui.md)) | [ADR-001](decisions/001-migrate-to-pyqt6.md) (Superseded) |
 
 ---
 

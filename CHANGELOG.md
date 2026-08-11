@@ -8,12 +8,19 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+---
+
+## [2.2.0] — 2026-08-10
+
 ### Added
 - Shift+drag resize for existing targets (circle radius; rectangle width or height by nearest edge)
 - Restored avatar cursor option (person silhouette) alongside circle cursor; mode persists in settings
 - Sit-to-stand rep counter with weight-based hysteresis thresholds (% body weight), min stand/sit dwell times, live status in settings, on-screen REPS display, and dark grey transition band on the stats bar
 - Persisted per-corner tare offsets in settings; subsequent launches skip the Step OFF screen when saved tare exists
 - Saved-tare status label in **Settings → Calibration**
+- THRIVE MQTT bridge companion for live sensor export to a THRIVE hub (`wiibble-thrive`, `wiibble/thrive/`)
+- `mypy` type checking (`just typecheck`), enforced project-wide type annotations on core modules, and a CI `typecheck` job
+- Architecture documentation covering the split `ui/` package, backend layer map, and dependency-direction rules
 
 ### Changed
 - Avatar sway trail mirrors circle trail sizing (one stamp per history point, tapering with age) using solid-black silhouettes
@@ -22,6 +29,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Manual tare via THRIVE runs the full empty-board wait flow and saves offsets to settings
 - Unified tare into `run_tare_and_persist()` in calibration_flow (startup, THRIVE, Auto, Cal scale)
 - Tare status label shows relative time (e.g. "just now", "5 min ago") and updates when the empty-board step completes
+- `wiibble/ui/ui.py` split into `canvas_draw.py`, `settings_panel.py`, `cursor_geometry.py`, `textures.py`, and `draw_helpers.py`; `ui.py` is now a thin re-export layer
+- Tests restructured under `tests/wiibble/` to mirror `src/wiibble/`; added `tests/integration/` with a mock-session startup smoke test
+- Migrated remaining `os.path` usage to `pathlib.Path`; added `python-dotenv` for local environment overrides
 
 ---
 

@@ -220,3 +220,22 @@ def test_on_recording_saved_skips_when_disabled():
     launch.assert_not_called()
     assert app_state.report_job is None
     assert app_state.toast_message == "Recording saved"
+
+
+def test_on_recording_saved_skips_when_feature_compiled_out():
+    """Compile-time PROFILE=lite must not launch reports even if settings ask."""
+    from wiibble.session import _on_recording_saved
+    from wiibble.utils.state import AppState, Settings
+
+    app_state = AppState()
+    settings = Settings(auto_report_after_recording=True, open_report_in_browser=True)
+
+    with (
+        patch("wiibble.product.FEATURE_SESSION_REPORT", False),
+        patch("wiibble.session.launch_session_report_async") as launch,
+    ):
+        _on_recording_saved("/tmp/recording_test.csv", app_state, settings)
+
+    launch.assert_not_called()
+    assert app_state.report_job is None
+    assert app_state.toast_message == "Recording saved"

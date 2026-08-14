@@ -12,6 +12,7 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
+import wiibble.product as product
 import wiibble.ui.theme as _theme_module
 from wiibble.features.sts_counter import format_sts_state_label, weight_pct_of_body
 from wiibble.session_actions import (
@@ -29,8 +30,6 @@ from wiibble.session_actions import (
     apply_sts_sit_threshold_pct,
     apply_sts_stand_threshold_pct,
     apply_target_dwell_seconds,
-    apply_thrive_broker_host,
-    apply_thrive_hub_id,
     apply_trail_length,
     apply_zoom_slider,
     request_calibrate_board,
@@ -38,7 +37,14 @@ from wiibble.session_actions import (
     toggle_cursor_mode,
     toggle_recording,
 )
-from wiibble.session_report.launcher import open_report_in_browser
+
+if product.FEATURE_THRIVE:
+    from wiibble.session_actions import (
+        apply_thrive_broker_host,
+        apply_thrive_hub_id,
+    )
+if product.FEATURE_SESSION_REPORT:
+    from wiibble.session_report.launcher import open_report_in_browser
 from wiibble.ui.theme import (
     ICON_FLIP_HORIZONTAL,
     ICON_FLIP_VERTICAL,
@@ -659,6 +665,8 @@ def _resolve_last_report_path(app_state) -> Path | None:
 
 def _on_view_last_report(app_state) -> None:
     """Re-open the most recent session report in the default browser."""
+    if not product.FEATURE_SESSION_REPORT:
+        return
     report_path = _resolve_last_report_path(app_state)
     if report_path is not None:
         app_state.last_report_path = str(report_path)
@@ -775,6 +783,12 @@ def _build_recording_controls(app_state, settings) -> None:
             "features_SPI001_SitStand_261101174543.json,\n"
             "report_SPI001_SitStand_261101174543.html"
         )
+    if product.FEATURE_SESSION_REPORT:
+        _build_session_report_controls(app_state, settings)
+
+
+def _build_session_report_controls(app_state, settings) -> None:
+    """Add in-app HTML session-report settings and progress widgets."""
     dpg.add_spacer(height=8)
     dpg.add_text("Session report")
     dpg.add_checkbox(
@@ -1185,7 +1199,8 @@ def build_panel_controls(app_state, settings, session_state: dict) -> None:
     """Populate the settings panel with all control sections."""
     _build_section_header("RECORDING", accent_color=_theme_module.C_ACCENT_RECORDING)
     _build_recording_controls(app_state, settings)
-    _build_thrive_controls(settings)
+    if product.FEATURE_THRIVE:
+        _build_thrive_controls(settings)
 
     _build_section_header(
         "CURSOR & MOVEMENT", accent_color=_theme_module.C_ACCENT_CURSOR

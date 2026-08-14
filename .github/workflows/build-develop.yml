@@ -1,17 +1,26 @@
 name: Build (develop)
 
-# Manual builds from develop for QA — uploads artifacts, does not create a release.
+# Manual QA builds — uploads artifacts, does not create a GitHub Release.
+# Actions → Build (develop) → Run workflow → pick branch and profile.
 on:
   workflow_dispatch:
-    branches: [develop]
+    inputs:
+      profile:
+        description: "full = Thrive + in-app reports; lite = omit both companions and Settings"
+        type: choice
+        required: true
+        default: full
+        options:
+          - full
+          - lite
 
 concurrency:
-  group: build-develop-${{ github.ref }}
+  group: build-develop-${{ github.ref }}-${{ inputs.profile }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Build Windows executable
+    name: Build Windows executable (${{ inputs.profile }})
     runs-on: windows-latest
     timeout-minutes: 120
     steps:
@@ -39,11 +48,14 @@ jobs:
         run: |
           $version = uv run python scripts/get_version.py
           $sha = "${{ github.sha }}".Substring(0, 7)
+          $profile = "${{ inputs.profile }}"
           "WIIBBLE_VERSION=$version" >> $env:GITHUB_ENV
-          "ARTIFACT_LABEL=$version-dev-$sha" >> $env:GITHUB_ENV
+          "ARTIFACT_LABEL=$version-dev-$sha-$profile" >> $env:GITHUB_ENV
 
       - name: Build
         shell: pwsh
+        env:
+          WIIBBLE_PROFILE: ${{ inputs.profile }}
         run: .\scripts\ci_build.ps1
 
       - name: Upload build artifacts

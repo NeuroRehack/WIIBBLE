@@ -9,6 +9,10 @@ if (-not $env:WIIBBLE_VERSION) {
     $env:WIIBBLE_VERSION = uv run python scripts/get_version.py
 }
 Write-Host "[ci_build] Version: $($env:WIIBBLE_VERSION)"
+if (-not $env:WIIBBLE_PROFILE) {
+    $env:WIIBBLE_PROFILE = "full"
+}
+Write-Host "[ci_build] Profile: $($env:WIIBBLE_PROFILE)"
 
 Write-Host "[ci_build] Installing dependencies..."
 uv sync --extra dev --extra analysis --extra thrive
@@ -23,7 +27,11 @@ if (-not (Test-Path $distDir)) {
     throw "Expected Nuitka output at $distDir"
 }
 
-$zipName = "WIIBBLE-$($env:WIIBBLE_VERSION)-portable.zip"
+$zipSuffix = ""
+if ($env:WIIBBLE_PROFILE -and $env:WIIBBLE_PROFILE -ne "full") {
+    $zipSuffix = "-$($env:WIIBBLE_PROFILE)"
+}
+$zipName = "WIIBBLE-$($env:WIIBBLE_VERSION)$zipSuffix-portable.zip"
 Write-Host "[ci_build] Creating portable archive: $zipName"
 if (Test-Path $zipName) { Remove-Item $zipName }
 Compress-Archive -Path "$distDir\*" -DestinationPath $zipName

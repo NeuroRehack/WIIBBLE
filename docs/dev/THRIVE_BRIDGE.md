@@ -111,7 +111,7 @@ uv run python -m wiibble.thrive --broker-host localhost --hub-id demo
 # Enable export in WIIBBLE settings; run mock or real session
 ```
 
-Build companion: `compiler_thrive_companion.bat` (also invoked from `compiler.bat`).
+Build companion: `compiler_thrive_companion.bat` (also invoked from `compiler.bat` unless `WIIBBLE_PROFILE=lite` or `WIIBBLE_FEATURE_THRIVE=0`; see [ADR-005](decisions/005-compile-time-product-profiles.md)).
 
 ## Future
 

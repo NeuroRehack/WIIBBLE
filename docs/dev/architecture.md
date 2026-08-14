@@ -33,6 +33,7 @@ WIIBBLE/
 │   ├── __main__.py              # CLI entry (`python -m wiibble`); DPG context, argparse, calls session.run()
 │   ├── app.py                   # Thin re-export: `from wiibble.session import run`
 │   ├── session.py               # Session hub — connection, calibration, render loop, recording, report launch
+│   ├── product.py               # Compile-time FEATURE_THRIVE / FEATURE_SESSION_REPORT (full defaults)
 │   ├── session_actions.py       # Settings/recording mutations triggered from UI callbacks
 │   ├── features/
 │   │   └── data_processing.py   # Pure sensor pipeline (parse, filter, coordinates) — no GUI imports
@@ -66,7 +67,7 @@ WIIBBLE/
 ├── docs/
 │   ├── dev/                     # Architecture, setup, pipeline, ADRs
 │   └── user/                    # Clinician manual
-├── compiler.bat                 # Nuitka build for WIIBBLE.exe + companion
+├── compiler.bat                 # Nuitka build for WIIBBLE.exe + optional companions (WIIBBLE_PROFILE)
 └── installer.iss                # Inno Setup installer
 ```
 
@@ -96,6 +97,7 @@ flowchart BT
         constants["utils/constants"]
         state["utils/state"]
         resources["utils/resources"]
+        product["product"]
     end
 
     subgraph L1["L1 — Pure logic"]
@@ -132,11 +134,13 @@ flowchart BT
     ui --> dp
     ui --> session_actions
     ui --> session_report
+    ui --> product
     session --> board
     session --> dp
     session --> ui
     session --> session_report
     session --> state
+    session --> product
     main --> session
     main --> ui
 ```
@@ -147,6 +151,7 @@ flowchart BT
 - `ui/*` communicates session intent via `session_state["action"]` — it does not import `session.py`.
 - `session.py` is the only module that wires UI callbacks, sensor reads, and recording together.
 - `analysis/*` and `cli/*` run offline; they are not imported by `session.py` at runtime (companion is a subprocess).
+- `session.py` and `ui/settings_panel.py` import Thrive and in-app session-report modules only when `wiibble.product` flags are True (lite profile omits those imports).
 - `app.py` exists only for backward-compatible imports; new code should use `wiibble.session`.
 
 ---
@@ -385,8 +390,9 @@ The settings panel and quick-access controls are created at startup but hidden u
 | Decision | Rationale | ADR |
 |---|---|---|
 | C# DLL + pythonnet for Bluetooth handshake | Windows requires a Nintendo-specific pairing handshake; logic already existed in C# (WiiBalanceWalker lineage) | [ADR-002](decisions/002-csharp-dll-bluetooth-bridge.md) |
-| Companion exe for session reports | Keeps scipy/plotly out of the main Nuitka binary; main app stays responsive during ~2–4 s report generation | [ADR-003](decisions/003-session-report-companion.md) |
+| Companion exe for session reports | Keeps scipy/plotly out of the main Nuitka binary; main app stays responsive during ~2–4 s report generation. Omitted from lite profile builds. | [ADR-003](decisions/003-session-report-companion.md), [ADR-005](decisions/005-compile-time-product-profiles.md) |
 | DearPyGui for real-time UI | Immediate-mode full-canvas redraw at ~100 Hz; `viewport_drawlist` for sensor overlay | [ADR-004](decisions/004-dearpygui-realtime-ui.md) |
+| Compile-time product profiles | Same codebase can ship full (Thrive + in-app reports) or lite (neither in Settings nor companion exes) without runtime flags or a fork | [ADR-005](decisions/005-compile-time-product-profiles.md) |
 | Raw corners for recording, filtered for display | Clinical traceability — CSV provenance must not depend on display smoothing | — |
 | Session split (`session.py` hub, `app.py` re-export) | Testability and clearer layering; `app.py` preserved for import compatibility | — |
 

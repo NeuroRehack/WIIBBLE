@@ -251,7 +251,7 @@ GitHub Actions: `.github/workflows/ci.yml`
 
 Lint, test, and dotnet jobs run on `windows-latest`.
 
-Pending CI addition: Nuitka executable artifact on every push (use the manual [Build (develop)](../../.github/workflows/build-develop.yml) workflow for QA builds). See [TODO.md](TODO.md).
+Pending CI addition: Nuitka executable artifact on every push. For QA installers, run the manual [Build (develop)](../../.github/workflows/build-develop.yml) workflow (**Actions → Build (develop) → Run workflow**). Choose **profile** `full` (default) or `lite`. Lite is not built on pull requests or tagged releases. See [TODO.md](TODO.md).
 
 ---
 
@@ -290,7 +290,7 @@ Manual CLI (same pipeline):
 uv run wiibble-session-report path\to\recording.csv --open
 ```
 
-The companion is built by `compiler_session_report.bat` (called automatically from `compiler.bat`).
+The companion is built by `compiler_session_report.bat` (called automatically from `compiler.bat` unless `WIIBBLE_PROFILE=lite` or `WIIBBLE_FEATURE_SESSION_REPORT=0`).
 
 ### Analyse recordings
 
@@ -366,7 +366,39 @@ Requires `uv sync --extra dev`:
 .\compiler.bat
 ```
 
-Output: `dist_nuitka/wiibble.dist/WIIBBLE.exe`
+Default profile is **full**: main `WIIBBLE.exe` plus the session-report and THRIVE companion executables. Output: `dist_nuitka/wiibble.dist/WIIBBLE.exe`.
+
+To omit in-app Thrive export and session-report generation (no Settings widgets, no companion folders):
+
+```powershell
+$env:WIIBBLE_PROFILE = "lite"
+.\compiler.bat
+```
+
+```bash
+export WIIBBLE_PROFILE=lite
+# compiler.bat is Windows-only; on Linux use the overlay + mock preview below
+```
+
+Per-feature overrides: `WIIBBLE_FEATURE_THRIVE=0` and/or `WIIBBLE_FEATURE_SESSION_REPORT=0`. See [ADR-005](decisions/005-compile-time-product-profiles.md). Offline CLIs (`wiibble-report`, `wiibble-process-recordings`) are unchanged.
+
+To preview lite Settings (no Thrive / Session report widgets) **without** Nuitka, write the gitignored overlay, run mock, then delete the overlay so pytest and the next full run see the committed defaults:
+
+```powershell
+$env:WIIBBLE_PROFILE = "lite"
+uv run python scripts/write_product_overlay.py
+uv run python -m wiibble --mock
+uv run python scripts/write_product_overlay.py --clean
+```
+
+```bash
+export WIIBBLE_PROFILE=lite
+uv run python scripts/write_product_overlay.py
+uv run python -m wiibble --mock
+uv run python scripts/write_product_overlay.py --clean
+```
+
+Do not leave `_product_build.py` in place when running `just test`. Restart the process after writing or cleaning the overlay; flags are applied at import time.
 
 Test the build in mock mode before distributing:
 
@@ -384,7 +416,7 @@ Manual:
 iscc installer.iss
 ```
 
-Output: `installer_output/WIIBBLE-<version>-Setup.exe`
+Output: `installer_output/WIIBBLE-<version>-Setup.exe` (full profile). Lite builds use `WIIBBLE-<version>-lite-Setup.exe`.
 
 Supports `/SILENT` and `/VERYSILENT` flags for managed deployment.
 

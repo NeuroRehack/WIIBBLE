@@ -4,7 +4,9 @@ setlocal EnableDelayedExpansion
 if not defined WIIBBLE_VERSION (
     for /f "delims=" %%V in ('python scripts\get_version.py') do set WIIBBLE_VERSION=%%V
 )
+if not defined WIIBBLE_PROFILE set WIIBBLE_PROFILE=full
 echo [compiler] Version: %WIIBBLE_VERSION%
+echo [compiler] Profile: %WIIBBLE_PROFILE%
 
 echo [compiler] Building C# library...
 cd WiiBalanceBoardLibrary
@@ -18,10 +20,28 @@ cd ..
 @REM if not exist outputBuild\ mkdir outputBuild\
 call .venv\Scripts\activate.bat
 
+set FEATURE_THRIVE=1
+set FEATURE_SESSION_REPORT=1
+set APP_FLAVOR=
+python scripts\write_product_overlay.py > "%TEMP%\wiibble_product_flags.txt"
+if errorlevel 1 (
+    echo [compiler] PRODUCT OVERLAY FAILED.
+    python scripts\write_product_overlay.py --clean
+    exit /b 1
+)
+for /f "usebackq tokens=1,* delims==" %%A in ("%TEMP%\wiibble_product_flags.txt") do (
+    if /I "%%A"=="THRIVE" set FEATURE_THRIVE=%%B
+    if /I "%%A"=="SESSION_REPORT" set FEATURE_SESSION_REPORT=%%B
+    if /I "%%A"=="APP_FLAVOR" set APP_FLAVOR=%%B
+)
+echo [compiler] Features: thrive=!FEATURE_THRIVE! session_report=!FEATURE_SESSION_REPORT!
+
 echo [compiler] Building with Nuitka (standalone)...
 set NUITKA_OPTS=
 if defined CI set NUITKA_OPTS=--assume-yes-for-downloads
-python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
+set NUITKA_EXTRA=
+if "!FEATURE_SESSION_REPORT!"=="0" set NUITKA_EXTRA=--nofollow-import-to=wiibble.session_report
+python -m nuitka --standalone --follow-imports !NUITKA_OPTS! !NUITKA_EXTRA! ^
     --jobs=%NUMBER_OF_PROCESSORS% ^
     --windows-icon-from-ico=images\logoPerson.ico ^
     --output-filename=WIIBBLE.exe ^
@@ -50,7 +70,9 @@ python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.dll=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
     --include-data-files=WiiBalanceBoardLibrary\bin\Debug\net48\*.pdb=WiiBalanceBoardLibrary\bin\Debug\net48\ ^
     src\wiibble
-if errorlevel 1 (
+set BUILD_ERR=!errorlevel!
+python scripts\write_product_overlay.py --clean
+if !BUILD_ERR! neq 0 (
     echo [compiler] BUILD FAILED.
     exit /b 1
 )
@@ -58,16 +80,24 @@ if errorlevel 1 (
 @REM move dist_nuitka\main.dist outputBuild\WIIBBLE
 echo [compiler] Build complete. Output: dist_nuitka\wiibble.dist\WIIBBLE.exe
 
-call compiler_session_report.bat
-if errorlevel 1 (
-    echo [compiler] SESSION REPORT COMPANION BUILD FAILED.
-    exit /b 1
+if "!FEATURE_SESSION_REPORT!"=="0" (
+    echo [compiler] Skipping session-report companion ^(FEATURE_SESSION_REPORT=0^).
+) else (
+    call compiler_session_report.bat
+    if errorlevel 1 (
+        echo [compiler] SESSION REPORT COMPANION BUILD FAILED.
+        exit /b 1
+    )
 )
 
-call compiler_thrive_companion.bat
-if errorlevel 1 (
-    echo [compiler] THRIVE COMPANION BUILD FAILED.
-    exit /b 1
+if "!FEATURE_THRIVE!"=="0" (
+    echo [compiler] Skipping THRIVE companion ^(FEATURE_THRIVE=0^).
+) else (
+    call compiler_thrive_companion.bat
+    if errorlevel 1 (
+        echo [compiler] THRIVE COMPANION BUILD FAILED.
+        exit /b 1
+    )
 )
 
 echo.
@@ -78,10 +108,16 @@ if errorlevel 1 (
 ) else (
     echo [installer] Building installer with Inno Setup...
     if not exist installer_output\ mkdir installer_output\
-    iscc /DAppVersion=%WIIBBLE_VERSION% installer.iss
+    if "!APP_FLAVOR!"=="" (
+        iscc /DAppVersion=%WIIBBLE_VERSION% installer.iss
+        set INSTALLER_NAME=WIIBBLE-%WIIBBLE_VERSION%-Setup.exe
+    ) else (
+        iscc /DAppVersion=%WIIBBLE_VERSION% /DAppFlavor=!APP_FLAVOR! installer.iss
+        set INSTALLER_NAME=WIIBBLE-%WIIBBLE_VERSION%-!APP_FLAVOR!-Setup.exe
+    )
     if errorlevel 1 (
         echo [installer] INSTALLER BUILD FAILED.
         exit /b 1
     )
-    echo [installer] Installer ready: installer_output\WIIBBLE-%WIIBBLE_VERSION%-Setup.exe
+    echo [installer] Installer ready: installer_output\!INSTALLER_NAME!
 )

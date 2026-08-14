@@ -8,10 +8,12 @@ import logging
 import math
 import time
 from pathlib import Path
+from typing import Any
 
 import dearpygui.dearpygui as dpg
 import hid
 
+import wiibble.product as product
 import wiibble.ui.theme as _theme_module
 from wiibble.board.acquisition import SensorAcquisition
 from wiibble.board.mock_board import MockHIDDevice
@@ -24,16 +26,19 @@ from wiibble.features.data_processing import (
     parse_data,
 )
 from wiibble.features.sts_counter import update_sts_counter
-from wiibble.session_report.launcher import (
-    launch_session_report_async,
-    parse_session_report_stdout,
-)
-from wiibble.session_report.progress import (
-    progress_path_for,
-    read_report_progress,
-    remove_report_progress_file,
-)
-from wiibble.thrive.hook import get_thrive_hook, reset_thrive_hook
+
+if product.FEATURE_SESSION_REPORT:
+    from wiibble.session_report.launcher import (
+        launch_session_report_async,
+        parse_session_report_stdout,
+    )
+    from wiibble.session_report.progress import (
+        progress_path_for,
+        read_report_progress,
+        remove_report_progress_file,
+    )
+if product.FEATURE_THRIVE:
+    from wiibble.thrive.hook import get_thrive_hook, reset_thrive_hook
 from wiibble.ui.calibration_flow import (
     run_board_scale_calibration,
     run_board_weight_calibration,
@@ -72,6 +77,7 @@ from wiibble.utils.constants import (
     ZOOM_SCALE,
 )
 from wiibble.utils.resources import resource_path
+from wiibble.utils.state import Settings
 
 log = logging.getLogger(__name__)
 
@@ -219,9 +225,71 @@ def _recording_save_kwargs(app_state, settings) -> dict:
     }
 
 
+def apply_compile_time_feature_overrides(settings: Settings) -> None:
+    """Disable compiled-out product features in memory without writing settings.
+
+    Leftover keys in settings.json must not activate Thrive or auto-report when
+    those features were excluded from this build.
+
+    Args:
+        settings: Session settings loaded from disk (mutated in place, not saved).
+    """
+    if not product.FEATURE_THRIVE:
+        settings.thrive_enabled = False
+    if not product.FEATURE_SESSION_REPORT:
+        settings.auto_report_after_recording = False
+
+
+def _publish_thrive_frame(frame_state: dict[str, Any], settings: Settings) -> None:
+    """Publish a live frame to THRIVE when the feature is compiled in and enabled.
+
+    Args:
+        frame_state: Latest processed sensor frame.
+        settings: Session settings (Thrive must also be user-enabled).
+    """
+    if not product.FEATURE_THRIVE:
+        return
+    if not settings.thrive_enabled:
+        return
+    get_thrive_hook(settings).publish_frame(frame_state, settings)
+
+
+def _start_thrive_hook(settings: Settings) -> object | None:
+    """Start the THRIVE session hook, or return None when the feature is compiled out.
+
+    Args:
+        settings: Session settings passed to the hook.
+
+    Returns:
+        The started hook, or None when Thrive is not in this build.
+    """
+    if not product.FEATURE_THRIVE:
+        return None
+    hook = get_thrive_hook(settings)
+    hook.start()
+    return hook
+
+
+def _stop_thrive_hook(hook: object | None) -> None:
+    """Stop and discard the THRIVE session hook when one was started.
+
+    Args:
+        hook: Hook returned by ``_start_thrive_hook``, or None.
+    """
+    if hook is None:
+        return
+    hook.stop()
+    reset_thrive_hook()
+
+
 def _on_recording_saved(csv_path: str, app_state, settings) -> None:
     """Toast after save and optionally launch end-of-session report generation."""
     app_state.last_recording_csv_path = csv_path
+    if not product.FEATURE_SESSION_REPORT:
+        log.info("Recording saved (session report not in this build)")
+        app_state.toast_message = "Recording saved"
+        app_state.toast_until = time.time() + 2.5
+        return
     if not settings.auto_report_after_recording:
         log.info("Recording saved (auto-report disabled)")
         app_state.toast_message = "Recording saved"
@@ -708,8 +776,7 @@ def _render_main_screen_frame(
             return top_left, top_right, bottom_left, bottom_right
     else:
         session_state["last_frame"] = frame_state
-        if settings.thrive_enabled:
-            get_thrive_hook(settings).publish_frame(frame_state, settings)
+        _publish_thrive_frame(frame_state, settings)
         update_sts_counter(app_state, settings, frame_state["curr_weight"])
         update_sts_live_status_label(app_state, settings)
 
@@ -953,6 +1020,7 @@ def _run_session(app_state, settings, args) -> int:
         getattr(args, "mock_scenario", "n/a"),
     )
     app_state.reset(settings)
+    apply_compile_time_feature_overrides(settings)
 
     # Update screen dimensions from current viewport
     app_state.screen_width = dpg.get_viewport_width()
@@ -1014,8 +1082,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
     # even if the first data frame hasn't arrived yet.
     top_left = top_right = bottom_left = bottom_right = 0.0
     diagnostics = _LoopDiagnostics()
-    thrive_hook = get_thrive_hook(settings)
-    thrive_hook.start()
+    thrive_hook = _start_thrive_hook(settings)
 
     try:
         while dpg.is_dearpygui_running():
@@ -1032,8 +1099,10 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
                 bottom_right,
             )
             _flush_record_buffer_if_complete(app_state, settings)
-            _poll_report_job(app_state, settings)
-            thrive_hook.poll_commands(session_state, settings)
+            if product.FEATURE_SESSION_REPORT:
+                _poll_report_job(app_state, settings)
+            if thrive_hook is not None:
+                thrive_hook.poll_commands(session_state, settings)
 
             action = session_state.get("action")
             result = _handle_session_action(
@@ -1065,8 +1134,7 @@ def _run_main_loop(device, dl, app_state, settings, session_state) -> int:
                 time.sleep(_TARGET_FRAME_S - elapsed)
             _last_frame_time = time.perf_counter()
     finally:
-        thrive_hook.stop()
-        reset_thrive_hook()
+        _stop_thrive_hook(thrive_hook)
         acquisition.stop()
         session_state.pop("acquisition", None)
 

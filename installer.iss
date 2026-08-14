@@ -13,6 +13,11 @@
 #ifndef AppVersion
   #define AppVersion "2.0.1"
 #endif
+#ifndef AppFlavor
+  #define OutputFileBase "WIIBBLE-" + AppVersion + "-Setup"
+#else
+  #define OutputFileBase "WIIBBLE-" + AppVersion + "-" + AppFlavor + "-Setup"
+#endif
 #define AppPublisher "NeuroRehack"
 #define AppURL       "https://github.com/NeuroRehack/WIIBBLE"
 #define AppExeName   "WIIBBLE.exe"
@@ -33,7 +38,7 @@ DefaultGroupName={#AppName}
 
 ; Output
 OutputDir=installer_output
-OutputBaseFilename=WIIBBLE-{#AppVersion}-Setup
+OutputBaseFilename={#OutputFileBase}
 SetupIconFile=images\logoPerson.ico
 
 ; Compression

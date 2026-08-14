@@ -8,6 +8,10 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Compile-time product profiles (`WIIBBLE_PROFILE=full|lite` and per-feature env flags) so Thrive and in-app session reports can be omitted from Settings, the main Nuitka import graph, and companion exe builds
+- Manual [Build (develop)](.github/workflows/build-develop.yml) workflow input to produce a full or lite Windows installer on demand
+
 ### Fixed
 - STS threshold bar marker no longer folds back toward centre when the sit threshold crosses 50% body weight; the mirrored flank scale is now anchored at true zero instead of 50%, so marker position increases monotonically with the threshold value
 - STS threshold markers now scale against 200% total body weight (not 100%) to match each flank's per-foot fill fraction, so a live weight in the Standing state visually reaches past the stand marker instead of appearing stuck inside the transition band

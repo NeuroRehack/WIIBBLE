@@ -4,7 +4,8 @@ default:
     @just --list
 
 sync:
-    uv sync --extra dev --extra analysis
+    # Extras must match scripts/ci_build.ps1 or a local compiler.bat run cannot find paho.
+    uv sync --extra dev --extra analysis --extra thrive
     uv pip install -e .
 
 lint:

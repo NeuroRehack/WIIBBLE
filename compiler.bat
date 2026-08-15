@@ -34,6 +34,8 @@ for /f "usebackq tokens=1,* delims==" %%A in ("%TEMP%\wiibble_product_flags.txt"
     if /I "%%A"=="SESSION_REPORT" set FEATURE_SESSION_REPORT=%%B
     if /I "%%A"=="APP_FLAVOR" set APP_FLAVOR=%%B
 )
+@REM The full build emits the "none" sentinel because an empty value cannot be parsed.
+if /I "!APP_FLAVOR!"=="none" set APP_FLAVOR=
 echo [compiler] Features: thrive=!FEATURE_THRIVE! session_report=!FEATURE_SESSION_REPORT!
 
 echo [compiler] Building with Nuitka (standalone)...
@@ -80,8 +82,11 @@ if !BUILD_ERR! neq 0 (
 @REM move dist_nuitka\main.dist outputBuild\WIIBBLE
 echo [compiler] Build complete. Output: dist_nuitka\wiibble.dist\WIIBBLE.exe
 
+@REM Nuitka reuses dist_nuitka\wiibble.dist, so a previous full build would otherwise
+@REM leave its companion folders behind and ship them in a lite build.
 if "!FEATURE_SESSION_REPORT!"=="0" (
     echo [compiler] Skipping session-report companion ^(FEATURE_SESSION_REPORT=0^).
+    if exist dist_nuitka\wiibble.dist\session_report rmdir /s /q dist_nuitka\wiibble.dist\session_report
 ) else (
     call compiler_session_report.bat
     if errorlevel 1 (
@@ -92,6 +97,7 @@ if "!FEATURE_SESSION_REPORT!"=="0" (
 
 if "!FEATURE_THRIVE!"=="0" (
     echo [compiler] Skipping THRIVE companion ^(FEATURE_THRIVE=0^).
+    if exist dist_nuitka\wiibble.dist\thrive rmdir /s /q dist_nuitka\wiibble.dist\thrive
 ) else (
     call compiler_thrive_companion.bat
     if errorlevel 1 (
@@ -108,12 +114,13 @@ if errorlevel 1 (
 ) else (
     echo [installer] Building installer with Inno Setup...
     if not exist installer_output\ mkdir installer_output\
+    @REM Assign the name first: a successful `set` clears errorlevel and would hide an iscc failure.
     if "!APP_FLAVOR!"=="" (
-        iscc /DAppVersion=%WIIBBLE_VERSION% installer.iss
         set INSTALLER_NAME=WIIBBLE-%WIIBBLE_VERSION%-Setup.exe
+        iscc /DAppVersion=%WIIBBLE_VERSION% installer.iss
     ) else (
-        iscc /DAppVersion=%WIIBBLE_VERSION% /DAppFlavor=!APP_FLAVOR! installer.iss
         set INSTALLER_NAME=WIIBBLE-%WIIBBLE_VERSION%-!APP_FLAVOR!-Setup.exe
+        iscc /DAppVersion=%WIIBBLE_VERSION% /DAppFlavor=!APP_FLAVOR! installer.iss
     )
     if errorlevel 1 (
         echo [installer] INSTALLER BUILD FAILED.

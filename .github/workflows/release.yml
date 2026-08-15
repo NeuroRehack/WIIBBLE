@@ -18,7 +18,8 @@ jobs:
   build:
     name: Build and publish release
     runs-on: windows-latest
-    timeout-minutes: 90
+    # A full build takes ~2h: main app plus the session-report and THRIVE companions.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:

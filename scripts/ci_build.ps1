@@ -27,6 +27,11 @@ if (-not (Test-Path $distDir)) {
     throw "Expected Nuitka output at $distDir"
 }
 
+Write-Host "[ci_build] Verifying dist layout..."
+# Same interpreter compiler.bat used: `uv run` would re-sync and could drop extras.
+.\.venv\Scripts\python.exe scripts\verify_dist_layout.py --dist-dir $distDir
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 $zipSuffix = ""
 if ($env:WIIBBLE_PROFILE -and $env:WIIBBLE_PROFILE -ne "full") {
     $zipSuffix = "-$($env:WIIBBLE_PROFILE)"

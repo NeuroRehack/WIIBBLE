@@ -7,6 +7,9 @@ call .venv\Scripts\activate.bat
 set NUITKA_OPTS=
 if defined CI set NUITKA_OPTS=--assume-yes-for-downloads
 
+@REM Stale dists from an earlier build would hide a change in Nuitka's output name.
+if exist dist_nuitka_thrive rmdir /s /q dist_nuitka_thrive
+
 python -m nuitka --standalone --follow-imports !NUITKA_OPTS! ^
     --jobs=%NUMBER_OF_PROCESSORS% ^
     --windows-console-mode=disable ^
@@ -28,10 +31,18 @@ if errorlevel 1 (
 )
 
 set MAIN_DIST=dist_nuitka\wiibble.dist
-set COMPANION_DIST=dist_nuitka_thrive\thrive.dist
+@REM Nuitka names the dist after the entry point basename, so __main__.py gives __main__.dist.
+set COMPANION_DIST=dist_nuitka_thrive\__main__.dist
 
 if not exist "%MAIN_DIST%" (
     echo [compiler] Main dist not found at %MAIN_DIST% — build WIIBBLE.exe first.
+    exit /b 1
+)
+
+if not exist "%COMPANION_DIST%" (
+    echo [compiler] Companion dist not found at %COMPANION_DIST%.
+    echo [compiler] Directories present in dist_nuitka_thrive:
+    dir /b /ad dist_nuitka_thrive
     exit /b 1
 )
 

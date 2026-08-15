@@ -360,7 +360,7 @@ To customise report figures or layout, edit `src/wiibble/cli/report.py` and the 
 
 ### Build the standalone executable
 
-Requires `uv sync --extra dev`:
+Requires `just sync`, which installs the `dev`, `analysis`, and `thrive` extras. A full build compiles the THRIVE companion and fails without `paho-mqtt`.
 
 ```powershell
 .\compiler.bat

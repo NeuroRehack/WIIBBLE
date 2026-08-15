@@ -110,6 +110,21 @@ def test_overlay_main_emits_compiler_flags(
     assert overlay_path.is_file()
 
 
+def test_overlay_main_emits_flavor_sentinel_for_full_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty APP_FLAVOR would be parsed by compiler.bat as the literal '%B'."""
+    overlay_path = tmp_path / "_product_build.py"
+    monkeypatch.setenv("WIIBBLE_PROFILE", "full")
+    monkeypatch.delenv("WIIBBLE_FEATURE_THRIVE", raising=False)
+    monkeypatch.delenv("WIIBBLE_FEATURE_SESSION_REPORT", raising=False)
+    assert overlay_script.main(["--overlay-path", str(overlay_path)]) == 0
+    captured = capsys.readouterr()
+    assert f"APP_FLAVOR={overlay_script.NO_FLAVOR_SENTINEL}\n" in captured.out
+    for line in captured.out.splitlines():
+        assert not line.endswith("=")
+
+
 def test_apply_compile_time_overrides_does_not_save(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

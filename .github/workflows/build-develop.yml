@@ -22,7 +22,8 @@ jobs:
   build:
     name: Build Windows executable (${{ inputs.profile }})
     runs-on: windows-latest
-    timeout-minutes: 120
+    # A full build takes ~2h: main app plus the session-report and THRIVE companions.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -65,4 +66,4 @@ jobs:
           path: |
             installer_output/WIIBBLE-*-Setup.exe
             WIIBBLE-*-portable.zip
-          if-no-files-found: warn
+          if-no-files-found: error

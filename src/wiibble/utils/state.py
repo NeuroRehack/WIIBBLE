@@ -306,6 +306,8 @@ class AppState:
     _target_dwell_disarmed: set = field(
         default_factory=set
     )  # targets awaiting exit before re-count
+    _target_completed: dict[int, bool] = field(
+        default_factory=dict)  # targets that have been completed
     _target_dwell_last_tick: float = 0.0
 
     # Sit-to-stand rep counter — session runtime only
@@ -330,6 +332,7 @@ class AppState:
         """Reset the target dwell hit counter and dwell timer state."""
         self.target_hit_count = 0
         self._target_dwell_elapsed = {}
+        self._target_completed = {}
         self._target_dwell_disarmed = set()
         self._target_dwell_last_tick = 0.0
 

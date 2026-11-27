@@ -114,6 +114,7 @@ class TestUpdateTargetDwell:
 
         assert app_state.target_hit_count == 0
         assert app_state._target_dwell_elapsed == {}
+        assert app_state._target_completed == {}
         assert app_state._target_dwell_disarmed == set()
         assert app_state._target_dwell_last_tick == 0.0
 

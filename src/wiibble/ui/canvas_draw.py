@@ -6,6 +6,9 @@ import logging
 import math
 import time
 
+import winsound
+from pathlib import Path
+
 import dearpygui.dearpygui as dpg
 
 import wiibble.ui.theme as _theme_module
@@ -595,6 +598,14 @@ def update_target_dwell(
                     app_state.target_hit_count,
                     idx,
                 )
+
+                sound_file = Path(__file__).parent / "hit_sound.wav"
+                winsound.PlaySound(
+                    str(sound_file),
+                    winsound.SND_FILENAME | winsound.SND_ASYNC
+                )
+                app_state._target_completed[idx] = True
+
                 continue
             elapsed[idx] = elapsed.get(idx, 0.0) + dt
             if elapsed[idx] >= dwell_seconds:
@@ -606,9 +617,26 @@ def update_target_dwell(
                     app_state.target_hit_count,
                     idx,
                 )
+
+                sound_file = Path(__file__).parent / "hit_sound.wav"
+                winsound.PlaySound(
+                    str(sound_file),
+                    winsound.SND_FILENAME | winsound.SND_ASYNC
+                )
+                app_state._target_completed[idx] = True
         else:
             elapsed.pop(idx, None)
             disarmed.discard(idx)
+            app_state._target_completed[idx] = False
+
+def get_fill(app_state, hit, idx):
+    if not hit :
+        fill = (255, 0, 0, 200) # red
+    elif hit and not app_state._target_completed.get(idx) : 
+        fill = (255, 255, 0, 200) # yellow
+    else :
+        fill = (0, 255, 0, 200) # green
+    return fill
 
 
 def draw_main_screen(
@@ -707,7 +735,8 @@ def draw_main_screen(
                 target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v
             )
             target_hits[idx] = hit
-            fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
+            
+            fill = get_fill(app_state, hit, idx)
             dpg.draw_rectangle(
                 (min_vx, min_vy), (max_vx, max_vy), color=fill, fill=fill, parent=dl
             )
@@ -722,7 +751,7 @@ def draw_main_screen(
         scaled_radius = logical_radius * zoom
         hit = _target_hit_at_point(target, ball_x, ball_y, cx, cy, zoom, flip_h, flip_v)
         target_hits[idx] = hit
-        fill = (0, 255, 0, 200) if hit else (255, 0, 0, 200)
+        fill = get_fill(app_state, hit, idx)  
         dpg.draw_circle(
             (vx, vy), max(1.0, scaled_radius), color=fill, fill=fill, parent=dl
         )
